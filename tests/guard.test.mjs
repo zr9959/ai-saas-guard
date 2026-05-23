@@ -931,6 +931,11 @@ test("public docs define hosted pre-implementation contracts", async () => {
   assert.match(contracts, /planHostedScanQueueUpsert/);
   assert.match(contracts, /duplicate deliveries reuse queued, running, and completed jobs/i);
   assert.match(contracts, /manual reruns increment attempt/i);
+  assert.match(contracts, /worker read-only scan planner/i);
+  assert.match(contracts, /planHostedWorkerReadOnlyScan/);
+  assert.match(contracts, /repository `contents: read`/i);
+  assert.match(contracts, /fixed read-only CLI invocation/i);
+  assert.match(contracts, /ignore PR-authored repository names, token scopes, and commands/i);
   assert.match(contracts, /webhook event parser/i);
   assert.match(contracts, /trusted GitHub event fields/i);
   assert.match(contracts, /opened, reopened, synchronize, and ready_for_review/i);

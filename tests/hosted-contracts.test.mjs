@@ -97,6 +97,12 @@ async function loadScanQueuePlanner() {
   return contracts.planHostedScanQueueUpsert;
 }
 
+async function loadWorkerReadOnlyScanPlanner() {
+  const contracts = await import("../dist/hosted/contracts.js");
+  assert.equal(typeof contracts.planHostedWorkerReadOnlyScan, "function");
+  return contracts.planHostedWorkerReadOnlyScan;
+}
+
 test("hosted pull request webhook intake verifies signatures before parsing or queueing", async () => {
   const planHostedPullRequestWebhookIntake = await loadWebhookIntakePlanner();
   const queue = new Map();
@@ -536,6 +542,103 @@ test("hosted durable scan queue manual rerun increments attempt without changing
   assert.equal(rerun.shouldCreateCheckRun, true);
   assert.equal(rerun.shouldCreatePrComment, false);
   assert.deepEqual(queue.get(first.key).deliveryIds, ["delivery-1", "delivery-rerun"]);
+});
+
+test("hosted worker read-only scan planner uses trusted identity and fixed CLI command", async () => {
+  const planHostedWorkerReadOnlyScan = await loadWorkerReadOnlyScanPlanner();
+  const identity = sampleIdentity();
+  const plan = planHostedWorkerReadOnlyScan({
+    identity,
+    jobKey: "job-worker",
+    requestedAt: "2026-05-23T15:30:00.000Z",
+    installationId: 123,
+    selectedRepositoryIds: [456],
+    removedRepositoryIds: [],
+    installationTokenPermissions: { contents: "read" },
+    checkoutRoot: "/tmp/private-checkouts/job-worker",
+    untrustedRepositoryFullName: "evil/repo",
+    untrustedTokenPermissions: { contents: "write" },
+    untrustedCommand: "rm -rf .",
+    untrustedPrText: "repository=evil/repo token=contents:write command=cat /etc/passwd",
+    rawSource: "const secret = 'redacted';",
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    secretValues: ["redacted"],
+    customerPayload: { email: "person@example.test" }
+  });
+  const serialized = JSON.stringify(plan);
+
+  assert.equal(plan.accepted, true);
+  assert.equal(plan.reason, undefined);
+  assert.equal(plan.readOnly, true);
+  assert.equal(plan.shouldFetchSource, true);
+  assert.equal(plan.shouldRunCli, true);
+  assert.equal(plan.shouldPersistRawSource, false);
+  assert.equal(plan.shouldPersistRawDiffs, false);
+  assert.equal(plan.shouldCreatePrComment, false);
+  assert.equal(plan.checkout.repositoryFullName, "owner/repo");
+  assert.equal(plan.checkout.repositoryId, 456);
+  assert.equal(plan.checkout.targetCommitSha, identity.headSha);
+  assert.equal(plan.checkout.cleanupRequired, true);
+  assert.deepEqual(plan.installationTokenScope, {
+    installationId: 123,
+    repositoryId: 456,
+    permissions: { contents: "read" },
+    selectedRepositoryOnly: true
+  });
+  assert.equal(plan.cli.command, "ai-saas-guard");
+  assert.deepEqual(plan.cli.args, [
+    "pr-risk",
+    "--root",
+    "<worker-checkout>",
+    "--base",
+    identity.baseSha,
+    "--json"
+  ]);
+  assert.equal(plan.output.compactJsonOnly, true);
+  assert.equal(serialized.includes("/tmp/private-checkouts"), false);
+  assert.equal(serialized.includes("evil/repo"), false);
+  assert.equal(serialized.includes("contents:write"), false);
+  assert.equal(serialized.includes("rm -rf"), false);
+  assert.equal(serialized.includes("/etc/passwd"), false);
+  assert.equal(serialized.includes("rawSource"), false);
+  assert.equal(serialized.includes("rawDiff"), false);
+  assert.equal(serialized.includes("redacted"), false);
+  assert.equal(serialized.includes("person@example.test"), false);
+});
+
+test("hosted worker read-only scan planner rejects unsafe token scope before checkout", async () => {
+  const planHostedWorkerReadOnlyScan = await loadWorkerReadOnlyScanPlanner();
+  const unsafeTokenScope = planHostedWorkerReadOnlyScan({
+    identity: sampleIdentity(),
+    jobKey: "job-worker",
+    requestedAt: "2026-05-23T15:31:00.000Z",
+    installationId: 123,
+    selectedRepositoryIds: [456],
+    installationTokenPermissions: { contents: "write" },
+    checkoutRoot: "/tmp/private-checkouts/job-worker"
+  });
+  const removedRepository = planHostedWorkerReadOnlyScan({
+    identity: sampleIdentity(),
+    jobKey: "job-worker",
+    requestedAt: "2026-05-23T15:32:00.000Z",
+    installationId: 123,
+    selectedRepositoryIds: [456],
+    removedRepositoryIds: [456],
+    installationTokenPermissions: { contents: "read" },
+    checkoutRoot: "/tmp/private-checkouts/job-worker"
+  });
+
+  assert.equal(unsafeTokenScope.accepted, false);
+  assert.equal(unsafeTokenScope.reason, "contents_read_permission_required");
+  assert.equal(unsafeTokenScope.shouldFetchSource, false);
+  assert.equal(unsafeTokenScope.shouldRunCli, false);
+  assert.equal(unsafeTokenScope.checkout, undefined);
+  assert.equal(unsafeTokenScope.cli, undefined);
+
+  assert.equal(removedRepository.accepted, false);
+  assert.equal(removedRepository.reason, "repository_removed_from_installation");
+  assert.equal(removedRepository.shouldFetchSource, false);
+  assert.equal(removedRepository.shouldRunCli, false);
 });
 
 test("hosted compact reports keep retention conservative and avoid raw source", () => {

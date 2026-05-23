@@ -259,6 +259,86 @@ export type HostedWorkerCheckoutTerminalState =
   | "cancellation"
   | "cleanup_failure";
 
+export type HostedWorkerReadOnlyScanRejectReason =
+  | InstallationScopeRejectReason
+  | "contents_read_permission_required";
+
+export interface HostedWorkerReadOnlyScanInput {
+  identity: HostedScanIdentity;
+  jobKey: string;
+  requestedAt: string;
+  installationId: number;
+  selectedRepositoryIds: number[];
+  removedRepositoryIds?: number[];
+  installationTokenPermissions: {
+    contents?: string;
+  };
+  checkoutRoot?: string;
+  untrustedRepositoryFullName?: string;
+  untrustedTokenPermissions?: unknown;
+  untrustedCommand?: string;
+  untrustedPrText?: string;
+  rawSource?: string;
+  rawDiff?: string;
+  secretValues?: string[];
+  customerPayload?: unknown;
+}
+
+export interface HostedWorkerReadOnlyScanPlan {
+  accepted: boolean;
+  reason?: HostedWorkerReadOnlyScanRejectReason;
+  jobKey: string;
+  requestedAt: string;
+  readOnly: true;
+  shouldFetchSource: boolean;
+  shouldRunCli: boolean;
+  shouldPersistRawSource: false;
+  shouldPersistRawDiffs: false;
+  shouldCreatePrComment: false;
+  installationTokenScope?: {
+    installationId: number;
+    repositoryId: number;
+    permissions: {
+      contents: "read";
+    };
+    selectedRepositoryOnly: true;
+  };
+  checkout?: {
+    repositoryId: number;
+    repositoryFullName: string;
+    pullRequestNumber: number;
+    baseSha: string;
+    targetCommitSha: string;
+    directoryScope: "temporary_worker_directory";
+    cleanupRequired: true;
+    returnsCheckoutPath: false;
+  };
+  cli?: {
+    command: "ai-saas-guard";
+    args: string[];
+    workingDirectory: "<worker-checkout>";
+    networkAccess: "disabled";
+    writeMode: "read_only";
+  };
+  output?: {
+    compactJsonOnly: true;
+    persistRawSource: false;
+    persistRawDiffs: false;
+    persistSecrets: false;
+    persistCustomerPayloads: false;
+  };
+  privacy: {
+    returnsCheckoutPath: false;
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesSecrets: false;
+    includesCustomerPayloads: false;
+    acceptsRepositoryIdentityFromPrText: false;
+    acceptsTokenScopeFromPrText: false;
+    acceptsCommandFromPrText: false;
+  };
+}
+
 export type HostedWorkerCheckoutCleanupAction = "delete_checkout" | "record_cleanup_failure";
 
 export interface HostedWorkerCheckoutCleanupInput {
@@ -841,6 +921,78 @@ export function createHostedQueueCleanupPlan(
   };
 }
 
+export function planHostedWorkerReadOnlyScan(
+  input: HostedWorkerReadOnlyScanInput
+): HostedWorkerReadOnlyScanPlan {
+  const scopeDecision = authorizeInstallationTokenScope({
+    identity: input.identity,
+    installationId: input.installationId,
+    selectedRepositoryIds: input.selectedRepositoryIds,
+    removedRepositoryIds: input.removedRepositoryIds
+  });
+
+  if (!scopeDecision.authorized) {
+    return rejectHostedWorkerReadOnlyScan(
+      input,
+      scopeDecision.reason ?? "repository_not_installed"
+    );
+  }
+
+  if (input.installationTokenPermissions.contents !== "read") {
+    return rejectHostedWorkerReadOnlyScan(input, "contents_read_permission_required");
+  }
+
+  return {
+    accepted: true,
+    jobKey: input.jobKey,
+    requestedAt: input.requestedAt,
+    readOnly: true,
+    shouldFetchSource: true,
+    shouldRunCli: true,
+    shouldPersistRawSource: false,
+    shouldPersistRawDiffs: false,
+    shouldCreatePrComment: false,
+    installationTokenScope: {
+      installationId: input.identity.installationId,
+      repositoryId: input.identity.repositoryId,
+      permissions: { contents: "read" },
+      selectedRepositoryOnly: true
+    },
+    checkout: {
+      repositoryId: input.identity.repositoryId,
+      repositoryFullName: input.identity.repositoryFullName,
+      pullRequestNumber: input.identity.pullRequestNumber,
+      baseSha: input.identity.baseSha,
+      targetCommitSha: input.identity.headSha,
+      directoryScope: "temporary_worker_directory",
+      cleanupRequired: true,
+      returnsCheckoutPath: false
+    },
+    cli: {
+      command: "ai-saas-guard",
+      args: [
+        "pr-risk",
+        "--root",
+        "<worker-checkout>",
+        "--base",
+        input.identity.baseSha,
+        "--json"
+      ],
+      workingDirectory: "<worker-checkout>",
+      networkAccess: "disabled",
+      writeMode: "read_only"
+    },
+    output: {
+      compactJsonOnly: true,
+      persistRawSource: false,
+      persistRawDiffs: false,
+      persistSecrets: false,
+      persistCustomerPayloads: false
+    },
+    privacy: hostedWorkerReadOnlyScanPrivacy()
+  };
+}
+
 export function createHostedWorkerCheckoutCleanupPlan(
   input: HostedWorkerCheckoutCleanupInput
 ): HostedWorkerCheckoutCleanupPlan {
@@ -1090,6 +1242,38 @@ function hostedScanQueuePrivacy(): HostedScanQueueUpsertDecision["privacy"] {
     includesSecrets: false,
     includesUntrustedPrText: false,
     includesCustomerPayloads: false
+  };
+}
+
+function rejectHostedWorkerReadOnlyScan(
+  input: HostedWorkerReadOnlyScanInput,
+  reason: HostedWorkerReadOnlyScanRejectReason
+): HostedWorkerReadOnlyScanPlan {
+  return {
+    accepted: false,
+    reason,
+    jobKey: input.jobKey,
+    requestedAt: input.requestedAt,
+    readOnly: true,
+    shouldFetchSource: false,
+    shouldRunCli: false,
+    shouldPersistRawSource: false,
+    shouldPersistRawDiffs: false,
+    shouldCreatePrComment: false,
+    privacy: hostedWorkerReadOnlyScanPrivacy()
+  };
+}
+
+function hostedWorkerReadOnlyScanPrivacy(): HostedWorkerReadOnlyScanPlan["privacy"] {
+  return {
+    returnsCheckoutPath: false,
+    includesRawSource: false,
+    includesRawDiffs: false,
+    includesSecrets: false,
+    includesCustomerPayloads: false,
+    acceptsRepositoryIdentityFromPrText: false,
+    acceptsTokenScopeFromPrText: false,
+    acceptsCommandFromPrText: false
   };
 }
 

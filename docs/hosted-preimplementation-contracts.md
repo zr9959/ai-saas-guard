@@ -47,6 +47,29 @@ Queue payload boundaries:
 
 The exported helper is `planHostedScanQueueUpsert`. It is intended to be the queue-provider-independent contract for the first real hosted queue implementation.
 
+## Worker Read-Only Scan Planner
+
+The worker read-only scan planner defines how a future hosted worker should prepare a scan after the durable queue hands it a trusted job. It is a pure planner only: it does not request installation tokens, create directories, checkout repositories, run the CLI, persist reports, delete files, or call GitHub APIs.
+
+Default behavior:
+
+- authorize the same installation and selected-repository scope before any checkout is planned
+- require installation token permissions to be repository `contents: read`
+- derive repository ID, repository full name, pull request number, base SHA, head SHA, and scanner version only from trusted scan identity
+- plan checkout of the trusted head commit into a temporary worker directory
+- plan a fixed read-only CLI invocation: `ai-saas-guard pr-risk --root <worker-checkout> --base <baseSha> --json`
+- collect compact JSON output only
+- require checkout cleanup after every terminal worker state
+- keep PR comments disabled for the first hosted slice
+
+Trust boundaries:
+
+- ignore PR-authored repository names, token scopes, and commands
+- do not accept worker command, checkout target, installation ID, repository ID, repository name, or token permissions from PR title, body, comments, branch names, README, or code
+- do not return checkout paths, raw source, raw diffs, secret values, customer payloads, private URLs, or installation token values
+
+The exported helper is `planHostedWorkerReadOnlyScan`. It is intended to be the worker-provider-independent contract for the first real hosted worker implementation.
+
 ## Webhook Event Parser
 
 The webhook event parser runs after webhook signature verification. It converts a reduced GitHub `pull_request` webhook payload into a queue-safe scan request identity.
@@ -189,6 +212,9 @@ Automated tests must cover:
 - duplicate deliveries reuse queued, running, and completed jobs without enqueueing duplicate worker work
 - completed duplicate jobs reuse compact reports
 - manual reruns increment attempt without changing the logical scan key
+- worker read-only scan planning requires repository `contents: read` permissions
+- worker read-only scan planning uses trusted identity for checkout target and fixed CLI command
+- worker read-only scan planning does not persist raw source, raw diffs, secrets, customer payloads, checkout paths, PR-authored commands, or PR-authored token scopes
 - accepted pull request events build the expected trusted scan identity
 - unsupported actions are rejected
 - draft pull requests are rejected by default
