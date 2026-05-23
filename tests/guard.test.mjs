@@ -17,6 +17,8 @@ import {
   RULE_CATALOG,
   scanRepository
 } from "../dist/index.js";
+import { collectTextFiles } from "../dist/utils/files.js";
+import { formatMarkdownReport } from "../dist/report/markdown.js";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const fixtureRoot = resolve(testDir, "fixtures");
@@ -75,6 +77,65 @@ test("scan context exposes one shared text file inventory", async () => {
     context.getFiles((file) => file.path.endsWith(".ts")).map((file) => file.path),
     ["src/client.ts"]
   );
+});
+
+test("text file collection can cap file count and total bytes", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-resource-cap-"));
+  await writeFile(resolve(rootDir, "a.txt"), "abcd\n");
+  await writeFile(resolve(rootDir, "b.txt"), "efgh\n");
+  await writeFile(resolve(rootDir, "c.txt"), "ijkl\n");
+
+  const oneFile = await collectTextFiles(rootDir, {
+    maxFiles: 1,
+    maxTotalBytes: 1024
+  });
+  const byteCapped = await collectTextFiles(rootDir, {
+    maxFiles: 10,
+    maxTotalBytes: 6
+  });
+
+  assert.equal(oneFile.length, 1);
+  assert.ok(byteCapped.reduce((total, file) => total + Buffer.byteLength(file.content), 0) <= 6);
+  assert.ok(byteCapped.length < 3);
+});
+
+test("generic markdown report keeps attacker-controlled evidence on one escaped line", () => {
+  const markdown = formatMarkdownReport({
+    command: "scan",
+    rootDir: ".",
+    generatedAt: "2026-05-24T00:00:00.000Z",
+    findings: [
+      {
+        ruleId: "secrets.detected",
+        title: "Injected evidence",
+        severity: "high",
+        evidence: [
+          {
+            file: "src/example.ts",
+            line: 12,
+            snippet: "safe text\n### injected heading | table"
+          }
+        ],
+        why: "why line\nwith break",
+        suggestedVerification: "verify line\nwith break",
+        suggestedFix: "fix line\nwith break"
+      }
+    ],
+    summary: {
+      critical: 0,
+      high: 1,
+      medium: 0,
+      low: 0,
+      info: 0,
+      total: 1
+    }
+  });
+
+  assert.doesNotMatch(markdown, /^### injected heading/m);
+  assert.match(markdown, /safe text ### injected heading \\| table/);
+  assert.match(markdown, /Why: why line with break/);
+  assert.match(markdown, /Verify: verify line with break/);
+  assert.match(markdown, /Fix direction: fix line with break/);
 });
 
 test("rule catalog contains metadata for every published rule", () => {

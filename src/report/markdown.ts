@@ -77,12 +77,14 @@ function appendFindings(lines: string[], findings: Finding[]): void {
 
   for (const [index, finding] of findings.entries()) {
     lines.push("");
-    lines.push(`${index + 1}. **[${finding.severity.toUpperCase()}] ${finding.title}**`);
+    lines.push(
+      `${index + 1}. **[${finding.severity.toUpperCase()}] ${escapeMarkdownInline(finding.title)}**`
+    );
     lines.push(`   - Rule: \`${finding.ruleId}\``);
     lines.push(`   - Evidence: ${formatEvidence(finding.evidence[0])}`);
-    lines.push(`   - Why: ${finding.why}`);
-    lines.push(`   - Verify: ${finding.suggestedVerification}`);
-    lines.push(`   - Fix direction: ${finding.suggestedFix}`);
+    lines.push(`   - Why: ${escapeMarkdownInline(finding.why)}`);
+    lines.push(`   - Verify: ${escapeMarkdownInline(finding.suggestedVerification)}`);
+    lines.push(`   - Fix direction: ${escapeMarkdownInline(finding.suggestedFix)}`);
   }
 }
 
@@ -90,9 +92,16 @@ function formatEvidence(evidence: Evidence | undefined): string {
   if (!evidence) return "`none`";
   const location = evidence.line ? `${evidence.file}:${evidence.line}` : evidence.file;
   const detail = evidence.snippet ?? evidence.match;
-  return detail ? `\`${location}\` - ${detail}` : `\`${location}\``;
+  const safeLocation = escapeMarkdownInline(location).replaceAll("`", "'");
+  return detail
+    ? `\`${safeLocation}\` - ${escapeMarkdownInline(detail)}`
+    : `\`${safeLocation}\``;
 }
 
 function escapeMarkdownTableCell(value: string): string {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
+}
+
+function escapeMarkdownInline(value: string): string {
+  return value.replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
 }

@@ -55,7 +55,7 @@ AI 能很快把一个 SaaS 从想法做成可运行的产品。真正难的是�
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.18.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.18.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.19.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.19.0`。
 
 | 模块 | 状态 |
 | --- | --- |
@@ -66,9 +66,10 @@ CLI 已发布到 npm：`ai-saas-guard@0.18.0`。GitHub Action 支持 `v0` 浮动
 | Markdown PR summary | 已可用 |
 | GitHub Action | 已可用 |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖和 fail threshold |
-| 当前版本 | `0.18.0` |
-| Action 标签 | `v0.18.0`、`v0` |
+| 当前版本 | `0.19.0` |
+| Action 标签 | `v0.19.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
+| 运行时加固 | 单文件和总扫描文本预算、markdown evidence 转义、更严格的 hosted deployment 阻断 |
 
 ## 快速开始
 
@@ -234,6 +235,7 @@ jobs:
 - 不上传代码
 - 不需要账号或登录
 - 不修改被扫描仓库
+- 对单文件和总扫描文本设置预算，降低极端仓库带来的内存占用风险
 - 对类似 secret 的 evidence 做 redaction
 
 ## Hosted GitHub App 设计
@@ -258,7 +260,7 @@ jobs:
 - durable scan queue planner：同一个 trusted scan key 的 queued/running/completed job 会复用，不重复排 worker，也不会把源码、diff、secret 或 PR 正文放进队列 payload
 - worker read-only scan planner：只用 trusted identity 规划临时 worker checkout，要求 repository `contents: read`，固定运行 `ai-saas-guard pr-risk --json`，并忽略 PR 正文里的 repo 名、token scope 或命令
 - hosted service runtime：`ai-saas-guard/hosted/service` 导出 `createHostedServiceRuntime`，把签名 webhook intake、幂等 queue upsert、read-only worker 编排、compact report 存储、Check Run 发布 adapter 和 worker cleanup 串成可测试的服务核心；它本身不部署公开 hosted 环境
-- GitHub App deployment planner：`ai-saas-guard/hosted/github-app` 导出 `planHostedGitHubAppDeployment`，生成 first slice 最小权限 manifest，并在 release gate、HTTPS URL、container digest、secret 引用、permission 或 event 不安全时阻止创建
+- GitHub App deployment planner：`ai-saas-guard/hosted/github-app` 导出 `planHostedGitHubAppDeployment`，生成 first slice 最小权限 manifest，并在 release gate、公开 HTTPS URL、container digest、secret 引用、原始 secret 输入、permission 或 event 不安全时阻止创建
 - webhook event parser
 - check-run summary renderer
 - Check Run publication planner：要求 repository `checks: write`，只从 compact report 生成有长度上限的 Check Run payload，包含 review categories、优先 review 文件、verification steps 和本地 CLI 复现命令；MVP 不发 PR comment

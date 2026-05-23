@@ -46,9 +46,9 @@ The planner blocks GitHub App creation when:
 - the hosted release gate is blocked
 - the container image digest is missing or malformed
 - URLs are not HTTPS
-- localhost URLs are used
+- localhost, loopback, private, link-local, or multicast URLs are used
 - required secret references are missing
-- raw private keys or webhook secrets are passed instead of secret references
+- raw private keys or webhook secrets are passed instead of secret references, including explicit raw secret input fields
 - requested permissions exceed the first-slice permission contract
 - requested events exceed the first-slice event contract
 

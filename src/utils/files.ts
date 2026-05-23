@@ -7,6 +7,23 @@ export interface TextFile {
   content: string;
 }
 
+export interface CollectTextFilesOptions {
+  maxFileBytes?: number;
+  maxFiles?: number;
+  maxTotalBytes?: number;
+}
+
+export const DEFAULT_MAX_TEXT_FILE_BYTES = 1024 * 1024;
+export const DEFAULT_MAX_TEXT_FILES = 10_000;
+export const DEFAULT_MAX_TOTAL_TEXT_BYTES = 50 * 1024 * 1024;
+
+interface CollectionBudget {
+  maxFileBytes: number;
+  maxFiles: number;
+  maxTotalBytes: number;
+  collectedBytes: number;
+}
+
 const ignoredDirectories = new Set([
   ".git",
   ".next",
@@ -21,14 +38,34 @@ const ignoredDirectories = new Set([
 const textFilePattern =
   /(^|\/)(\.env[^/]*|\.mcp\.json|mcp\.json|claude_desktop_config\.json)$|\.(cjs|cts|js|jsx|json|mjs|mts|prisma|sql|toml|ts|tsx|yaml|yml|env|md|txt)$/i;
 
-export async function collectTextFiles(rootDir: string): Promise<TextFile[]> {
+export async function collectTextFiles(
+  rootDir: string,
+  options: CollectTextFilesOptions = {}
+): Promise<TextFile[]> {
   const files: TextFile[] = [];
   const ignores = await loadIgnoreRules(rootDir);
-  await walk(rootDir, rootDir, files, ignores);
+  const budget: CollectionBudget = {
+    maxFileBytes: positiveIntegerOrDefault(options.maxFileBytes, DEFAULT_MAX_TEXT_FILE_BYTES),
+    maxFiles: positiveIntegerOrDefault(options.maxFiles, DEFAULT_MAX_TEXT_FILES),
+    maxTotalBytes: positiveIntegerOrDefault(
+      options.maxTotalBytes,
+      DEFAULT_MAX_TOTAL_TEXT_BYTES
+    ),
+    collectedBytes: 0
+  };
+  await walk(rootDir, rootDir, files, ignores, budget);
   return files;
 }
 
-async function walk(rootDir: string, currentDir: string, files: TextFile[], ignores: IgnoreRule[]): Promise<void> {
+async function walk(
+  rootDir: string,
+  currentDir: string,
+  files: TextFile[],
+  ignores: IgnoreRule[],
+  budget: CollectionBudget
+): Promise<void> {
+  if (files.length >= budget.maxFiles || budget.collectedBytes >= budget.maxTotalBytes) return;
+
   let entries;
   try {
     entries = await readdir(currentDir, { withFileTypes: true });
@@ -37,6 +74,7 @@ async function walk(rootDir: string, currentDir: string, files: TextFile[], igno
   }
 
   for (const entry of entries) {
+    if (files.length >= budget.maxFiles || budget.collectedBytes >= budget.maxTotalBytes) break;
     if (entry.name === ".DS_Store" || entry.name.startsWith("._")) continue;
 
     const absolutePath = join(currentDir, entry.name);
@@ -45,14 +83,15 @@ async function walk(rootDir: string, currentDir: string, files: TextFile[], igno
 
     if (entry.isDirectory()) {
       if (ignoredDirectories.has(entry.name)) continue;
-      await walk(rootDir, absolutePath, files, ignores);
+      await walk(rootDir, absolutePath, files, ignores, budget);
       continue;
     }
 
     if (!entry.isFile() || !textFilePattern.test(relativePath)) continue;
 
     const fileStat = await stat(absolutePath);
-    if (fileStat.size > 1024 * 1024) continue;
+    if (fileStat.size > budget.maxFileBytes) continue;
+    if (budget.collectedBytes + fileStat.size > budget.maxTotalBytes) continue;
 
     try {
       files.push({
@@ -60,6 +99,7 @@ async function walk(rootDir: string, currentDir: string, files: TextFile[], igno
         absolutePath,
         content: await readFile(absolutePath, "utf8")
       });
+      budget.collectedBytes += fileStat.size;
     } catch {
       continue;
     }
@@ -138,4 +178,13 @@ function ignorePatternToRegex(pattern: string): RegExp {
 
 function escapeRegex(value: string): string {
   return value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+}
+
+function positiveIntegerOrDefault(value: number | undefined, fallback: number): number {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  const normalized = Math.floor(value);
+  return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
 }

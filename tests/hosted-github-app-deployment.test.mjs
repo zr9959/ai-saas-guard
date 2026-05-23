@@ -42,8 +42,8 @@ test("hosted GitHub App deployment planner creates a least-privilege manifest", 
       webhookSecret: "secret:AI_SAAS_GUARD_WEBHOOK_SECRET"
     },
     releaseGate: passingReleaseGate(),
-    rawPrivateKey: "-----BEGIN PRIVATE KEY-----should-not-leak",
-    rawWebhookSecret: "whsec_should-not-leak"
+    rawPrivateKey: undefined,
+    rawWebhookSecret: undefined
   });
   const serialized = JSON.stringify(plan);
 
@@ -68,6 +68,36 @@ test("hosted GitHub App deployment planner creates a least-privilege manifest", 
   ]);
   assert.equal(plan.privacy.includesPrivateKey, false);
   assert.equal(plan.privacy.includesWebhookSecret, false);
+  assert.equal(serialized.includes("BEGIN PRIVATE KEY"), false);
+  assert.equal(serialized.includes("whsec_should-not-leak"), false);
+});
+
+test("hosted GitHub App deployment planner blocks private URLs and raw secret input fields", async () => {
+  const { planHostedGitHubAppDeployment } = await loadGitHubAppDeploymentPlanner();
+  const plan = planHostedGitHubAppDeployment({
+    appName: "AI SaaS Guard Hosted",
+    homepageUrl: "https://[::1]/",
+    webhookUrl: "https://10.0.0.8/github/webhook",
+    environment: "production",
+    containerImageDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    secretRefs: {
+      appId: "platform-ref:github-app-id",
+      privateKey: "platform-ref:github-app-key",
+      webhookSecret: "platform-ref:github-webhook"
+    },
+    releaseGate: passingReleaseGate(),
+    rawPrivateKey: "-----BEGIN PRIVATE KEY-----should-not-leak",
+    rawWebhookSecret: "whsec_should-not-leak"
+  });
+  const serialized = JSON.stringify(plan);
+
+  assert.equal(plan.readyToCreateGitHubApp, false);
+  assert.deepEqual(plan.blockedReasons, [
+    "invalid_homepage_url",
+    "invalid_webhook_url",
+    "raw_secret_material:rawPrivateKey",
+    "raw_secret_material:rawWebhookSecret"
+  ]);
   assert.equal(serialized.includes("BEGIN PRIVATE KEY"), false);
   assert.equal(serialized.includes("whsec_should-not-leak"), false);
 });
