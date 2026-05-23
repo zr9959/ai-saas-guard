@@ -1,0 +1,56 @@
+name: Security-safe report
+description: Share a public-safe security concern without secrets, exploit details, or private data.
+title: "[Security-safe]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this only for public-safe reports about ai-saas-guard behavior, docs, or rule coverage.
+
+        Do not post secrets, private code, customer data, live URLs, or private repository names. Do not include exploit steps. If a report requires sensitive details, do not put it in a public issue.
+
+        ai-saas-guard is local-first and read-only. Reports should preserve that boundary.
+  - type: dropdown
+    id: report-type
+    attributes:
+      label: Public-safe report type
+      options:
+        - Rule coverage gap
+        - Documentation safety issue
+        - Release or supply-chain concern
+        - GitHub Action hardening concern
+        - Other public-safe concern
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the concern at a high level without sensitive details.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Public-safe impact
+      description: Explain the risk in general terms.
+      placeholder: A user might misunderstand this as a full security audit ...
+    validations:
+      required: true
+  - type: textarea
+    id: suggested-fix
+    attributes:
+      label: Suggested safe fix
+      description: What would reduce the risk without exposing private details?
+    validations:
+      required: true
+  - type: checkboxes
+    id: public-safety
+    attributes:
+      label: Public safety check
+      options:
+        - label: Do not post secrets, private code, customer data, live URLs, or private repository names. Do not include exploit steps.
+          required: true
+        - label: This issue is public-safe and does not require confidential handling.
+          required: true

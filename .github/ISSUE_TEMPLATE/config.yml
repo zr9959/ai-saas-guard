@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Launch-readiness checklist
+    url: https://github.com/zr9959/ai-saas-guard/blob/main/docs/launch-readiness-checklist.md
+    about: Use this before filing a broad launch review request.
+  - name: Rule documentation
+    url: https://github.com/zr9959/ai-saas-guard/blob/main/docs/rules.md
+    about: Review existing rule IDs, severity, stability, and evidence before filing a false positive, false negative, or rule request.

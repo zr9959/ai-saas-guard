@@ -1,0 +1,50 @@
+name: False positive
+description: Report a finding that looks too noisy or incorrectly flagged.
+title: "[False positive]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when ai-saas-guard flags something that appears safe after manual review.
+
+        No real API keys, tokens, cookies, webhook signing secrets, database URLs, customer data, or private source code. Use minimal public examples only.
+  - type: input
+    id: rule-id
+    attributes:
+      label: Rule ID
+      description: The rule ID from terminal output, JSON, SARIF, or PR markdown.
+      placeholder: stripe.webhook.missing-signature
+    validations:
+      required: true
+  - type: textarea
+    id: scanner-output
+    attributes:
+      label: Scanner output
+      description: Paste the sanitized finding details.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: why-safe
+    attributes:
+      label: Why this looks safe
+      description: Explain the real safety property the scanner missed.
+      placeholder: Signature verification happens in middleware before this handler ...
+    validations:
+      required: true
+  - type: textarea
+    id: minimal-example
+    attributes:
+      label: Minimal public example
+      description: Provide a reduced example that preserves the scanner behavior without private code.
+      render: ts
+    validations:
+      required: true
+  - type: checkboxes
+    id: public-safety
+    attributes:
+      label: Public safety check
+      options:
+        - label: No real API keys, tokens, cookies, webhook signing secrets, database URLs, customer data, or private source code are included.
+          required: true

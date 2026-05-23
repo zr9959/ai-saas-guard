@@ -739,6 +739,62 @@ test("public docs include a GitHub App hosted-layer design note", async () => {
   assert.doesNotMatch(design, /client_secret|private key|webhook secret/i);
 });
 
+test("repository exposes security-safe GitHub issue templates", async () => {
+  const templateDir = resolve(packageRoot, ".github", "ISSUE_TEMPLATE");
+  const expectedTemplates = [
+    {
+      file: "bug_report.yml",
+      name: "Bug report",
+      label: "bug",
+      phrases: ["Steps to reproduce", "Expected behavior", "Actual behavior", "No real API keys"]
+    },
+    {
+      file: "false_positive.yml",
+      name: "False positive",
+      label: "bug",
+      phrases: ["Rule ID", "Why this looks safe", "Scanner output", "No real API keys"]
+    },
+    {
+      file: "false_negative.yml",
+      name: "False negative",
+      label: "bug",
+      phrases: ["Rule ID or risk area", "Why this is risky", "Minimal public example", "No real API keys"]
+    },
+    {
+      file: "rule_request.yml",
+      name: "Rule request",
+      label: "enhancement",
+      phrases: ["Risk area", "Evidence pattern", "Manual verification", "not a full security audit"]
+    },
+    {
+      file: "security_safe_report.yml",
+      name: "Security-safe report",
+      label: "bug",
+      phrases: ["public-safe", "Do not post secrets", "Do not include exploit steps", "local-first"]
+    }
+  ];
+
+  for (const template of expectedTemplates) {
+    const body = await readFile(resolve(templateDir, template.file), "utf8");
+
+    assert.match(body, new RegExp(`name:\\s*${template.name}`));
+    assert.match(body, new RegExp(`labels:\\s*\\[.*${template.label}.*\\]`));
+    assert.match(body, /body:\s*\n/);
+    assert.match(body, /validations:\s*\n\s+required:\s+true/);
+
+    for (const phrase of template.phrases) {
+      assert.match(body, new RegExp(phrase.replaceAll(" ", "\\s+"), "i"), template.file);
+    }
+
+    assert.doesNotMatch(body, /sk_(?:live|test)_[A-Za-z0-9]+/);
+    assert.doesNotMatch(body, /whsec_[A-Za-z0-9]+/);
+  }
+
+  const config = await readFile(resolve(templateDir, "config.yml"), "utf8");
+  assert.match(config, /blank_issues_enabled:\s*false/);
+  assert.match(config, /docs\/launch-readiness-checklist\.md/);
+});
+
 test("GitHub Action keeps colon-bearing descriptions YAML-safe", async () => {
   const action = await readFile(resolve(packageRoot, "action.yml"), "utf8");
 

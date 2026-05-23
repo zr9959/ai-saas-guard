@@ -1,0 +1,58 @@
+name: Rule request
+description: Propose a narrow launch-readiness rule for AI-built SaaS apps.
+title: "[Rule request]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ai-saas-guard is a local-first launch-readiness scanner, not a full security audit or broad SAST platform. Rule requests should be narrow, evidence-first, and manually verifiable.
+
+        Do not include real secrets, customer data, or private source code.
+  - type: input
+    id: risk-area
+    attributes:
+      label: Risk area
+      description: Which product surface should this rule cover?
+      placeholder: auth, billing, Supabase RLS, MCP tools, deploy config, secrets, PR review
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What launch-readiness failure would this catch?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence-pattern
+    attributes:
+      label: Evidence pattern
+      description: What concrete file, code, SQL, config, or diff pattern should trigger the rule?
+      placeholder: A policy that uses `using (true)` on a tenant-owned table ...
+    validations:
+      required: true
+  - type: textarea
+    id: manual-verification
+    attributes:
+      label: Manual verification
+      description: What should a human reviewer check before launch?
+      placeholder: Test with User A and User B to verify cross-tenant access is blocked.
+    validations:
+      required: true
+  - type: textarea
+    id: false-positive-risk
+    attributes:
+      label: False-positive risk
+      description: When might this pattern be safe?
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope-check
+    attributes:
+      label: Scope check
+      options:
+        - label: This request is narrow, evidence-first, and does not ask ai-saas-guard to become a full security audit.
+          required: true
+        - label: No real API keys, tokens, cookies, webhook signing secrets, database URLs, customer data, or private source code are included.
+          required: true

@@ -1,0 +1,50 @@
+name: False negative
+description: Report a risky pattern that ai-saas-guard missed.
+title: "[False negative]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when a local-first launch-readiness risk was missed by ai-saas-guard.
+
+        Do not include exploit steps, real secrets, customer data, or private source code. Provide a minimal public example that demonstrates the pattern safely.
+  - type: input
+    id: risk-area
+    attributes:
+      label: Rule ID or risk area
+      description: Existing rule ID if known, or the closest product area.
+      placeholder: supabase.rls, stripe.webhook, mcp.config, secrets, pr-risk
+    validations:
+      required: true
+  - type: textarea
+    id: why-risky
+    attributes:
+      label: Why this is risky
+      description: Explain the launch-readiness risk without disclosing private exploit details.
+      placeholder: This lets one tenant read another tenant's record because ...
+    validations:
+      required: true
+  - type: textarea
+    id: minimal-example
+    attributes:
+      label: Minimal public example
+      description: Provide sanitized code, SQL, config, or a diff that the scanner currently misses.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: expected-finding
+    attributes:
+      label: Expected finding
+      description: What should ai-saas-guard report?
+      placeholder: A high-severity finding with the affected file and manual verification steps.
+    validations:
+      required: true
+  - type: checkboxes
+    id: public-safety
+    attributes:
+      label: Public safety check
+      options:
+        - label: No real API keys, tokens, cookies, webhook signing secrets, database URLs, customer data, private source code, or exploit steps are included.
+          required: true

@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible ai-saas-guard bug without secrets or private code.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for product bugs in the CLI, GitHub Action, docs, or release workflow.
+
+        No real API keys, tokens, cookies, webhook signing secrets, database URLs, customer data, or private source code. Replace sensitive values with inert placeholders.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+      placeholder: The scanner reports ... when ...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Use a minimal public example, fixture, or command sequence.
+      placeholder: |
+        1. Run `npx ai-saas-guard@latest scan --root .`
+        2. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect ai-saas-guard to do?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Paste sanitized terminal output, JSON, or SARIF excerpts.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: CLI package version, GitHub Action tag, or commit SHA.
+      placeholder: ai-saas-guard@0.8.0 or zr9959/ai-saas-guard@v0
+    validations:
+      required: true
+  - type: checkboxes
+    id: public-safety
+    attributes:
+      label: Public safety check
+      options:
+        - label: No real API keys, tokens, cookies, webhook signing secrets, database URLs, customer data, or private source code are included.
+          required: true

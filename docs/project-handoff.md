@@ -52,6 +52,7 @@ Implemented surfaces:
 - project-local `.ai-saas-guard.json` config for rule toggles, severity overrides, path-specific suppressions, and default fail thresholds
 - rule stability labels in catalog metadata, public rule docs, and SARIF rule properties
 - hosted GitHub App design note covering least-privilege permissions, webhook verification, privacy, data retention, prompt-injection handling, and implementation gates
+- GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper
@@ -146,9 +147,8 @@ Not allowed:
 
 Recommended order:
 
-1. Add issue templates for bug reports, false positives, false negatives, rule requests, and security-safe reports.
-2. Work the hosted GitHub App implementation gates through issues #9 through #13 before any hosted service code.
-3. Add CODEOWNERS once there are multiple maintainers.
+1. Work the hosted GitHub App implementation gates through issues #9 through #13 before any hosted service code.
+2. Add CODEOWNERS once there are multiple maintainers.
 
 For every feature, keep the scanner evidence-first:
 
