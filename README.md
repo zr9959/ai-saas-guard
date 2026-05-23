@@ -192,7 +192,7 @@ Hosted uninstall and data deletion behavior is documented in [docs/hosted-uninst
 
 Hosted pricing and packaging boundaries are documented in [docs/hosted-pricing-packaging.md](docs/hosted-pricing-packaging.md). Core local scanning stays useful without an account; hosted plans may add workflow convenience, saved reports, team policy, and optional human review, but they do not gate local CLI scanning.
 
-Hosted pre-implementation pure contracts are documented in [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md). They cover queue-safe webhook event parsing and other service-free helpers exported from `ai-saas-guard/hosted/contracts`.
+Hosted pre-implementation pure contracts are documented in [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md). They cover queue-safe webhook event parsing, bounded check-run summary rendering, and other service-free helpers exported from `ai-saas-guard/hosted/contracts`.
 
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 

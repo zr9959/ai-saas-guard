@@ -890,6 +890,11 @@ test("public docs define hosted pre-implementation contracts", async () => {
   assert.match(contracts, /draft pull requests/i);
   assert.match(contracts, /untrusted PR title, body, comments, branch names, README, and code/i);
   assert.match(contracts, /queue-safe scan request/i);
+  assert.match(contracts, /check-run summary renderer/i);
+  assert.match(contracts, /bounded Markdown/i);
+  assert.match(contracts, /conservative check conclusions/i);
+  assert.match(contracts, /review-first language/i);
+  assert.match(contracts, /local CLI link/i);
   assert.match(contracts, /no network calls/i);
   assert.doesNotMatch(contracts, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });

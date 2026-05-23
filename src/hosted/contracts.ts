@@ -141,6 +141,51 @@ export interface CompactHostedReport {
   workerCheckoutDeletion: "after_scan_completion";
 }
 
+export type HostedCheckRunConclusion = "success" | "neutral" | "failure";
+
+export type HostedCheckRunSeverityThreshold =
+  | "critical"
+  | "high"
+  | "medium"
+  | "low"
+  | "info";
+
+export type HostedCheckRunAnnotationLevel = "notice" | "warning" | "failure";
+
+export interface HostedCheckRunSummaryInput {
+  report: CompactHostedReport;
+  failOnSeverity?: HostedCheckRunSeverityThreshold;
+  maxMarkdownChars?: number;
+}
+
+export interface HostedCheckRunAnnotation {
+  path: string;
+  startLine: number;
+  endLine: number;
+  annotationLevel: HostedCheckRunAnnotationLevel;
+  title: string;
+  message: string;
+}
+
+export interface HostedCheckRunSummary {
+  name: "AI SaaS Guard";
+  conclusion: HostedCheckRunConclusion;
+  output: {
+    title: string;
+    summary: string;
+    text: string;
+  };
+  annotations: HostedCheckRunAnnotation[];
+  localCliCommand: string;
+  privacy: {
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesSecrets: false;
+    includesCustomerPayloads: false;
+    modelTraining: "disabled";
+  };
+}
+
 export type HostedDeletionTrigger =
   | "repository_removed"
   | "installation_deleted"
@@ -181,6 +226,18 @@ export const HOSTED_PRIVACY_DEFAULTS = {
   modelTraining: "disabled",
   deleteWorkerCheckout: "after_scan_completion"
 } as const;
+
+const CHECK_RUN_NAME = "AI SaaS Guard";
+const DEFAULT_CHECK_RUN_MARKDOWN_CHARS = 4000;
+const MAX_CHECK_RUN_ANNOTATIONS = 50;
+const severityOrder = ["critical", "high", "medium", "low", "info"] as const;
+const severityRanks: Record<HostedCheckRunSeverityThreshold, number> = {
+  critical: 5,
+  high: 4,
+  medium: 3,
+  low: 2,
+  info: 1
+};
 
 export function verifyGitHubWebhook(input: GitHubWebhookInput): GitHubWebhookDecision {
   const { deliveryId, seenDeliveryIds, signatureHeader } = input;
@@ -400,6 +457,49 @@ export function createCompactHostedReport(input: CompactHostedReportInput): Comp
   };
 }
 
+export function createHostedCheckRunSummary(
+  input: HostedCheckRunSummaryInput
+): HostedCheckRunSummary {
+  const { report } = input;
+  const totalFindings = getHostedReportFindingTotal(report);
+  const localCliCommand = `npx ai-saas-guard@${report.scannerVersion} pr-risk --root .`;
+  const conclusion = resolveCheckRunConclusion(report, input.failOnSeverity);
+
+  return {
+    name: CHECK_RUN_NAME,
+    conclusion,
+    output: {
+      title: formatCheckRunTitle(totalFindings, conclusion, input.failOnSeverity),
+      summary:
+        "Review first: verify this launch-readiness signal before release; it is not a full security audit, pentest, or certification.",
+      text: truncateMarkdown(
+        formatCheckRunMarkdown(report, conclusion, localCliCommand),
+        input.maxMarkdownChars
+      )
+    },
+    annotations: report.evidence.slice(0, MAX_CHECK_RUN_ANNOTATIONS).map((finding) => {
+      const line = finding.line ?? 1;
+
+      return {
+        path: finding.file,
+        startLine: line,
+        endLine: line,
+        annotationLevel: annotationLevelForSeverity(finding.severity),
+        title: finding.ruleId,
+        message: `${finding.severity} finding. Review locally before launch.`
+      };
+    }),
+    localCliCommand,
+    privacy: {
+      includesRawSource: false,
+      includesRawDiffs: false,
+      includesSecrets: false,
+      includesCustomerPayloads: false,
+      modelTraining: HOSTED_PRIVACY_DEFAULTS.modelTraining
+    }
+  };
+}
+
 export function getHostedDeletionIdempotencyKey(input: {
   trigger: HostedDeletionTrigger;
   installationId: number;
@@ -486,6 +586,138 @@ function valueAsNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0
     ? value
     : undefined;
+}
+
+function resolveCheckRunConclusion(
+  report: CompactHostedReport,
+  failOnSeverity?: HostedCheckRunSeverityThreshold
+): HostedCheckRunConclusion {
+  if (getHostedReportFindingTotal(report) === 0) {
+    return "success";
+  }
+
+  if (
+    failOnSeverity &&
+    report.evidence.some((finding) => severityRank(finding.severity) >= severityRanks[failOnSeverity])
+  ) {
+    return "failure";
+  }
+
+  return "neutral";
+}
+
+function getHostedReportFindingTotal(report: CompactHostedReport): number {
+  const countedFindings = Object.values(report.summaryCounts).reduce(
+    (total, count) => total + (typeof count === "number" ? count : 0),
+    0
+  );
+
+  return Math.max(countedFindings, report.evidence.length);
+}
+
+function formatCheckRunTitle(
+  totalFindings: number,
+  conclusion: HostedCheckRunConclusion,
+  failOnSeverity?: HostedCheckRunSeverityThreshold
+): string {
+  if (totalFindings === 0) {
+    return "AI SaaS Guard found no launch-readiness findings";
+  }
+
+  if (conclusion === "failure" && failOnSeverity) {
+    return `AI SaaS Guard found findings at or above ${failOnSeverity}`;
+  }
+
+  return `AI SaaS Guard found ${totalFindings} finding${totalFindings === 1 ? "" : "s"} to review`;
+}
+
+function formatCheckRunMarkdown(
+  report: CompactHostedReport,
+  conclusion: HostedCheckRunConclusion,
+  localCliCommand: string
+): string {
+  const findingLines =
+    report.evidence.length === 0
+      ? ["No findings in the compact hosted report."]
+      : [
+          "| Severity | Rule | Evidence |",
+          "| --- | --- | --- |",
+          ...report.evidence.map(
+            (finding) =>
+              `| ${escapeMarkdownTableCell(finding.severity)} | ${escapeMarkdownTableCell(
+                finding.ruleId
+              )} | ${escapeMarkdownTableCell(formatFindingLocation(finding))} |`
+          )
+        ];
+
+  return [
+    "### AI SaaS Guard",
+    "",
+    "Review first: verify findings locally before launch. This hosted check is not a full security audit, pentest, or certification.",
+    "",
+    `Conclusion: ${conclusion}`,
+    `Local CLI: \`${localCliCommand}\``,
+    `Retention: compact report ${report.retentionDays} days; raw source, raw diffs, secrets, and customer payloads are not retained.`,
+    "",
+    "Summary:",
+    ...severityOrder.map(
+      (severity) => `- ${capitalize(severity)}: ${report.summaryCounts[severity] ?? 0}`
+    ),
+    "",
+    "Findings:",
+    ...findingLines
+  ].join("\n");
+}
+
+function truncateMarkdown(markdown: string, maxMarkdownChars?: number): string {
+  const maxChars =
+    maxMarkdownChars === undefined
+      ? DEFAULT_CHECK_RUN_MARKDOWN_CHARS
+      : Math.max(1, Math.floor(maxMarkdownChars));
+
+  if (markdown.length <= maxChars) {
+    return markdown;
+  }
+
+  const suffix =
+    "\n\n_Additional findings truncated by hosted check output limit. Run the local CLI for the full report._";
+  if (maxChars <= suffix.length) {
+    return suffix.slice(0, maxChars);
+  }
+
+  return `${markdown.slice(0, maxChars - suffix.length).trimEnd()}${suffix}`;
+}
+
+function severityRank(severity: string): number {
+  const normalized = severity.toLowerCase();
+  return normalized in severityRanks
+    ? severityRanks[normalized as HostedCheckRunSeverityThreshold]
+    : 0;
+}
+
+function annotationLevelForSeverity(severity: string): HostedCheckRunAnnotationLevel {
+  const rank = severityRank(severity);
+  if (rank >= severityRanks.high) {
+    return "failure";
+  }
+
+  if (rank >= severityRanks.medium) {
+    return "warning";
+  }
+
+  return "notice";
+}
+
+function formatFindingLocation(finding: CompactHostedFinding): string {
+  return `${finding.file}${finding.line === undefined ? "" : `:${finding.line}`}`;
+}
+
+function escapeMarkdownTableCell(value: string): string {
+  return value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+}
+
+function capitalize(value: string): string {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
 function parseSha256Signature(signatureHeader: string): Buffer | undefined {

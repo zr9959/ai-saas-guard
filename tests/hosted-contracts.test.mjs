@@ -6,6 +6,7 @@ import {
   HOSTED_PRIVACY_DEFAULTS,
   authorizeInstallationTokenScope,
   buildHostedScanIdentity,
+  createHostedCheckRunSummary,
   createCompactHostedReport,
   createHostedDeletionPlan,
   getHostedDeletionIdempotencyKey,
@@ -44,6 +45,28 @@ function sampleIdentity(overrides = {}) {
     headSha: "a".repeat(40),
     scannerVersion: "0.9.0",
     untrustedPrText: "Repository: evil/repo",
+    ...overrides
+  });
+}
+
+function sampleCompactReport(overrides = {}) {
+  return createCompactHostedReport({
+    identity: sampleIdentity(),
+    summaryCounts: { critical: 0, high: 1, medium: 1, low: 0, info: 0 },
+    findings: [
+      {
+        ruleId: "stripe.webhook.missing-signature",
+        severity: "high",
+        file: "app/api/stripe/webhook/route.ts",
+        line: 12
+      },
+      {
+        ruleId: "supabase.rls.missing-ownership",
+        severity: "medium",
+        file: "supabase/migrations/001_policy.sql",
+        line: 34
+      }
+    ],
     ...overrides
   });
 }
@@ -310,6 +333,67 @@ test("hosted compact reports keep retention conservative and avoid raw source", 
   assert.equal(JSON.stringify(report).includes("fullFileContents"), false);
   assert.equal(JSON.stringify(report).includes("redacted"), false);
   assert.equal(JSON.stringify(report).includes("person@example.test"), false);
+});
+
+test("hosted check-run summaries use conservative conclusions and review-first language", () => {
+  const clean = createHostedCheckRunSummary({
+    report: sampleCompactReport({
+      summaryCounts: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      findings: []
+    })
+  });
+  const findings = createHostedCheckRunSummary({
+    report: sampleCompactReport()
+  });
+  const failing = createHostedCheckRunSummary({
+    report: sampleCompactReport(),
+    failOnSeverity: "high"
+  });
+
+  assert.equal(clean.conclusion, "success");
+  assert.equal(findings.conclusion, "neutral");
+  assert.equal(failing.conclusion, "failure");
+  assert.match(findings.output.summary, /review first/i);
+  assert.match(findings.output.summary, /not a full security audit/i);
+  assert.match(findings.output.text, /Local CLI/i);
+  assert.match(findings.output.text, /npx ai-saas-guard@0\.9\.0 pr-risk --root \./);
+  assert.match(findings.output.text, /stripe\.webhook\.missing-signature/);
+  assert.match(findings.output.text, /app\/api\/stripe\/webhook\/route\.ts:12/);
+  assert.deepEqual(findings.privacy, {
+    includesRawSource: false,
+    includesRawDiffs: false,
+    includesSecrets: false,
+    includesCustomerPayloads: false,
+    modelTraining: "disabled"
+  });
+});
+
+test("hosted check-run summaries bound markdown and do not expose raw payload fields", () => {
+  const manyFindings = Array.from({ length: 40 }, (_, index) => ({
+    ruleId: `rule.${index}`,
+    severity: index % 2 === 0 ? "high" : "medium",
+    file: `app/routes/file-${index}.ts`,
+    line: index + 1
+  }));
+  const summary = createHostedCheckRunSummary({
+    report: sampleCompactReport({
+      summaryCounts: { critical: 0, high: 20, medium: 20, low: 0, info: 0 },
+      findings: manyFindings,
+      rawDiff: "diff --git a/private.ts b/private.ts",
+      fullFileContents: "const secret = 'redacted';",
+      secretValues: ["redacted"],
+      customerPayload: { email: "person@example.test" }
+    }),
+    maxMarkdownChars: 700
+  });
+  const serialized = JSON.stringify(summary);
+
+  assert.equal(summary.output.text.length <= 700, true);
+  assert.match(summary.output.text, /truncated/i);
+  assert.equal(serialized.includes("rawDiff"), false);
+  assert.equal(serialized.includes("fullFileContents"), false);
+  assert.equal(serialized.includes("redacted"), false);
+  assert.equal(serialized.includes("person@example.test"), false);
 });
 
 test("hosted deletion plans cover repository removal installation deletion and repeated cleanup", () => {

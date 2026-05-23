@@ -38,6 +38,28 @@ Untrusted fields must not control installation ID, repository ID, repository ful
 
 The parser does not verify signatures itself. Signature verification remains the earlier trust boundary, and failed verification must stop before event parsing, queue writes, token lookup, repository lookup, or worker dispatch.
 
+## Check-Run Summary Renderer
+
+The check-run summary renderer converts a compact hosted report into a bounded Markdown payload suitable for a future GitHub Checks API write. It is a pure renderer only: it does not call GitHub, create a check run, post a PR comment, fetch source, or store report data.
+
+Default behavior:
+
+- use conservative check conclusions
+- return `success` when the compact report has no findings
+- return `neutral` when findings exist but no explicit failure threshold is configured
+- return `failure` only when `failOnSeverity` is set and matching findings are present
+- include review-first language that tells readers to verify findings before release
+- state that the result is not a full security audit, pentest, or certification
+- include a local CLI link through the exact `npx ai-saas-guard@<version> pr-risk --root .` command
+- cap check-run text with bounded Markdown so oversized reports cannot create unbounded API payloads
+
+Privacy boundaries:
+
+- render only compact report fields
+- include rule IDs, severities, file paths, and line numbers as evidence
+- do not include raw source, raw diffs, secret values, webhook payload bodies, customer payloads, or private URLs
+- preserve `modelTraining: disabled`
+
 ## Non-Goals
 
 These contracts do not:
@@ -62,5 +84,8 @@ Automated tests must cover:
 - draft pull requests can be allowed explicitly
 - missing required fields are rejected
 - untrusted PR text cannot override trusted identity
+- check-run summary renderer conclusions stay success, neutral, or failure based on explicit compact-report rules
+- bounded Markdown truncates large check-run text and points readers to the local CLI
+- rendered summaries do not expose raw source, raw diffs, secret values, or customer payloads
 
 Fixtures must be synthetic and public-safe. They must not include real credentials, customer payloads, private URLs, raw source, or raw diffs.
