@@ -573,6 +573,91 @@ export interface HostedDeletionPlan {
   visibleUserMessage: string;
 }
 
+export type HostedRetentionAndDeletionCleanupTrigger =
+  | HostedDeletionTrigger
+  | "retention_expired";
+
+export interface HostedCompactReportRetentionRecord {
+  id: string;
+  installationId: number;
+  repositoryId: number;
+  createdAt: string;
+  retentionDays?: number;
+  expiresAt?: string;
+}
+
+export interface HostedWorkerCheckoutCleanupState {
+  key: string;
+  identity: HostedScanIdentity;
+  status?: "active" | "deletion_pending" | "deleted";
+}
+
+export interface HostedRetentionAndDeletionCleanupInput {
+  trigger: HostedRetentionAndDeletionCleanupTrigger;
+  installationId: number;
+  repositoryId?: number;
+  requestedAt: string;
+  compactReports: HostedCompactReportRetentionRecord[];
+  jobs: HostedQueueCleanupJobState[];
+  workerCheckouts: HostedWorkerCheckoutCleanupState[];
+  auditRecordRetentionDays?: number;
+  rawSource?: string;
+  rawDiff?: string;
+  secretValues?: string[];
+  customerPayload?: unknown;
+}
+
+export interface HostedRetentionAndDeletionCleanupAuditRecord {
+  cleanupRequestId: string;
+  trigger: HostedRetentionAndDeletionCleanupTrigger;
+  status: "planned";
+  installationId: number;
+  repositoryId?: number;
+  requestedAt: string;
+}
+
+export interface HostedRetentionAndDeletionCleanupPlan {
+  trigger: HostedRetentionAndDeletionCleanupTrigger;
+  scope: "repository" | "installation";
+  installationId: number;
+  repositoryId?: number;
+  requestedAt: string;
+  idempotencyKey: string;
+  idempotent: true;
+  deleteCompactReportIds: string[];
+  preserveCompactReportIds: string[];
+  cancelQueuedJobKeys: string[];
+  requestRunningCancellationJobKeys: string[];
+  preserveTerminalJobKeys: string[];
+  keepUnmatchedJobKeys: string[];
+  deleteWorkerCheckoutKeys: string[];
+  keepWorkerCheckoutKeys: string[];
+  deleteCompactReports: true;
+  cancelQueuedJobs: boolean;
+  requestRunningCancellation: boolean;
+  deleteWorkerCheckouts: boolean;
+  shouldFetchRepository: false;
+  shouldRequeueScans: false;
+  deleteRawSource: false;
+  deleteRawDiffs: false;
+  deleteSecrets: false;
+  deleteCustomerPayloads: false;
+  deleteGitHubOwnedCheckRuns: false;
+  preserveAuditRecord: true;
+  auditRecordRetentionDays: number;
+  auditRecord: HostedRetentionAndDeletionCleanupAuditRecord;
+  visibleUserMessage: string;
+  privacy: {
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesSecrets: false;
+    includesCustomerPayloads: false;
+    includesWorkerCheckoutPaths: false;
+    includesPrivateUrls: false;
+    includesLowLevelCleanupErrors: false;
+  };
+}
+
 export const HOSTED_PRIVACY_DEFAULTS = {
   retentionDays: 30,
   auditRecordRetentionDays: 90,
@@ -1273,10 +1358,102 @@ export function createHostedDeletionPlan(input: HostedDeletionPlanInput): Hosted
     deleteCustomerPayloads: false,
     deleteGitHubOwnedCheckRuns: false,
     preserveAuditRecord: true,
-    auditRecordRetentionDays:
-      input.auditRecordRetentionDays ?? HOSTED_PRIVACY_DEFAULTS.auditRecordRetentionDays,
+    auditRecordRetentionDays: resolveHostedAuditRecordRetentionDays(
+      input.auditRecordRetentionDays
+    ),
     visibleUserMessage:
       "Hosted app-side compact reports and queued work are removed; GitHub-owned check runs remain in GitHub according to repository settings."
+  };
+}
+
+export function getHostedRetentionAndDeletionCleanupIdempotencyKey(input: {
+  trigger: HostedRetentionAndDeletionCleanupTrigger;
+  installationId: number;
+  repositoryId?: number;
+}): string {
+  return [
+    "retention-cleanup",
+    input.trigger,
+    input.installationId,
+    input.repositoryId ?? "all"
+  ].join(":");
+}
+
+export function planHostedRetentionAndDeletionCleanup(
+  input: HostedRetentionAndDeletionCleanupInput
+): HostedRetentionAndDeletionCleanupPlan {
+  const retentionOnly = input.trigger === "retention_expired";
+  const scope = resolveRetentionAndDeletionCleanupScope(input);
+  const repositoryId = scope === "repository" ? input.repositoryId : undefined;
+  const idempotencyKey = getHostedRetentionAndDeletionCleanupIdempotencyKey({
+    trigger: input.trigger,
+    installationId: input.installationId,
+    repositoryId
+  });
+  const reportActions = planHostedCompactReportCleanup(input, scope);
+  const queueActions = input.trigger === "retention_expired"
+    ? emptyHostedQueueCleanupActions(input.jobs)
+    : createHostedQueueCleanupPlan({
+        trigger: input.trigger,
+        installationId: input.installationId,
+        repositoryId,
+        requestedAt: input.requestedAt,
+        jobs: input.jobs
+      });
+  const checkoutActions = retentionOnly
+    ? emptyHostedWorkerCheckoutCleanupActions(input.workerCheckouts)
+    : planHostedWorkerCheckoutCleanup(input, scope);
+
+  return {
+    trigger: input.trigger,
+    scope,
+    installationId: input.installationId,
+    ...(repositoryId === undefined ? {} : { repositoryId }),
+    requestedAt: input.requestedAt,
+    idempotencyKey,
+    idempotent: true,
+    deleteCompactReportIds: reportActions.deleteIds,
+    preserveCompactReportIds: reportActions.preserveIds,
+    cancelQueuedJobKeys: queueActions.cancelQueuedJobKeys,
+    requestRunningCancellationJobKeys: queueActions.requestRunningCancellationJobKeys,
+    preserveTerminalJobKeys: queueActions.preserveTerminalJobKeys,
+    keepUnmatchedJobKeys: queueActions.keepUnmatchedJobKeys,
+    deleteWorkerCheckoutKeys: checkoutActions.deleteKeys,
+    keepWorkerCheckoutKeys: checkoutActions.keepKeys,
+    deleteCompactReports: true,
+    cancelQueuedJobs: !retentionOnly,
+    requestRunningCancellation: !retentionOnly,
+    deleteWorkerCheckouts: !retentionOnly,
+    shouldFetchRepository: false,
+    shouldRequeueScans: false,
+    deleteRawSource: false,
+    deleteRawDiffs: false,
+    deleteSecrets: false,
+    deleteCustomerPayloads: false,
+    deleteGitHubOwnedCheckRuns: false,
+    preserveAuditRecord: true,
+    auditRecordRetentionDays: resolveHostedAuditRecordRetentionDays(
+      input.auditRecordRetentionDays
+    ),
+    auditRecord: {
+      cleanupRequestId: idempotencyKey,
+      trigger: input.trigger,
+      status: "planned",
+      installationId: input.installationId,
+      ...(repositoryId === undefined ? {} : { repositoryId }),
+      requestedAt: input.requestedAt
+    },
+    visibleUserMessage:
+      "Hosted app-side compact reports and queued work are removed; GitHub-owned check runs remain in GitHub according to repository settings.",
+    privacy: {
+      includesRawSource: false,
+      includesRawDiffs: false,
+      includesSecrets: false,
+      includesCustomerPayloads: false,
+      includesWorkerCheckoutPaths: false,
+      includesPrivateUrls: false,
+      includesLowLevelCleanupErrors: false
+    }
   };
 }
 
@@ -1454,6 +1631,150 @@ function queueCleanupMatches(
   }
 
   return scope === "installation" || job.identity.repositoryId === input.repositoryId;
+}
+
+function resolveRetentionAndDeletionCleanupScope(
+  input: HostedRetentionAndDeletionCleanupInput
+): "repository" | "installation" {
+  if (input.trigger === "installation_deleted") {
+    return "installation";
+  }
+
+  if (input.trigger === "retention_expired" && input.repositoryId === undefined) {
+    return "installation";
+  }
+
+  return "repository";
+}
+
+function planHostedCompactReportCleanup(
+  input: HostedRetentionAndDeletionCleanupInput,
+  scope: "repository" | "installation"
+): { deleteIds: string[]; preserveIds: string[] } {
+  const deleteIds: string[] = [];
+  const preserveIds: string[] = [];
+
+  for (const report of input.compactReports) {
+    const matchesScope = retentionCleanupMatchesReport(report, input, scope);
+    const shouldDelete =
+      matchesScope &&
+      (input.trigger !== "retention_expired" ||
+        isCompactReportExpired(report, input.requestedAt));
+
+    if (shouldDelete) {
+      deleteIds.push(report.id);
+    } else {
+      preserveIds.push(report.id);
+    }
+  }
+
+  return { deleteIds, preserveIds };
+}
+
+function retentionCleanupMatchesReport(
+  report: HostedCompactReportRetentionRecord,
+  input: HostedRetentionAndDeletionCleanupInput,
+  scope: "repository" | "installation"
+): boolean {
+  if (report.installationId !== input.installationId) {
+    return false;
+  }
+
+  return scope === "installation" || report.repositoryId === input.repositoryId;
+}
+
+function isCompactReportExpired(
+  report: HostedCompactReportRetentionRecord,
+  requestedAt: string
+): boolean {
+  const requestedAtMs = Date.parse(requestedAt);
+  if (!Number.isFinite(requestedAtMs)) {
+    return false;
+  }
+
+  if (report.expiresAt !== undefined) {
+    const expiresAtMs = Date.parse(report.expiresAt);
+    return Number.isFinite(expiresAtMs) && expiresAtMs <= requestedAtMs;
+  }
+
+  const createdAtMs = Date.parse(report.createdAt);
+  if (!Number.isFinite(createdAtMs)) {
+    return false;
+  }
+
+  const retentionDays = resolveHostedRetentionDays({
+    teamRequestedDays: report.retentionDays
+  });
+  return createdAtMs + retentionDays * 24 * 60 * 60 * 1000 <= requestedAtMs;
+}
+
+function emptyHostedQueueCleanupActions(
+  jobs: HostedQueueCleanupJobState[]
+): Pick<
+  HostedQueueCleanupPlan,
+  | "cancelQueuedJobKeys"
+  | "requestRunningCancellationJobKeys"
+  | "preserveTerminalJobKeys"
+  | "keepUnmatchedJobKeys"
+> {
+  return {
+    cancelQueuedJobKeys: [],
+    requestRunningCancellationJobKeys: [],
+    preserveTerminalJobKeys: [],
+    keepUnmatchedJobKeys: jobs.map((job) => job.key)
+  };
+}
+
+function planHostedWorkerCheckoutCleanup(
+  input: HostedRetentionAndDeletionCleanupInput,
+  scope: "repository" | "installation"
+): { deleteKeys: string[]; keepKeys: string[] } {
+  const deleteKeys: string[] = [];
+  const keepKeys: string[] = [];
+
+  for (const checkout of input.workerCheckouts) {
+    const matchesScope = retentionCleanupMatchesIdentity(checkout.identity, input, scope);
+
+    if (matchesScope && checkout.status !== "deleted") {
+      deleteKeys.push(checkout.key);
+    } else {
+      keepKeys.push(checkout.key);
+    }
+  }
+
+  return { deleteKeys, keepKeys };
+}
+
+function emptyHostedWorkerCheckoutCleanupActions(
+  workerCheckouts: HostedWorkerCheckoutCleanupState[]
+): { deleteKeys: string[]; keepKeys: string[] } {
+  return {
+    deleteKeys: [],
+    keepKeys: workerCheckouts.map((checkout) => checkout.key)
+  };
+}
+
+function retentionCleanupMatchesIdentity(
+  identity: HostedScanIdentity,
+  input: HostedRetentionAndDeletionCleanupInput,
+  scope: "repository" | "installation"
+): boolean {
+  if (identity.installationId !== input.installationId) {
+    return false;
+  }
+
+  return scope === "installation" || identity.repositoryId === input.repositoryId;
+}
+
+function resolveHostedAuditRecordRetentionDays(requestedDays?: number): number {
+  if (requestedDays === undefined) {
+    return HOSTED_PRIVACY_DEFAULTS.auditRecordRetentionDays;
+  }
+
+  return Math.min(
+    HOSTED_PRIVACY_DEFAULTS.auditRecordRetentionDays,
+    Math.max(1, Math.floor(requestedDays))
+  );
 }
 
 function isTerminalQueueStatus(status: HostedQueueJobStatus): boolean {

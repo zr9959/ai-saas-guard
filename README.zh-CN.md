@@ -55,7 +55,7 @@ AI 能很快把一个 SaaS 从想法做成可运行的产品。真正难的是�
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.14.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.14.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.15.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.15.0`。
 
 | 模块 | 状态 |
 | --- | --- |
@@ -66,8 +66,8 @@ CLI 已发布到 npm：`ai-saas-guard@0.14.0`。GitHub Action 支持 `v0` 浮动
 | Markdown PR summary | 已可用 |
 | GitHub Action | 已可用 |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖和 fail threshold |
-| 当前版本 | `0.14.0` |
-| Action 标签 | `v0.14.0`、`v0` |
+| 当前版本 | `0.15.0` |
+| Action 标签 | `v0.15.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 
 ## 快速开始
@@ -260,6 +260,7 @@ jobs:
 - Check Run publication planner：要求 repository `checks: write`，只从 compact report 生成有长度上限的 Check Run payload，包含 review categories、优先 review 文件、verification steps 和本地 CLI 复现命令；MVP 不发 PR comment
 - queue cleanup planner
 - worker checkout cleanup planner
+- retention/deletion cleanup planner：把 compact report 删除、按仓库或 installation 范围取消队列和 running job、worker checkout 删除、retention 过期清理、最小审计记录合成一个安全计划；不会输出源码、diff、secret、customer payload、private URL、checkout path 或底层 cleanup error
 - hosted compact report fixture：[examples/hosted-compact-report.json](examples/hosted-compact-report.json)
 
 这些 helper 不会启动服务、不会调用 GitHub API、不会请求 installation token、不会真实写 check run、不会发 PR comment，也不会上传源码。

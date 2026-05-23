@@ -151,6 +151,8 @@ Automated tests must cover:
 
 The current pure contract helpers live in `src/hosted/contracts.ts` and are tested by `tests/hosted-contracts.test.mjs`.
 
+The implementation-ready aggregate cleanup helper is `planHostedRetentionAndDeletionCleanup`. It composes compact report deletion, queue cancellation, running-job cancellation requests, worker checkout deletion, retention expiry, user-facing deletion wording, and minimal audit records into one provider-independent plan.
+
 ## Operational Gate
 
 The hosted operational release gate must include cleanup evidence before deployment:

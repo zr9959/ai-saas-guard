@@ -888,6 +888,8 @@ test("public docs define hosted uninstall and data deletion behavior", async () 
   assert.match(deletion, /no secrets/i);
   assert.match(deletion, /customer payloads/i);
   assert.match(deletion, /local CLI remains available/i);
+  assert.match(deletion, /planHostedRetentionAndDeletionCleanup/);
+  assert.match(deletion, /minimal audit records/i);
   assert.doesNotMatch(deletion, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
@@ -964,6 +966,10 @@ test("public docs define hosted pre-implementation contracts", async () => {
   assert.match(contracts, /safe metadata only/i);
   assert.match(contracts, /never returns checkout paths/i);
   assert.match(contracts, /manual cleanup review/i);
+  assert.match(contracts, /retention and deletion cleanup planner/i);
+  assert.match(contracts, /planHostedRetentionAndDeletionCleanup/);
+  assert.match(contracts, /minimal audit records/i);
+  assert.match(contracts, /retention cleanup expires only compact reports past their retention window/i);
   assert.match(contracts, /no network calls/i);
   assert.doesNotMatch(contracts, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });

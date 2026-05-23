@@ -195,6 +195,39 @@ Cleanup failure behavior:
 - require manual cleanup review
 - preserve an audit record without exposing checkout contents
 
+## Retention And Deletion Cleanup Planner
+
+The retention and deletion cleanup planner composes the hosted cleanup contracts into one implementation-ready plan for repository removal, full app uninstall, repeated cleanup requests, and compact report retention expiry. It is a pure planner only: it does not connect to storage, mutate queues, delete files, call GitHub, retry work, or fetch repository content.
+
+Default behavior:
+
+- support repository-scoped cleanup when a repository is removed from an installation
+- support installation-scoped cleanup when the GitHub App is uninstalled
+- keep repeated cleanup idempotent with a stable cleanup key
+- delete only compact reports that match the affected installation and repository scope
+- cancel queued jobs and request running cancellation only for matching scope
+- preserve completed, failed, and cancelled terminal jobs as audit-safe terminal state
+- delete matching worker checkouts while keeping unmatched installation or repository checkouts untouched
+- expire only compact reports past their explicit `expiresAt` timestamp or derived retention window
+- cap audit record retention at the hosted default unless a stricter shorter policy is requested
+- never fetch source, requeue scans, or delete GitHub-owned Check Runs during cleanup
+
+Minimal audit record:
+
+- cleanup request ID
+- trigger
+- status
+- installation ID
+- repository ID when repository-scoped
+- requested time
+
+Privacy boundaries:
+
+- do not return raw source, raw diffs, secret values, customer payloads, private URLs, worker checkout paths, or low-level cleanup errors
+- keep user-facing deletion wording precise: hosted app-side compact reports and queued work are removed; GitHub-owned check runs remain in GitHub according to repository settings
+
+The exported helper is `planHostedRetentionAndDeletionCleanup`. It is intended to be the storage-, queue-, and worker-provider-independent contract for the first real hosted cleanup implementation.
+
 ## Hosted Compact Report Fixture
 
 A public hosted compact report fixture is available at [examples/hosted-compact-report.json](../examples/hosted-compact-report.json). It is intentionally synthetic and shows the report shape future hosted components can pass between the worker, check-run summary renderer, and retention cleanup logic.
@@ -256,6 +289,11 @@ Automated tests must cover:
 - worker checkout cleanup planner covers success, failure, timeout, cancellation, and cleanup_failure terminal states
 - worker checkout cleanup planner returns safe metadata only and never returns checkout paths
 - cleanup_failure requires manual cleanup review without exposing low-level cleanup errors
+- retention and deletion cleanup planner deletes only matching repository-scoped compact reports, queued jobs, and worker checkouts
+- retention and deletion cleanup planner handles full app uninstall without touching other installations
+- retention and deletion cleanup planner keeps repeated cleanup idempotent and preserves terminal jobs
+- retention cleanup expires only compact reports past their retention window
+- retention and deletion cleanup planner preserves only minimal audit records
 - hosted compact report fixture remains schema-compatible and public-safe
 - summary counts with an explicit `total` are not double-counted by check-run summaries
 

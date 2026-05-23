@@ -109,6 +109,12 @@ async function loadCheckRunPublicationPlanner() {
   return contracts.planHostedCheckRunPublication;
 }
 
+async function loadRetentionAndDeletionCleanupPlanner() {
+  const contracts = await import("../dist/hosted/contracts.js");
+  assert.equal(typeof contracts.planHostedRetentionAndDeletionCleanup, "function");
+  return contracts.planHostedRetentionAndDeletionCleanup;
+}
+
 test("hosted pull request webhook intake verifies signatures before parsing or queueing", async () => {
   const planHostedPullRequestWebhookIntake = await loadWebhookIntakePlanner();
   const queue = new Map();
@@ -1064,4 +1070,220 @@ test("hosted deletion plans cover repository removal installation deletion and r
   assert.equal(repeated.idempotent, true);
   assert.equal(repeated.idempotencyKey, "repeated_cleanup:123:456");
   assert.deepEqual(repeated.visibleUserMessage, repositoryRemoval.visibleUserMessage);
+});
+
+test("hosted retention and deletion cleanup removes repository-scoped records safely", async () => {
+  const planHostedRetentionAndDeletionCleanup = await loadRetentionAndDeletionCleanupPlanner();
+  const plan = planHostedRetentionAndDeletionCleanup({
+    trigger: "repository_removed",
+    installationId: 123,
+    repositoryId: 456,
+    requestedAt: "2026-05-24T10:00:00.000Z",
+    compactReports: [
+      {
+        id: "report-matching",
+        installationId: 123,
+        repositoryId: 456,
+        createdAt: "2026-05-23T10:00:00.000Z"
+      },
+      {
+        id: "report-other-repo",
+        installationId: 123,
+        repositoryId: 999,
+        createdAt: "2026-05-23T10:00:00.000Z",
+        rawSource: "const secret = 'redacted';"
+      }
+    ],
+    jobs: [
+      sampleQueueJob({ key: "job-queued", status: "queued" }),
+      sampleQueueJob({ key: "job-running", status: "running" }),
+      sampleQueueJob({ key: "job-completed", status: "completed" }),
+      sampleQueueJob({
+        key: "job-other-repo",
+        status: "queued",
+        identity: sampleIdentity({ repositoryId: 999, repositoryFullName: "owner/other" }),
+        rawDiff: "diff --git a/private.ts b/private.ts"
+      })
+    ],
+    workerCheckouts: [
+      { key: "checkout-matching", identity: sampleIdentity(), checkoutPath: "/tmp/private" },
+      {
+        key: "checkout-other-repo",
+        identity: sampleIdentity({ repositoryId: 999, repositoryFullName: "owner/other" }),
+        checkoutPath: "/tmp/private-other"
+      }
+    ],
+    rawSource: "const secret = 'redacted';",
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    secretValues: ["redacted"],
+    customerPayload: { email: "person@example.test" }
+  });
+  const serialized = JSON.stringify(plan);
+
+  assert.equal(plan.scope, "repository");
+  assert.equal(plan.idempotencyKey, "retention-cleanup:repository_removed:123:456");
+  assert.deepEqual(plan.deleteCompactReportIds, ["report-matching"]);
+  assert.deepEqual(plan.preserveCompactReportIds, ["report-other-repo"]);
+  assert.deepEqual(plan.cancelQueuedJobKeys, ["job-queued"]);
+  assert.deepEqual(plan.requestRunningCancellationJobKeys, ["job-running"]);
+  assert.deepEqual(plan.preserveTerminalJobKeys, ["job-completed"]);
+  assert.deepEqual(plan.keepUnmatchedJobKeys, ["job-other-repo"]);
+  assert.deepEqual(plan.deleteWorkerCheckoutKeys, ["checkout-matching"]);
+  assert.deepEqual(plan.keepWorkerCheckoutKeys, ["checkout-other-repo"]);
+  assert.equal(plan.shouldFetchRepository, false);
+  assert.equal(plan.shouldRequeueScans, false);
+  assert.equal(plan.deleteGitHubOwnedCheckRuns, false);
+  assert.equal(plan.auditRecord.cleanupRequestId, plan.idempotencyKey);
+  assert.deepEqual(Object.keys(plan.auditRecord).sort(), [
+    "cleanupRequestId",
+    "installationId",
+    "repositoryId",
+    "requestedAt",
+    "status",
+    "trigger"
+  ]);
+  assert.match(plan.visibleUserMessage, /hosted app-side compact reports and queued work/i);
+  assert.match(plan.visibleUserMessage, /GitHub-owned check runs/i);
+  assert.equal(serialized.includes("/tmp/private"), false);
+  assert.equal(serialized.includes("rawSource"), false);
+  assert.equal(serialized.includes("rawDiff"), false);
+  assert.equal(serialized.includes("redacted"), false);
+  assert.equal(serialized.includes("person@example.test"), false);
+});
+
+test("hosted retention and deletion cleanup handles full uninstall and repeated cleanup idempotently", async () => {
+  const planHostedRetentionAndDeletionCleanup = await loadRetentionAndDeletionCleanupPlanner();
+  const input = {
+    trigger: "installation_deleted",
+    installationId: 123,
+    requestedAt: "2026-05-24T10:05:00.000Z",
+    auditRecordRetentionDays: 365,
+    compactReports: [
+      {
+        id: "report-a",
+        installationId: 123,
+        repositoryId: 456,
+        createdAt: "2026-05-23T10:00:00.000Z"
+      },
+      {
+        id: "report-b",
+        installationId: 123,
+        repositoryId: 999,
+        createdAt: "2026-05-23T10:00:00.000Z"
+      },
+      {
+        id: "report-other-install",
+        installationId: 999,
+        repositoryId: 456,
+        createdAt: "2026-05-23T10:00:00.000Z"
+      }
+    ],
+    jobs: [
+      sampleQueueJob({ key: "job-a", status: "queued" }),
+      sampleQueueJob({
+        key: "job-b",
+        status: "running",
+        identity: sampleIdentity({ repositoryId: 999, repositoryFullName: "owner/other" })
+      }),
+      sampleQueueJob({
+        key: "job-other-install",
+        status: "queued",
+        identity: sampleIdentity({ installationId: 999, repositoryId: 456 })
+      })
+    ],
+    workerCheckouts: [
+      { key: "checkout-a", identity: sampleIdentity() },
+      {
+        key: "checkout-b",
+        identity: sampleIdentity({ repositoryId: 999, repositoryFullName: "owner/other" })
+      },
+      {
+        key: "checkout-other-install",
+        identity: sampleIdentity({ installationId: 999, repositoryId: 456 })
+      }
+    ]
+  };
+  const first = planHostedRetentionAndDeletionCleanup(input);
+  const duplicate = planHostedRetentionAndDeletionCleanup(input);
+  const repeated = planHostedRetentionAndDeletionCleanup({
+    ...input,
+    trigger: "repeated_cleanup",
+    repositoryId: 456,
+    requestedAt: "2026-05-24T10:06:00.000Z",
+    jobs: [sampleQueueJob({ key: "job-cancelled", status: "cancelled" })],
+    compactReports: [],
+    workerCheckouts: []
+  });
+
+  assert.equal(first.scope, "installation");
+  assert.deepEqual(first.deleteCompactReportIds, ["report-a", "report-b"]);
+  assert.deepEqual(first.preserveCompactReportIds, ["report-other-install"]);
+  assert.deepEqual(first.cancelQueuedJobKeys, ["job-a"]);
+  assert.deepEqual(first.requestRunningCancellationJobKeys, ["job-b"]);
+  assert.deepEqual(first.keepUnmatchedJobKeys, ["job-other-install"]);
+  assert.deepEqual(first.deleteWorkerCheckoutKeys, ["checkout-a", "checkout-b"]);
+  assert.deepEqual(first.keepWorkerCheckoutKeys, ["checkout-other-install"]);
+  assert.equal(first.auditRecordRetentionDays, 90);
+  assert.deepEqual(duplicate, first);
+  assert.equal(repeated.scope, "repository");
+  assert.equal(repeated.idempotencyKey, "retention-cleanup:repeated_cleanup:123:456");
+  assert.deepEqual(repeated.cancelQueuedJobKeys, []);
+  assert.deepEqual(repeated.preserveTerminalJobKeys, ["job-cancelled"]);
+  assert.equal(repeated.idempotent, true);
+});
+
+test("hosted retention cleanup expires only compact reports past their retention window", async () => {
+  const planHostedRetentionAndDeletionCleanup = await loadRetentionAndDeletionCleanupPlanner();
+  const plan = planHostedRetentionAndDeletionCleanup({
+    trigger: "retention_expired",
+    installationId: 123,
+    requestedAt: "2026-05-24T10:10:00.000Z",
+    compactReports: [
+      {
+        id: "report-explicit-expired",
+        installationId: 123,
+        repositoryId: 456,
+        createdAt: "2026-05-20T10:00:00.000Z",
+        expiresAt: "2026-05-24T10:00:00.000Z"
+      },
+      {
+        id: "report-derived-expired",
+        installationId: 123,
+        repositoryId: 456,
+        createdAt: "2026-05-20T10:00:00.000Z",
+        retentionDays: 3
+      },
+      {
+        id: "report-current",
+        installationId: 123,
+        repositoryId: 456,
+        createdAt: "2026-05-23T10:00:00.000Z",
+        retentionDays: 30
+      },
+      {
+        id: "report-other-install",
+        installationId: 999,
+        repositoryId: 456,
+        createdAt: "2026-05-20T10:00:00.000Z",
+        expiresAt: "2026-05-21T10:00:00.000Z"
+      }
+    ],
+    jobs: [sampleQueueJob({ key: "job-queued", status: "queued" })],
+    workerCheckouts: [{ key: "checkout-active", identity: sampleIdentity() }]
+  });
+
+  assert.equal(plan.scope, "installation");
+  assert.deepEqual(plan.deleteCompactReportIds, [
+    "report-explicit-expired",
+    "report-derived-expired"
+  ]);
+  assert.deepEqual(plan.preserveCompactReportIds, ["report-current", "report-other-install"]);
+  assert.deepEqual(plan.cancelQueuedJobKeys, []);
+  assert.deepEqual(plan.requestRunningCancellationJobKeys, []);
+  assert.deepEqual(plan.keepUnmatchedJobKeys, ["job-queued"]);
+  assert.deepEqual(plan.deleteWorkerCheckoutKeys, []);
+  assert.deepEqual(plan.keepWorkerCheckoutKeys, ["checkout-active"]);
+  assert.equal(plan.cancelQueuedJobs, false);
+  assert.equal(plan.requestRunningCancellation, false);
+  assert.equal(plan.deleteWorkerCheckouts, false);
 });
