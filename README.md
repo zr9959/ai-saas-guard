@@ -51,8 +51,8 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.6.0`, `v0` |
-| npm package | `ai-saas-guard@0.6.0` |
+| Versioned Action tags | `v0.7.0`, `v0` |
+| npm package | `ai-saas-guard@0.7.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
@@ -189,17 +189,26 @@ Add `.ai-saas-guard.json` at the repository root to tune findings without changi
     "stripe.webhook.missing-signature": "off",
     "stripe.webhook.missing-idempotency": "critical",
     "deploy.env.example-missing": "info"
-  }
+  },
+  "suppressions": [
+    {
+      "ruleId": "stripe.webhook.missing-idempotency",
+      "paths": ["app/api/stripe/webhook/route.ts"],
+      "reason": "Temporary launch exception with duplicate-event coverage in integration tests."
+    }
+  ]
 }
 ```
 
 `rules` is keyed by published rule ID from [docs/rules.md](docs/rules.md). Set a rule to `off` to remove matching findings from terminal, JSON, SARIF, and markdown output. Set a rule to `critical`, `high`, `medium`, `low`, or `info` to override severity before summaries and `--fail-on` are evaluated.
 
+Use `suppressions` for narrower false-positive handling when one rule is noisy only for specific generated files, fixtures, or reviewed exceptions. Each suppression must name a known `ruleId` and one or more relative `paths` globs, such as `generated/**` or `app/api/stripe/webhook/route.ts`.
+
 `failOn` sets the default CI failure threshold for the project. A CLI `--fail-on` value takes precedence, so local runs can still use `--fail-on none` or a stricter threshold.
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.6.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.7.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
@@ -328,7 +337,6 @@ Open-source core:
 
 Near-term priorities:
 
-- false-positive suppression and rule stability labels
 - GitHub App design note for the potential hosted layer
 
 Potential paid layer later:

@@ -49,7 +49,8 @@ Implemented surfaces:
 - PR diff risk triage for auth, billing, RLS, env, tests removed, and large mixed diffs
 - PR diff diagnostics when a base ref or shallow checkout prevents comparison
 - PR-focused markdown summary output for GitHub step summaries or PR comments
-- project-local `.ai-saas-guard.json` config for rule toggles, severity overrides, and default fail thresholds
+- project-local `.ai-saas-guard.json` config for rule toggles, severity overrides, path-specific suppressions, and default fail thresholds
+- rule stability labels in catalog metadata, public rule docs, and SARIF rule properties
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper
@@ -101,7 +102,7 @@ GitHub Project:
 
 Current issue set:
 
-- No open roadmap issues after the `v0.6.0` checklist release.
+- No open roadmap issues after the `v0.7.0` suppression and stability release.
 
 CI:
 
@@ -113,7 +114,7 @@ CI:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.6.0`
+- Current release line: `v0.7.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.
@@ -140,8 +141,7 @@ Not allowed:
 
 Recommended order:
 
-1. Improve false-positive suppression and rule stability labels.
-2. Add a GitHub App design note for the potential hosted layer.
+1. Add a GitHub App design note for the potential hosted layer.
 
 For every feature, keep the scanner evidence-first:
 

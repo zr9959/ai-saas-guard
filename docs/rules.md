@@ -2,7 +2,37 @@
 
 `ai-saas-guard` rules are deterministic heuristics. They are designed to produce a focused verification queue, not a complete vulnerability list.
 
-Rule metadata is centralized in `src/rules/catalog.ts` and covered by tests so SARIF output, public docs, and future config work can share stable rule IDs. Current published rules use the `default` stability level.
+Rule metadata is centralized in `src/rules/catalog.ts` and covered by tests so SARIF output, public docs, and config work can share stable rule IDs, default severities, and stability labels.
+
+## Stability Labels
+
+Stability labels describe how much confidence reviewers should place in a finding before manual verification. They are not severity levels.
+
+| Stability | Meaning | Examples |
+| --- | --- | --- |
+| Strict | High-confidence evidence that should rarely be suppressed without a written reason. | Committed secret-like values, public Stripe secrets, unsigned Stripe webhooks, broad Supabase RLS policies. |
+| Default | Routine launch-readiness heuristic with useful evidence and an expected manual verification step. | Missing Stripe lifecycle events, weak Supabase ownership checks, MCP side-effect inventory. |
+| Experimental | Higher-noise heuristic meant to prioritize review, not prove a defect. | API ownership hints, rate-limit hints, missing env docs, PR risk triage. |
+
+SARIF output includes the rule stability in `properties["ai-saas-guard/stability"]` and a `stability:<level>` tag for code scanning consumers.
+
+## Suppressing False Positives
+
+Prefer fixing risky code over suppressing findings. When a finding is a reviewed false positive for a specific generated file, fixture, or documented launch exception, use path-specific `suppressions` in `.ai-saas-guard.json` instead of disabling the whole rule:
+
+```json
+{
+  "suppressions": [
+    {
+      "ruleId": "stripe.webhook.missing-idempotency",
+      "paths": ["app/api/stripe/webhook/route.ts"],
+      "reason": "Temporary exception; duplicate-event behavior is covered by integration tests."
+    }
+  ]
+}
+```
+
+`paths` are relative globs. Examples: `generated/**`, `tests/fixtures/**`, and `app/api/stripe/webhook/route.ts`.
 
 ## Secrets And Public Env
 

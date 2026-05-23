@@ -20,5 +20,5 @@ export type {
   SupabaseReport
 } from "./types.js";
 export type { ScanContext, ScanInput } from "./context.js";
-export type { GuardConfig, RuleConfigValue } from "./config.js";
+export type { FindingSuppression, GuardConfig, RuleConfigValue } from "./config.js";
 export type { RuleMetadata, RuleStability } from "./rules/catalog.js";

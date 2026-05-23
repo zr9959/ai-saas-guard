@@ -8,6 +8,10 @@ interface SarifRule {
   fullDescription: { text: string };
   help: { text: string };
   defaultConfiguration: { level: "error" | "warning" | "note" };
+  properties: {
+    "ai-saas-guard/stability": string;
+    tags: string[];
+  };
 }
 
 export function formatSarifReport(report: BaseReport): string {
@@ -16,13 +20,18 @@ export function formatSarifReport(report: BaseReport): string {
   for (const finding of report.findings) {
     if (rules.has(finding.ruleId)) continue;
     const metadata = getRuleMetadata(finding.ruleId);
+    const stability = metadata?.stability ?? "default";
     rules.set(finding.ruleId, {
       id: finding.ruleId,
       name: finding.ruleId,
       shortDescription: { text: metadata?.title ?? finding.title },
       fullDescription: { text: metadata?.why ?? finding.why },
       help: { text: `${finding.suggestedVerification}\n\nFix direction: ${finding.suggestedFix}` },
-      defaultConfiguration: { level: sarifLevel(finding) }
+      defaultConfiguration: { level: sarifLevel(finding) },
+      properties: {
+        "ai-saas-guard/stability": stability,
+        tags: [`stability:${stability}`]
+      }
     });
   }
 

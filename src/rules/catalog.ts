@@ -16,14 +16,14 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "high",
     title: "Secret-like value detected",
     why: "Credentials committed to source, config, or examples can be exposed before launch.",
-    stability: "default"
+    stability: "strict"
   },
   "next.env.public-secret": {
     ruleId: "next.env.public-secret",
     severity: "high",
     title: "Risky NEXT_PUBLIC environment variable",
     why: "Next.js exposes NEXT_PUBLIC variables to browser code, so secret-like values can leak to users.",
-    stability: "default"
+    stability: "strict"
   },
   "stripe.webhook.missing-route": {
     ruleId: "stripe.webhook.missing-route",
@@ -37,7 +37,7 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "critical",
     title: "Stripe webhook does not verify the Stripe signature",
     why: "Unsigned webhook handlers can accept forged billing events.",
-    stability: "default"
+    stability: "strict"
   },
   "stripe.webhook.raw-body-risk": {
     ruleId: "stripe.webhook.raw-body-risk",
@@ -51,7 +51,7 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "critical",
     title: "Stripe signing secret appears public",
     why: "Public Stripe secrets can be bundled into client code and abused.",
-    stability: "default"
+    stability: "strict"
   },
   "stripe.webhook.missing-idempotency": {
     ruleId: "stripe.webhook.missing-idempotency",
@@ -65,7 +65,7 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "medium",
     title: "Stripe webhook does not show an entitlement update path",
     why: "Returning HTTP 200 is not the same as changing application access state.",
-    stability: "default"
+    stability: "experimental"
   },
   "stripe.webhook.missing-critical-event": {
     ruleId: "stripe.webhook.missing-critical-event",
@@ -79,7 +79,7 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "critical",
     title: "Broad Supabase RLS policy",
     why: "`USING (true)` or `WITH CHECK (true)` can turn login into broad data access or writes.",
-    stability: "default"
+    stability: "strict"
   },
   "supabase.rls.missing-ownership-filter": {
     ruleId: "supabase.rls.missing-ownership-filter",
@@ -107,7 +107,7 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "critical",
     title: "Sensitive table does not enable row level security",
     why: "User-data tables should enable row level security.",
-    stability: "default"
+    stability: "strict"
   },
   "supabase.storage.public-bucket": {
     ruleId: "supabase.storage.public-bucket",
@@ -121,14 +121,14 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "medium",
     title: "Sensitive API route lacks obvious rate limiting",
     why: "Login, checkout, upload, AI, and webhook routes are common abuse targets.",
-    stability: "default"
+    stability: "experimental"
   },
   "api.route.auth-without-ownership": {
     ruleId: "api.route.auth-without-ownership",
     severity: "high",
     title: "API route checks auth but lacks an ownership guard",
     why: "Login checks do not prove resource ownership checks.",
-    stability: "default"
+    stability: "experimental"
   },
   "deploy.next.static-export-api-risk": {
     ruleId: "deploy.next.static-export-api-risk",
@@ -149,14 +149,14 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "low",
     title: "Important runtime env var is not documented",
     why: "Missing env docs cause local-success, production-failure deploys.",
-    stability: "default"
+    stability: "experimental"
   },
   "mcp.config.invalid-json": {
     ruleId: "mcp.config.invalid-json",
     severity: "medium",
     title: "MCP config is not valid JSON",
     why: "Broken MCP configs hide the actual tool inventory.",
-    stability: "default"
+    stability: "strict"
   },
   "mcp.config.plaintext-secret": {
     ruleId: "mcp.config.plaintext-secret",
@@ -212,7 +212,7 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "medium",
     title: "Review first sensitive PR surface",
     why: "AI-generated PRs often bury trust-boundary changes inside larger diffs.",
-    stability: "default"
+    stability: "experimental"
   },
   "pr-risk.diff-unavailable": {
     ruleId: "pr-risk.diff-unavailable",

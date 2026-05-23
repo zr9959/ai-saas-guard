@@ -87,6 +87,11 @@ test("rule catalog contains metadata for every published rule", () => {
     assert.ok(metadata?.why);
     assert.match(metadata?.stability ?? "", /^(default|experimental|strict)$/);
   }
+
+  const stabilityLevels = new Set(Object.values(RULE_CATALOG).map((metadata) => metadata.stability));
+  assert.ok(stabilityLevels.has("strict"));
+  assert.ok(stabilityLevels.has("default"));
+  assert.ok(stabilityLevels.has("experimental"));
 });
 
 test("vulnerable Stripe webhook reports missing signature, idempotency, and critical events", async () => {
@@ -381,6 +386,11 @@ test("CLI can emit SARIF for GitHub code scanning", async () => {
   assert.equal(sarif.version, "2.1.0");
   assert.equal(sarif.runs[0].tool.driver.name, "ai-saas-guard");
   assert.ok(sarif.runs[0].results.some((result) => result.ruleId === "stripe.webhook.missing-signature"));
+  const missingSignatureRule = sarif.runs[0].tool.driver.rules.find(
+    (rule) => rule.id === "stripe.webhook.missing-signature"
+  );
+  assert.equal(missingSignatureRule.properties["ai-saas-guard/stability"], "strict");
+  assert.ok(missingSignatureRule.properties.tags.includes("stability:strict"));
 });
 
 test("CLI can emit a PR-focused markdown summary for pr-risk", async () => {
@@ -491,6 +501,42 @@ test("CLI applies checked-in rule config to JSON, SARIF, and terminal output", a
   }
 });
 
+test("CLI applies path-specific suppressions without disabling a rule globally", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-suppressions-"));
+
+  try {
+    await writeMinimalStripeWebhook(rootDir);
+    await writeFile(
+      resolve(rootDir, ".ai-saas-guard.json"),
+      `${JSON.stringify(
+        {
+          suppressions: [
+            {
+              ruleId: "stripe.webhook.missing-idempotency",
+              paths: ["app/api/stripe/webhook/route.ts"],
+              reason: "Known generated test harness; tracked in the launch checklist."
+            }
+          ]
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const result = await runCli(["check-stripe", "--root", rootDir, "--json"]);
+    assert.equal(result.code, 0);
+    const report = JSON.parse(result.stdout);
+    const ruleIds = findingRuleIds(report);
+
+    assert.ok(ruleIds.includes("stripe.webhook.missing-signature"));
+    assert.ok(ruleIds.includes("stripe.webhook.missing-critical-event"));
+    assert.ok(!ruleIds.includes("stripe.webhook.missing-idempotency"));
+    assert.equal(report.summary.total, report.findings.length);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("CLI uses config failOn unless --fail-on overrides it", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-config-fail-on-"));
   const configPath = resolve(rootDir, "guard.config.json");
@@ -555,6 +601,32 @@ test("CLI rejects unknown rule IDs in project config", async () => {
   }
 });
 
+test("CLI rejects unknown rule IDs in suppressions", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-suppression-invalid-"));
+
+  try {
+    await writeFile(
+      resolve(rootDir, ".ai-saas-guard.json"),
+      `${JSON.stringify({
+        suppressions: [
+          {
+            ruleId: "not.a.real-rule",
+            paths: ["app/**"],
+            reason: "Invalid test suppression."
+          }
+        ]
+      })}\n`
+    );
+
+    const result = await runCli(["scan", "--root", rootDir, "--json"]);
+
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /Unknown rule ID in suppression: not\.a\.real-rule/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("repository exposes a GitHub Action wrapper", async () => {
   const action = await readFile(resolve(packageRoot, "action.yml"), "utf8");
 
@@ -591,6 +663,7 @@ test("GitHub Action validates enumerated inputs before invoking the CLI", async 
 test("public docs explain PR summary, SARIF, and the v0 Action tag", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const actionDocs = await readFile(resolve(packageRoot, "docs", "github-action.md"), "utf8");
+  const rulesDocs = await readFile(resolve(packageRoot, "docs", "rules.md"), "utf8");
 
   assert.match(readme, /zr9959\/ai-saas-guard@v0/);
   assert.match(readme, /format:\s*markdown/);
@@ -598,11 +671,16 @@ test("public docs explain PR summary, SARIF, and the v0 Action tag", async () =>
   assert.match(readme, /\.ai-saas-guard\.json/);
   assert.match(readme, /--config <file>/);
   assert.match(readme, /"stripe\.webhook\.missing-signature": "off"/);
+  assert.match(readme, /suppressions/);
+  assert.match(readme, /paths/);
   assert.match(actionDocs, /PR summary/i);
   assert.match(actionDocs, /SARIF/i);
   assert.match(actionDocs, /config:\s*\.ai-saas-guard\.json/);
   assert.match(actionDocs, /Use SARIF/i);
   assert.match(actionDocs, /Use markdown/i);
+  assert.match(rulesDocs, /Stability/i);
+  assert.match(rulesDocs, /Strict/i);
+  assert.match(rulesDocs, /Experimental/i);
 });
 
 test("public docs include a Stripe webhook replay cookbook", async () => {

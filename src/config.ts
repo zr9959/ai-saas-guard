@@ -8,10 +8,17 @@ export const defaultConfigFileName = ".ai-saas-guard.json";
 
 export type RuleConfigValue = "off" | Severity;
 
+export interface FindingSuppression {
+  ruleId: string;
+  paths: string[];
+  reason?: string;
+}
+
 export interface GuardConfig {
   sourcePath?: string;
   failOn?: Severity | "none";
   rules: Record<string, RuleConfigValue>;
+  suppressions?: FindingSuppression[];
 }
 
 export async function loadGuardConfig(rootDir: string, explicitPath?: string): Promise<GuardConfig> {
@@ -21,7 +28,7 @@ export async function loadGuardConfig(rootDir: string, explicitPath?: string): P
   try {
     content = await readFile(sourcePath, "utf8");
   } catch (error) {
-    if (!explicitPath && isNotFoundError(error)) return { rules: {} };
+    if (!explicitPath && isNotFoundError(error)) return { rules: {}, suppressions: [] };
     throw new Error(`Could not read config file ${sourcePath}: ${errorMessage(error)}`);
   }
 
@@ -30,14 +37,15 @@ export async function loadGuardConfig(rootDir: string, explicitPath?: string): P
 
 export function applyGuardConfig<T extends BaseReport>(report: T, config: GuardConfig): T {
   const configuredRuleIds = Object.keys(config.rules);
-  if (configuredRuleIds.length === 0) return report;
+  const suppressions = config.suppressions ?? [];
+  if (configuredRuleIds.length === 0 && suppressions.length === 0) return report;
 
   const findings = sortFindings(
     report.findings.flatMap((finding) => {
       const ruleConfig = config.rules[finding.ruleId];
-      if (!ruleConfig) return [finding];
       if (ruleConfig === "off") return [];
-      return [{ ...finding, severity: ruleConfig }];
+      const configuredFinding = ruleConfig ? { ...finding, severity: ruleConfig } : finding;
+      return isSuppressed(configuredFinding, suppressions) ? [] : [configuredFinding];
     })
   );
 
@@ -85,11 +93,97 @@ function parseGuardConfig(content: string, sourcePath: string): GuardConfig {
     rules[ruleId] = value;
   }
 
+  const rawSuppressions = parsed.suppressions ?? [];
+  if (!Array.isArray(rawSuppressions)) {
+    throw new Error("Invalid config suppressions: expected an array");
+  }
+
+  const suppressions = rawSuppressions.map((value, index) => parseSuppression(value, index));
+
   return {
     sourcePath,
     failOn,
-    rules
+    rules,
+    suppressions
   };
+}
+
+function parseSuppression(value: unknown, index: number): FindingSuppression {
+  if (!isPlainObject(value)) {
+    throw new Error(`Invalid config suppressions[${index}]: expected an object`);
+  }
+
+  const ruleId = value.ruleId;
+  if (typeof ruleId !== "string" || ruleId.length === 0) {
+    throw new Error(`Invalid config suppressions[${index}].ruleId: expected a rule ID`);
+  }
+
+  if (!getRuleMetadata(ruleId)) {
+    throw new Error(`Unknown rule ID in suppression: ${ruleId}`);
+  }
+
+  const paths = value.paths;
+  if (!Array.isArray(paths) || paths.length === 0 || !paths.every((path) => typeof path === "string" && path.length > 0)) {
+    throw new Error(`Invalid config suppressions[${index}].paths: expected a non-empty array of path globs`);
+  }
+
+  const reason = value.reason;
+  if (reason !== undefined && typeof reason !== "string") {
+    throw new Error(`Invalid config suppressions[${index}].reason: expected a string`);
+  }
+
+  return {
+    ruleId,
+    paths,
+    reason
+  };
+}
+
+function isSuppressed(finding: BaseReport["findings"][number], suppressions: FindingSuppression[]): boolean {
+  return suppressions.some(
+    (suppression) =>
+      suppression.ruleId === finding.ruleId &&
+      finding.evidence.some((evidence) => suppression.paths.some((pattern) => pathMatches(pattern, evidence.file)))
+  );
+}
+
+function pathMatches(pattern: string, filePath: string): boolean {
+  return globToRegExp(normalizeConfigPath(pattern)).test(normalizeConfigPath(filePath));
+}
+
+function normalizeConfigPath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
+function globToRegExp(pattern: string): RegExp {
+  let expression = "^";
+
+  for (let index = 0; index < pattern.length; index += 1) {
+    const char = pattern[index];
+    if (char === "*") {
+      const next = pattern[index + 1];
+      const afterNext = pattern[index + 2];
+      if (next === "*" && afterNext === "/") {
+        expression += "(?:.*/)?";
+        index += 2;
+      } else if (next === "*") {
+        expression += ".*";
+        index += 1;
+      } else {
+        expression += "[^/]*";
+      }
+    } else if (char === "?") {
+      expression += "[^/]";
+    } else {
+      expression += escapeRegExp(char);
+    }
+  }
+
+  return new RegExp(`${expression}$`);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
 }
 
 function isRuleConfigValue(value: unknown): value is RuleConfigValue {
