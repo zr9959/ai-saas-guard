@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -46,6 +46,7 @@ const expectedRuleIds = [
   "mcp.tool.raw-sql",
   "mcp.tool.shell",
   "next.env.public-secret",
+  "pr-risk.diff-unavailable",
   "pr-risk.no-diff",
   "pr-risk.sensitive-surface",
   "secrets.detected",
@@ -251,6 +252,39 @@ index 1111111..2222222 100644
   assert.deepEqual(report.topRiskyFiles, []);
 });
 
+test("pr-risk explains missing base refs instead of silently reporting no diff", async () => {
+  const report = await classifyPrRisk({
+    rootDir: packageRoot,
+    base: "origin/definitely-missing-base-for-ai-saas-guard"
+  });
+
+  const finding = report.findings.find((candidate) => candidate.ruleId === "pr-risk.diff-unavailable");
+
+  assert.ok(finding, "expected a git diff diagnostic finding");
+  assert.match(finding.title, /definitely-missing-base-for-ai-saas-guard/);
+  assert.match(finding.suggestedVerification, /git fetch origin definitely-missing-base-for-ai-saas-guard/);
+  assert.match(finding.suggestedFix, /existing local base ref/);
+  assert.doesNotMatch(finding.why, new RegExp(packageRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.ok(!findingRuleIds(report).includes("pr-risk.no-diff"));
+});
+
+test("npm package excludes macOS AppleDouble metadata files", async () => {
+  const appleDoubleFile = resolve(packageRoot, "dist", "._ai-saas-guard-packaging-test");
+  await writeFile(appleDoubleFile, "macOS metadata should never ship\n");
+
+  try {
+    const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json"], { cwd: packageRoot });
+    const [pack] = JSON.parse(stdout);
+    const packedPaths = pack.files.map((file) => file.path);
+    const npmIgnore = await readFile(resolve(packageRoot, ".npmignore"), "utf8");
+
+    assert.match(npmIgnore, /\*\*\/\._\*/);
+    assert.ok(!packedPaths.some((filePath) => filePath.startsWith("._") || filePath.includes("/._")));
+  } finally {
+    await rm(appleDoubleFile, { force: true });
+  }
+});
+
 test(".ai-saas-guardignore excludes matching files from scans", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-ignore-"));
   await mkdir(resolve(rootDir, "ignored"));
@@ -342,7 +376,7 @@ test("CI runs GitHub Actions static analysis", async () => {
   assert.match(workflow, /advanced-security: false/);
 });
 
-test("npm publish workflow uses provenance-capable GitHub Actions publishing", async () => {
+test("npm publish workflow uses token-free trusted publishing", async () => {
   const workflow = await readFile(resolve(packageRoot, ".github/workflows/npm-publish.yml"), "utf8");
   const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
   const expectedRefPattern = `v${packageJson.version}`.replaceAll(".", "\\.");
@@ -354,8 +388,10 @@ test("npm publish workflow uses provenance-capable GitHub Actions publishing", a
   assert.match(workflow, /node-version:\s*24/);
   assert.match(workflow, /registry-url:\s*https:\/\/registry\.npmjs\.org/);
   assert.match(workflow, /package-manager-cache:\s*false/);
-  assert.match(workflow, /npm publish --provenance --access public/);
-  assert.match(workflow, /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/);
+  assert.match(workflow, /npm publish --access public/);
+  assert.doesNotMatch(workflow, /NODE_AUTH_TOKEN/);
+  assert.doesNotMatch(workflow, /secrets\.NPM_TOKEN/);
+  assert.doesNotMatch(workflow, /_authToken/i);
 });
 
 test("package bin entries are publish-safe npm paths", async () => {

@@ -207,6 +207,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "AI-generated PRs often bury trust-boundary changes inside larger diffs.",
     stability: "default"
   },
+  "pr-risk.diff-unavailable": {
+    ruleId: "pr-risk.diff-unavailable",
+    severity: "info",
+    title: "Git diff could not be read",
+    why: "PR classification can be misleading when the requested base ref or Git history is unavailable.",
+    stability: "default"
+  },
   "pr-risk.no-diff": {
     ruleId: "pr-risk.no-diff",
     severity: "info",

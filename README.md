@@ -50,8 +50,9 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Local CLI from source | Available for development |
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
-| Versioned Action tags | `v0.1.2` |
-| npm package | `ai-saas-guard@0.1.2` |
+| Versioned Action tags | `v0.1.3` |
+| npm package | `ai-saas-guard@0.1.3` |
+| npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
 
@@ -146,10 +147,13 @@ AI-generated PRs often combine unrelated work:
 - review-first checklist
 - suggested PR split
 - required tests or manual verification
+- explicit git-diff diagnostics when a base ref or shallow checkout prevents PR classification
 
 ```bash
 node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --json
 ```
+
+If `--base` cannot be resolved, `pr-risk` emits `pr-risk.diff-unavailable` instead of silently reporting a clean or empty diff. In GitHub Actions, use `actions/checkout` with `fetch-depth: 0` when you need merge-base comparison against `origin/main`.
 
 ## Commands
 
@@ -181,7 +185,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
-      - uses: zr9959/ai-saas-guard@v0.1.2
+      - uses: zr9959/ai-saas-guard@v0.1.3
         with:
           command: pr-risk
           root: ${{ github.workspace }}
@@ -192,7 +196,7 @@ jobs:
 For SARIF upload:
 
 ```yaml
-      - uses: zr9959/ai-saas-guard@v0.1.2
+      - uses: zr9959/ai-saas-guard@v0.1.3
         with:
           command: scan
           format: sarif
@@ -202,7 +206,7 @@ For SARIF upload:
           sarif_file: ai-saas-guard.sarif
 ```
 
-For maximum reproducibility, replace `v0.1.2` with the full commit SHA from the release notes.
+For maximum reproducibility, replace `v0.1.3` with the full commit SHA from the release notes.
 
 ## Ignore File
 
@@ -276,7 +280,6 @@ Open-source core:
 
 Near-term priorities:
 
-- npm trusted publishing and provenance
 - PR comment summary mode
 - configurable severity and rule toggles
 - expanded Supabase RLS fixtures
@@ -301,4 +304,4 @@ Please read [SECURITY.md](SECURITY.md) before reporting vulnerabilities. Do not 
 
 ## npm Publishing
 
-The package is published as [`ai-saas-guard`](https://www.npmjs.com/package/ai-saas-guard). See [docs/npm-publishing.md](docs/npm-publishing.md) for the GitHub Actions provenance workflow, the first-publish token history, and the trusted-publisher follow-up.
+The package is published as [`ai-saas-guard`](https://www.npmjs.com/package/ai-saas-guard). See [docs/npm-publishing.md](docs/npm-publishing.md) for the GitHub Actions Trusted Publisher workflow, provenance notes, and first-publish token history.

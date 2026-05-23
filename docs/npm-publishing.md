@@ -5,27 +5,25 @@
 ## Current State
 
 - Package name: `ai-saas-guard`
-- Current version: `0.1.2`
+- Current version: `0.1.3`
 - npm registry state: published at <https://www.npmjs.com/package/ai-saas-guard>
 - First npm-published version: `0.1.1`
-- GitHub Release: `v0.1.2`
+- GitHub Release: `v0.1.3`
 - Publish workflow: `.github/workflows/npm-publish.yml`
+- Trusted Publisher: GitHub Actions, `zr9959/ai-saas-guard`, workflow `npm-publish.yml`, allowed action `npm publish`
+- Long-lived npm publish token: not required
 
 ## Preferred Path
 
-Use GitHub Actions with npm provenance:
+Use GitHub Actions with npm Trusted Publisher/OIDC:
 
-1. Create and review a release tag such as `v0.1.2`.
-2. Run the `Publish npm` workflow manually with `ref` set to that tag.
-3. Configure npm Trusted Publisher for future releases:
-   - Provider: GitHub Actions
-   - Organization or user: `zr9959`
-   - Repository: `ai-saas-guard`
-   - Workflow filename: `npm-publish.yml`
-   - Allowed action: `npm publish`
-4. Once trusted publishing is verified, remove or rotate any long-lived npm publish token.
+1. Create and review a release tag such as `v0.1.3`.
+2. Publish from the GitHub Release or run the `Publish npm` workflow manually with `ref` set to that tag.
+3. Keep `permissions.id-token: write` in the workflow so npm can exchange the GitHub Actions OIDC identity for a short-lived publish credential.
+4. Run `npm publish --access public` from the workflow. Trusted publishing automatically generates provenance for this public package from this public repository.
+5. Keep npm package publishing access set to require 2FA and disallow traditional tokens. Trusted publishers continue to work because they use OIDC instead of npm auth tokens.
 
-The first npm publish used a temporary granular access token because npm requires a 2FA-bypass token until trusted publishing is configured. The workflow sets `id-token: write`, uses Node 24, and runs `npm publish --provenance --access public`, so it is ready for npm Trusted Publisher OIDC publishing.
+The first npm publish used a temporary granular access token because npm requires a 2FA-bypass token until trusted publishing is configured. That temporary automation token and the GitHub `NPM_TOKEN` secret were removed after the Trusted Publisher migration.
 
 ## Release Gate
 

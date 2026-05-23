@@ -17,11 +17,20 @@ const categoryWeights: Record<PrRiskCategory, number> = {
   "large AI-generated/refactor-like diff": 18
 };
 
+interface GitDiffReadResult {
+  diffText: string;
+  diagnostics: Finding[];
+}
+
 export async function classifyPrRisk(options: PrRiskOptions): Promise<PrRiskReport> {
-  const diffText = options.diffText ?? (await readGitDiff(options.rootDir, options.base));
+  const diffResult =
+    options.diffText === undefined
+      ? await readGitDiff(options.rootDir, options.base)
+      : { diffText: options.diffText, diagnostics: [] };
+  const { diffText } = diffResult;
   const files = parseDiffFiles(diffText);
   const categories = new Set<PrRiskCategory>();
-  const findings: Finding[] = [];
+  const findings: Finding[] = [...diffResult.diagnostics];
 
   for (const file of files) {
     for (const category of file.categories) {
@@ -55,7 +64,7 @@ export async function classifyPrRisk(options: PrRiskOptions): Promise<PrRiskRepo
     );
   }
 
-  if (diffText.trim().length === 0) {
+  if (diffText.trim().length === 0 && diffResult.diagnostics.length === 0) {
     findings.push(
       finding({
         ruleId: "pr-risk.no-diff",
@@ -80,17 +89,21 @@ export async function classifyPrRisk(options: PrRiskOptions): Promise<PrRiskRepo
   });
 }
 
-async function readGitDiff(rootDir: string, base?: string): Promise<string> {
+async function readGitDiff(rootDir: string, base?: string): Promise<GitDiffReadResult> {
   if (base) {
     try {
       const { stdout } = await execFileAsync("git", ["diff", `${base}...HEAD`], { cwd: rootDir, maxBuffer: 20 * 1024 * 1024 });
-      return stdout;
-    } catch {
-      return "";
+      return { diffText: stdout, diagnostics: [] };
+    } catch (error) {
+      return {
+        diffText: "",
+        diagnostics: [buildGitDiffFailureFinding(rootDir, ["git", "diff", `${base}...HEAD`], error, base)]
+      };
     }
   }
 
   const parts: string[] = [];
+  const failures: Array<{ args: string[]; error: unknown }> = [];
   for (const args of [
     ["diff", "--cached"],
     ["diff"]
@@ -98,11 +111,70 @@ async function readGitDiff(rootDir: string, base?: string): Promise<string> {
     try {
       const { stdout } = await execFileAsync("git", args, { cwd: rootDir, maxBuffer: 20 * 1024 * 1024 });
       parts.push(stdout);
-    } catch {
-      continue;
+    } catch (error) {
+      failures.push({ args: ["git", ...args], error });
     }
   }
-  return parts.join("\n");
+
+  if (parts.length === 0 && failures.length > 0) {
+    return {
+      diffText: "",
+      diagnostics: [buildGitDiffFailureFinding(rootDir, failures[0].args, failures[0].error)]
+    };
+  }
+
+  return { diffText: parts.join("\n"), diagnostics: [] };
+}
+
+function buildGitDiffFailureFinding(rootDir: string, command: string[], error: unknown, base?: string): Finding {
+  const errorText = redactRootPath(getGitErrorText(error), rootDir);
+  const lowerError = errorText.toLowerCase();
+  let suggestedVerification = "Run `git status` and confirm the target path is inside a Git repository.";
+  let suggestedFix = "Run `pr-risk` from a Git checkout, or pass explicit diff text through the API.";
+
+  if (base) {
+    suggestedVerification = `Run \`${buildFetchCommand(base)}\`, then \`git rev-parse --verify ${base}\` to confirm the base ref exists locally.`;
+    suggestedFix = "Fetch the branch or pass an existing local base ref, for example `--base origin/main`.";
+  }
+
+  if (base && (lowerError.includes("no merge base") || lowerError.includes("shallow"))) {
+    suggestedVerification = "Run `git rev-parse --is-shallow-repository` and confirm CI checks out full history before `pr-risk`.";
+    suggestedFix = "Use `fetch-depth: 0` in `actions/checkout`, or run `git fetch --unshallow` before invoking `pr-risk`.";
+  }
+
+  return finding({
+    ruleId: "pr-risk.diff-unavailable",
+    title: base ? `Could not read git diff for base ${base}` : "Could not read git diff",
+    severity: "info",
+    evidence: [
+      {
+        file: ".",
+        match: command.join(" "),
+        snippet: errorText.slice(0, 500)
+      }
+    ],
+    why: "PR risk classification needs a readable git diff, but the git command failed for the target repository.",
+    suggestedVerification,
+    suggestedFix
+  });
+}
+
+function buildFetchCommand(base: string): string {
+  const remoteRef = /^([^/\s]+)\/(.+)$/.exec(base);
+  if (remoteRef) return `git fetch ${remoteRef[1]} ${remoteRef[2]}`;
+  return `git fetch origin ${base}`;
+}
+
+function redactRootPath(text: string, rootDir: string): string {
+  return rootDir ? text.replaceAll(rootDir, ".") : text;
+}
+
+function getGitErrorText(error: unknown): string {
+  const candidate = error as { stderr?: string; stdout?: string; message?: string };
+  return [candidate.stderr, candidate.stdout, candidate.message]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join("\n")
+    .trim() || "git diff exited with a non-zero status.";
 }
 
 function parseDiffFiles(diffText: string): PrRiskFile[] {

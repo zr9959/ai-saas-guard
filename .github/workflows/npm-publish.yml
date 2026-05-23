@@ -8,7 +8,7 @@ on:
       ref:
         description: Git ref to publish, usually a version tag.
         required: true
-        default: v0.1.2
+        default: v0.1.3
 
 permissions:
   contents: read
@@ -46,6 +46,4 @@ jobs:
             process.exit(1);
           }
           EOF
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public

@@ -45,9 +45,11 @@ Implemented surfaces:
 - MCP config side-effect and secret-bearing risk inventory
 - Next/Vercel deploy and runtime footguns
 - PR diff risk triage for auth, billing, RLS, env, tests removed, and large mixed diffs
+- PR diff diagnostics when a base ref or shallow checkout prevents comparison
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper
+- npm publishing through GitHub Actions Trusted Publisher/OIDC
 
 Existing commands:
 
@@ -111,6 +113,14 @@ CI:
 - Uses `permissions: contents: read`
 - Latest verified run after setup succeeded
 
+Publishing:
+
+- npm package: `ai-saas-guard`
+- Current release line: `v0.1.3`
+- Publish workflow: `.github/workflows/npm-publish.yml`
+- Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
+- Long-lived npm publish tokens should not be required.
+
 ## Repository Boundaries
 
 Allowed in this public repository:
@@ -133,14 +143,13 @@ Not allowed:
 
 Recommended order:
 
-1. Prepare npm publishing plan with trusted publishing/provenance.
-2. Add GitHub Action release packaging and example workflow.
-3. Add PR comment summary mode.
-4. Add configurable severity and rule toggles.
-5. Expand Supabase RLS fixtures and ownership patterns.
-6. Write Stripe webhook replay cookbook.
-7. Add SARIF upload workflow example.
-8. Improve false-positive suppression and rule stability labels.
+1. Add PR comment summary mode.
+2. Add configurable severity and rule toggles.
+3. Expand Supabase RLS fixtures and ownership patterns.
+4. Write Stripe webhook replay cookbook.
+5. Add SARIF upload workflow example.
+6. Improve false-positive suppression and rule stability labels.
+7. Add a GitHub App design note for the potential hosted layer.
 
 For every feature, keep the scanner evidence-first:
 

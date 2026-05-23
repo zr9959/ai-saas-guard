@@ -61,6 +61,7 @@ Rule metadata is centralized in `src/rules/catalog.ts` and covered by tests so S
 | Rule ID | Severity | Why it exists |
 | --- | --- | --- |
 | `pr-risk.sensitive-surface` | medium/high | Highlights files reviewers should inspect before cosmetic or refactor files. |
+| `pr-risk.diff-unavailable` | info | Explains when the requested base ref or Git history prevents PR diff classification. |
 | `pr-risk.no-diff` | info | Explains that PR classification needs a diff. |
 
 ## Adding Rules
