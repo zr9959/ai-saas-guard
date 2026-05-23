@@ -245,6 +245,34 @@ test("GitHub Action does not interpolate action inputs directly inside bash", as
   assert.match(action, /run:\s+npm ci/);
 });
 
+test("GitHub Action validates enumerated inputs before invoking the CLI", async () => {
+  const action = await readFile(resolve(packageRoot, "action.yml"), "utf8");
+  const runStep = action.match(/- name: Run ai-saas-guard[\s\S]*?run:\s*\|([\s\S]*)/);
+
+  assert.ok(runStep, "expected action.yml to contain the Run ai-saas-guard step");
+  assert.match(runStep[1], /case "\$\{INPUT_COMMAND\}" in[\s\S]*scan\|check-supabase\|check-stripe\|check-mcp\|pr-risk/);
+  assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif/);
+  assert.match(runStep[1], /case "\$\{INPUT_FAIL_ON\}" in[\s\S]*none\|critical\|high\|medium\|low\|info/);
+  assert.match(runStep[1], /exit 2/);
+});
+
+test("GitHub Action keeps colon-bearing descriptions YAML-safe", async () => {
+  const action = await readFile(resolve(packageRoot, "action.yml"), "utf8");
+
+  assert.doesNotMatch(action, /^\s+description:\s+[^"'][^#\n]*:\s+/m);
+});
+
+test("CI runs GitHub Actions static analysis", async () => {
+  const workflow = await readFile(resolve(packageRoot, ".github/workflows/ci.yml"), "utf8");
+
+  assert.match(workflow, /actionlint:/);
+  assert.match(workflow, /go install github\.com\/rhysd\/actionlint\/cmd\/actionlint@v\d+\.\d+\.\d+/);
+  assert.match(workflow, /run: actionlint/);
+  assert.match(workflow, /zizmor:/);
+  assert.match(workflow, /uses: zizmorcore\/zizmor-action@[a-f0-9]{40}/);
+  assert.match(workflow, /advanced-security: false/);
+});
+
 async function runCli(args) {
   try {
     const result = await execFileAsync("node", [resolve(packageRoot, "dist/cli.js"), ...args]);

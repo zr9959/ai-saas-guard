@@ -4,7 +4,7 @@ author: ai-saas-guard
 
 inputs:
   command:
-    description: Command to run: scan, check-supabase, check-stripe, check-mcp, or pr-risk.
+    description: "Command to run: scan, check-supabase, check-stripe, check-mcp, or pr-risk."
     required: false
     default: scan
   root:
@@ -12,11 +12,11 @@ inputs:
     required: false
     default: ${{ github.workspace }}
   format:
-    description: Output format: terminal, json, or sarif.
+    description: "Output format: terminal, json, or sarif."
     required: false
     default: terminal
   fail-on:
-    description: Fail the workflow when findings meet this severity: critical, high, medium, low, info, or none.
+    description: "Fail the workflow when findings meet this severity: critical, high, medium, low, info, or none."
     required: false
     default: none
   base:
@@ -52,6 +52,30 @@ runs:
         INPUT_OUTPUT: ${{ inputs.output }}
       run: |
         set -o pipefail
+
+        case "${INPUT_COMMAND}" in
+          scan|check-supabase|check-stripe|check-mcp|pr-risk) ;;
+          *)
+            echo "Invalid command input: ${INPUT_COMMAND}" >&2
+            exit 2
+            ;;
+        esac
+
+        case "${INPUT_FORMAT}" in
+          terminal|json|sarif) ;;
+          *)
+            echo "Invalid format input: ${INPUT_FORMAT}" >&2
+            exit 2
+            ;;
+        esac
+
+        case "${INPUT_FAIL_ON}" in
+          none|critical|high|medium|low|info) ;;
+          *)
+            echo "Invalid fail-on input: ${INPUT_FAIL_ON}" >&2
+            exit 2
+            ;;
+        esac
 
         args=("${INPUT_COMMAND}" "--root" "${INPUT_ROOT}")
 
