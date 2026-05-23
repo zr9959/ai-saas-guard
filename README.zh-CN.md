@@ -1,11 +1,15 @@
 <h1 align="center">ai-saas-guard</h1>
 
 <p align="center">
-  <strong>面向 AI 构建的 SaaS 应用的本地优先上线预检工具。</strong>
+  <strong>你用 AI 把 SaaS 做出来了。现在要知道上线前哪里最容易出事。</strong>
 </p>
 
 <p align="center">
-  在上线或合并 PR 前，找出登录鉴权、支付计费、数据访问、密钥、MCP 工具和部署配置里最值得人工 review 的风险点。
+  ai-saas-guard 会优先指出 auth、billing、data access、secrets、MCP 和 deploy 里最值得人工 review 的改动。它本地运行、只读仓库、不上传代码。
+</p>
+
+<p align="center">
+  它不是渗透测试，而是一份面向上线风险点的实用 review 清单。
 </p>
 
 <p align="center">
@@ -14,15 +18,31 @@
 
 ---
 
-## 它是做什么的
+## 它解决什么问题
 
-`ai-saas-guard` 是一个命令行预检工具，服务于正在用 AI 编程工具快速交付 SaaS 的 founder、独立开发者、小团队和 code reviewer。
+AI 能很快把一个 SaaS 从想法做成可运行的产品。真正难的是：它能不能放心给真实用户用。
 
-它回答的问题很窄：
+上线前最危险的通常不是界面小 bug，而是那些会影响用户数据、付费权限、密钥暴露和 AI 工具权限的小改动：
 
-> 这次改动里，哪些 auth、billing、data access、secrets、MCP tools 或 deploy config 需要先人工认真看？
+- 一个用户会不会看到另一个客户的数据？
+- Stripe webhook 会不会重复开通权限、漏处理付款失败，或者信任未签名请求？
+- `NEXT_PUBLIC_*` 里是不是不小心暴露了 secret？
+- MCP 工具是不是拿到了 shell、数据库或过宽的文件系统权限？
+- AI 生成的大 PR 里，是不是把 auth、billing 或 deploy 改动藏在 UI 调整中？
 
-它适合常见 AI SaaS 技术栈：
+`ai-saas-guard` 是面向这个时刻的本地优先、review-first 上线预检工具。它不会证明你的应用绝对安全，也不是渗透测试、认证或完整安全审计。它的目标是给 founder、独立开发者、小团队和 reviewer 一份短而有证据的清单，告诉你上线或合并 PR 前最该先看哪里。
+
+## 你会得到什么
+
+对仓库或 PR 运行后，它会给出：
+
+- 命中的 rule
+- severity 和文件证据
+- 为什么这个问题会影响 SaaS 上线
+- 如何人工验证
+- 实际修复方向
+
+它适合常见 AI 构建的 SaaS 技术栈：
 
 - Next.js 和 Vercel
 - Supabase RLS、storage policy、SQL migration
@@ -30,8 +50,6 @@
 - Prisma 或 SQL migration
 - MCP server 配置
 - AI 生成的大型混合 PR
-
-它是 evidence-first 的工具。每个 finding 会包含 rule ID、severity、文件证据、为什么重要、如何验证、修复方向。
 
 ## 当前状态
 

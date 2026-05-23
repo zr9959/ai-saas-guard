@@ -698,6 +698,18 @@ test("public README keeps an updated Chinese translation entry point", async () 
 
   assert.match(readme.slice(0, 900), /README\.zh-CN\.md/);
   assert.match(zhReadme.slice(0, 900), /README\.md/);
+  assert.match(readme.slice(0, 1600), /You used AI to build your SaaS/i);
+  assert.match(readme.slice(0, 1600), /before launch/i);
+  assert.match(readme.slice(0, 1600), /auth, billing, data access, secrets, MCP, and deploy/i);
+  assert.match(readme.slice(0, 1600), /not a pentest/i);
+  assert.match(readme.slice(0, 1600), /runs locally/i);
+  assert.match(readme.slice(0, 1600), /does not upload code/i);
+  assert.match(zhReadme.slice(0, 1600), /你用 AI 把 SaaS 做出来了/);
+  assert.match(zhReadme.slice(0, 1600), /上线前/);
+  assert.match(zhReadme.slice(0, 1600), /最容易出事/);
+  assert.match(zhReadme.slice(0, 1600), /不是渗透测试/);
+  assert.match(zhReadme.slice(0, 1600), /本地运行/);
+  assert.match(zhReadme.slice(0, 1600), /不上传代码/);
   assert.match(zhReadme, /本地优先/);
   assert.match(zhReadme, /AI 构建的 SaaS/);
   assert.match(zhReadme, /目标用户/);

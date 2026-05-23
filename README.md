@@ -1,11 +1,15 @@
 <h1 align="center">ai-saas-guard</h1>
 
 <p align="center">
-  <strong>Local-first launch preflight for AI-built SaaS apps.</strong>
+  <strong>You used AI to build your SaaS. Now you need to know what is risky before launch.</strong>
 </p>
 
 <p align="center">
-  Find the auth, billing, data-access, secret, MCP, and deploy surfaces a human should review before launch or merge.
+  ai-saas-guard points reviewers to the auth, billing, data access, secrets, MCP, and deploy changes that deserve human attention first. It runs locally, reads your repo only, and does not upload code.
+</p>
+
+<p align="center">
+  It is not a pentest. It is a practical review checklist for launch-risk hotspots.
 </p>
 
 <p align="center">
@@ -22,13 +26,29 @@
 
 ---
 
-## What It Does
+## The Problem It Solves
 
-`ai-saas-guard` is a command-line launch preflight for founders, solo builders, and reviewers shipping SaaS apps with AI coding tools.
+AI can turn an idea into a working SaaS quickly. The harder question is whether the app is ready for real users.
 
-It answers one narrow question:
+The risky parts are often not the obvious UI bugs. They are the small changes that decide who can see data, who gets paid access, where secrets are exposed, and what an AI tool is allowed to do:
 
-> What changed in auth, billing, data access, secrets, MCP tools, or deploy config that deserves human review first?
+- Can one customer read another customer's data?
+- Can a Stripe webhook grant access twice, miss a failed payment, or trust an unsigned request?
+- Did a public environment variable expose a secret?
+- Did an MCP tool get shell, database, or broad filesystem access?
+- Did a pull request hide auth, billing, or deploy changes inside a large AI-generated diff?
+
+`ai-saas-guard` is a local-first, review-first preflight for that moment. It does not try to prove your app is secure. It is not a pentest, certification, or full audit. It gives founders, solo builders, small teams, and reviewers a short, evidence-backed list of what to check before launch or merge.
+
+## What You Get
+
+Run it against a repository or pull request and get findings with:
+
+- the rule that matched
+- severity and file evidence
+- why the issue matters in a SaaS launch
+- how to verify it manually
+- a practical fix direction
 
 It is built for common AI-SaaS stacks:
 
@@ -38,8 +58,6 @@ It is built for common AI-SaaS stacks:
 - Prisma or SQL migrations
 - MCP server configuration
 - AI-generated pull requests with large mixed diffs
-
-It is intentionally evidence-first. Findings include a rule ID, severity, file evidence, why it matters, how to verify it, and a fix direction.
 
 ## Current Status
 
