@@ -7,14 +7,14 @@
 - Package name: `ai-saas-guard`
 - Current version: `0.1.1`
 - npm registry state: not published at the time of this document update
-- GitHub Release: `v0.1.0`
+- GitHub Release: `v0.1.1`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 
 ## Preferred Path
 
 Use GitHub Actions with npm provenance:
 
-1. Create an npm automation token with publish rights for this package.
+1. Create an npm granular access token with read/write publish rights for this package name or account.
 2. Add it to this GitHub repository as `NPM_TOKEN`.
 3. Run the `Publish npm` workflow manually with `ref` set to `v0.1.1`.
 4. After the first publish succeeds, configure npm Trusted Publisher for future releases:
@@ -25,7 +25,7 @@ Use GitHub Actions with npm provenance:
    - Allowed action: `npm publish`
 5. Once trusted publishing is verified, remove or rotate any long-lived npm publish token.
 
-The workflow sets `id-token: write` and runs `npm publish --provenance --access public`, so token-based first publish can include provenance and future trusted-publisher publishes can use OIDC.
+The workflow sets `id-token: write`, uses Node 24, and runs `npm publish --provenance --access public`. This supports a token-based first publish with provenance and keeps the workflow ready for npm Trusted Publisher OIDC publishing.
 
 ## Release Gate
 

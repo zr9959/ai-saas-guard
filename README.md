@@ -282,4 +282,4 @@ Please read [SECURITY.md](SECURITY.md) before reporting vulnerabilities. Do not 
 
 ## npm Publishing
 
-The package name is prepared but not published yet. See [docs/npm-publishing.md](docs/npm-publishing.md) for the GitHub Actions provenance workflow and the required `NPM_TOKEN` or trusted-publisher setup.
+The package name is prepared but not published yet. See [docs/npm-publishing.md](docs/npm-publishing.md) for the GitHub Actions provenance workflow, granular-token first publish, and trusted-publisher follow-up.
