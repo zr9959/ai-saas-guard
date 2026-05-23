@@ -228,6 +228,27 @@ Privacy boundaries:
 
 The exported helper is `planHostedRetentionAndDeletionCleanup`. It is intended to be the storage-, queue-, and worker-provider-independent contract for the first real hosted cleanup implementation.
 
+## Operational Release Gate Evaluator
+
+The operational release gate evaluator turns the hosted release gate into a pure, machine-checkable decision. It is a pure evaluator only: it does not deploy containers, inspect cloud accounts, run scanners, call GitHub, publish npm packages, or create release notes.
+
+Default behavior:
+
+- require fresh P0 evidence for clean CI, hosted contract tests, webhook replay, workflow static checks, dependency scan, container scan, queue and worker cleanup, privacy and retention, monitoring and alerting, manual rollback, incident response, and release cleanup
+- require each evidence item to include either an evidence URL or a concrete note
+- treat missing, failed, stale, or exception-marked P0 evidence as release blockers
+- require a `sha256:<digest>` container image digest before hosted exposure
+- reject release notes that make positive pentest, certification, or full-audit claims
+- preserve the local-first boundary: the local CLI remains usable without the hosted service and without an account
+
+Privacy boundaries:
+
+- return only requirement IDs, status IDs, version metadata, deployment target, and high-level decision fields
+- do not return raw source, raw diffs, secrets, customer payloads, or private URLs
+- preserve `modelTraining: disabled`
+
+The exported helper is `evaluateHostedOperationalReleaseGate`. The exported requirement list is `HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS`.
+
 ## Hosted Compact Report Fixture
 
 A public hosted compact report fixture is available at [examples/hosted-compact-report.json](../examples/hosted-compact-report.json). It is intentionally synthetic and shows the report shape future hosted components can pass between the worker, check-run summary renderer, and retention cleanup logic.
@@ -294,6 +315,10 @@ Automated tests must cover:
 - retention and deletion cleanup planner keeps repeated cleanup idempotent and preserves terminal jobs
 - retention cleanup expires only compact reports past their retention window
 - retention and deletion cleanup planner preserves only minimal audit records
+- operational release gate evaluator passes only when all required P0 evidence is present and fresh
+- operational release gate evaluator blocks hosted exposure when evidence is missing, failed, stale, or exception-marked
+- operational release gate evaluator blocks hosted exposure when the container digest is missing
+- operational release gate evaluator rejects positive pentest, certification, and full-audit claims while allowing explicit "not a pentest" wording
 - hosted compact report fixture remains schema-compatible and public-safe
 - summary counts with an explicit `total` are not double-counted by check-run summaries
 

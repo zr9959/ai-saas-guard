@@ -856,6 +856,16 @@ test("public docs define the hosted operational release gate", async () => {
   assert.match(gate, /dependency and container scanning/i);
   assert.match(gate, /manual rollback/i);
   assert.match(gate, /monitoring and alerting/i);
+  assert.match(gate, /Current Source Candidate Evidence Notes/i);
+  assert.match(gate, /evaluateHostedOperationalReleaseGate/);
+  assert.match(gate, /HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS/);
+  assert.match(gate, /positive pentest, certification, and full-audit claims/i);
+  assert.match(gate, /No hosted production environment is exposed/i);
+  assert.match(gate, /container_scan/i);
+  assert.match(gate, /monitoring_alerting/i);
+  assert.match(gate, /manual_rollback/i);
+  assert.match(gate, /incident_response/i);
+  assert.match(gate, /release_cleanup/i);
   assert.match(gate, /temporary files/i);
   assert.match(gate, /worker checkouts/i);
   assert.match(gate, /long-running processes/i);
@@ -970,6 +980,10 @@ test("public docs define hosted pre-implementation contracts", async () => {
   assert.match(contracts, /planHostedRetentionAndDeletionCleanup/);
   assert.match(contracts, /minimal audit records/i);
   assert.match(contracts, /retention cleanup expires only compact reports past their retention window/i);
+  assert.match(contracts, /operational release gate evaluator/i);
+  assert.match(contracts, /evaluateHostedOperationalReleaseGate/);
+  assert.match(contracts, /HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS/);
+  assert.match(contracts, /missing, failed, stale, or exception-marked/i);
   assert.match(contracts, /no network calls/i);
   assert.doesNotMatch(contracts, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });

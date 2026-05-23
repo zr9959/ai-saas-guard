@@ -658,6 +658,86 @@ export interface HostedRetentionAndDeletionCleanupPlan {
   };
 }
 
+export const HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS = [
+  { id: "clean_ci", priority: "P0", label: "Clean CI" },
+  { id: "hosted_contract_tests", priority: "P0", label: "Hosted contract tests" },
+  { id: "webhook_replay", priority: "P0", label: "Webhook replay" },
+  { id: "workflow_static_checks", priority: "P0", label: "Workflow static checks" },
+  { id: "dependency_scan", priority: "P0", label: "Dependency scan" },
+  { id: "container_scan", priority: "P0", label: "Container scan" },
+  { id: "queue_worker_cleanup", priority: "P0", label: "Queue and worker cleanup" },
+  { id: "privacy_retention", priority: "P0", label: "Privacy and retention" },
+  { id: "monitoring_alerting", priority: "P0", label: "Monitoring and alerting" },
+  { id: "manual_rollback", priority: "P0", label: "Manual rollback" },
+  { id: "incident_response", priority: "P0", label: "Incident response" },
+  { id: "release_cleanup", priority: "P0", label: "Release cleanup" }
+] as const;
+
+export type HostedOperationalReleaseGateRequirementId =
+  (typeof HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS)[number]["id"];
+
+export type HostedOperationalReleaseGateEvidenceStatus =
+  | "passed"
+  | "failed"
+  | "missing"
+  | "exception";
+
+export interface HostedOperationalReleaseGateEvidence {
+  id: HostedOperationalReleaseGateRequirementId;
+  status: HostedOperationalReleaseGateEvidenceStatus;
+  collectedAt?: string;
+  evidenceUrl?: string;
+  note?: string;
+  owner?: string;
+}
+
+export interface HostedOperationalReleaseGateInput {
+  commitSha: string;
+  scannerVersion: string;
+  deploymentTarget: string;
+  evaluatedAt: string;
+  evidence: HostedOperationalReleaseGateEvidence[];
+  releaseNotes: string;
+  containerImageDigest?: string;
+  maxEvidenceAgeDays?: number;
+  rawSource?: string;
+  rawDiff?: string;
+  secretValues?: string[];
+  customerPayload?: unknown;
+}
+
+export interface HostedOperationalReleaseGateDecision {
+  commitSha: string;
+  scannerVersion: string;
+  deploymentTarget: string;
+  evaluatedAt: string;
+  requiredEvidenceCount: number;
+  requiredEvidenceIds: HostedOperationalReleaseGateRequirementId[];
+  passedEvidenceIds: HostedOperationalReleaseGateRequirementId[];
+  missingEvidenceIds: HostedOperationalReleaseGateRequirementId[];
+  failedEvidenceIds: HostedOperationalReleaseGateRequirementId[];
+  staleEvidenceIds: HostedOperationalReleaseGateRequirementId[];
+  exceptionEvidenceIds: HostedOperationalReleaseGateRequirementId[];
+  containerImageDigestRecorded: boolean;
+  releaseNotesCompliant: boolean;
+  releaseNotesForbiddenClaims: string[];
+  shouldExposeHostedEnvironment: boolean;
+  blocked: boolean;
+  localCliBoundary: {
+    localCliUsableWithoutHostedService: true;
+    accountRequiredForLocalCli: false;
+  };
+  visibleUserMessage: string;
+  privacy: {
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesSecrets: false;
+    includesCustomerPayloads: false;
+    includesPrivateUrls: false;
+    modelTraining: "disabled";
+  };
+}
+
 export const HOSTED_PRIVACY_DEFAULTS = {
   retentionDays: 30,
   auditRecordRetentionDays: 90,
@@ -1457,6 +1537,91 @@ export function planHostedRetentionAndDeletionCleanup(
   };
 }
 
+export function evaluateHostedOperationalReleaseGate(
+  input: HostedOperationalReleaseGateInput
+): HostedOperationalReleaseGateDecision {
+  const requiredEvidenceIds = HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS.map(
+    (requirement) => requirement.id
+  );
+  const evidenceById = new Map(input.evidence.map((evidence) => [evidence.id, evidence]));
+  const maxEvidenceAgeDays = input.maxEvidenceAgeDays ?? 14;
+  const passedEvidenceIds: HostedOperationalReleaseGateRequirementId[] = [];
+  const missingEvidenceIds: HostedOperationalReleaseGateRequirementId[] = [];
+  const failedEvidenceIds: HostedOperationalReleaseGateRequirementId[] = [];
+  const staleEvidenceIds: HostedOperationalReleaseGateRequirementId[] = [];
+  const exceptionEvidenceIds: HostedOperationalReleaseGateRequirementId[] = [];
+
+  for (const evidenceId of requiredEvidenceIds) {
+    const evidence = evidenceById.get(evidenceId);
+
+    if (!evidence || evidence.status === "missing" || !hasHostedGateEvidenceReference(evidence)) {
+      missingEvidenceIds.push(evidenceId);
+      continue;
+    }
+
+    if (evidence.status === "failed") {
+      failedEvidenceIds.push(evidenceId);
+      continue;
+    }
+
+    if (evidence.status === "exception") {
+      exceptionEvidenceIds.push(evidenceId);
+      continue;
+    }
+
+    if (!isHostedGateEvidenceFresh(evidence, input.evaluatedAt, maxEvidenceAgeDays)) {
+      staleEvidenceIds.push(evidenceId);
+      continue;
+    }
+
+    passedEvidenceIds.push(evidenceId);
+  }
+
+  const releaseNotesForbiddenClaims = findHostedReleaseNoteForbiddenClaims(input.releaseNotes);
+  const containerImageDigestRecorded = isHostedContainerImageDigest(input.containerImageDigest);
+  const blocked =
+    missingEvidenceIds.length > 0 ||
+    failedEvidenceIds.length > 0 ||
+    staleEvidenceIds.length > 0 ||
+    exceptionEvidenceIds.length > 0 ||
+    releaseNotesForbiddenClaims.length > 0 ||
+    !containerImageDigestRecorded;
+
+  return {
+    commitSha: input.commitSha,
+    scannerVersion: input.scannerVersion,
+    deploymentTarget: input.deploymentTarget,
+    evaluatedAt: input.evaluatedAt,
+    requiredEvidenceCount: requiredEvidenceIds.length,
+    requiredEvidenceIds,
+    passedEvidenceIds,
+    missingEvidenceIds,
+    failedEvidenceIds,
+    staleEvidenceIds,
+    exceptionEvidenceIds,
+    containerImageDigestRecorded,
+    releaseNotesCompliant: releaseNotesForbiddenClaims.length === 0,
+    releaseNotesForbiddenClaims,
+    shouldExposeHostedEnvironment: !blocked,
+    blocked,
+    localCliBoundary: {
+      localCliUsableWithoutHostedService: true,
+      accountRequiredForLocalCli: false
+    },
+    visibleUserMessage: blocked
+      ? "Hosted exposure is blocked until every P0 gate has fresh evidence and release notes avoid pentest, certification, and full-audit claims."
+      : "Hosted exposure may proceed for this release candidate; keep the local CLI available without the hosted service.",
+    privacy: {
+      includesRawSource: false,
+      includesRawDiffs: false,
+      includesSecrets: false,
+      includesCustomerPayloads: false,
+      includesPrivateUrls: false,
+      modelTraining: HOSTED_PRIVACY_DEFAULTS.modelTraining
+    }
+  };
+}
+
 function rejectWebhook(reason: WebhookRejectReason, deliveryId?: string): GitHubWebhookDecision {
   return {
     accepted: false,
@@ -1775,6 +1940,101 @@ function resolveHostedAuditRecordRetentionDays(requestedDays?: number): number {
     HOSTED_PRIVACY_DEFAULTS.auditRecordRetentionDays,
     Math.max(1, Math.floor(requestedDays))
   );
+}
+
+function hasHostedGateEvidenceReference(
+  evidence: HostedOperationalReleaseGateEvidence
+): boolean {
+  return Boolean(evidence.evidenceUrl?.trim() || evidence.note?.trim());
+}
+
+function isHostedGateEvidenceFresh(
+  evidence: HostedOperationalReleaseGateEvidence,
+  evaluatedAt: string,
+  maxEvidenceAgeDays: number
+): boolean {
+  if (!evidence.collectedAt) {
+    return false;
+  }
+
+  const collectedAtMs = Date.parse(evidence.collectedAt);
+  const evaluatedAtMs = Date.parse(evaluatedAt);
+  if (!Number.isFinite(collectedAtMs) || !Number.isFinite(evaluatedAtMs)) {
+    return false;
+  }
+
+  const maxAgeMs = Math.max(0, Math.floor(maxEvidenceAgeDays)) * 24 * 60 * 60 * 1000;
+  const evidenceAgeMs = evaluatedAtMs - collectedAtMs;
+  return evidenceAgeMs >= 0 && evidenceAgeMs <= maxAgeMs;
+}
+
+function isHostedContainerImageDigest(digest?: string): boolean {
+  return /^sha256:[a-f0-9]{64}$/i.test(digest ?? "");
+}
+
+function findHostedReleaseNoteForbiddenClaims(releaseNotes: string): string[] {
+  const claims: string[] = [];
+  const sentences = releaseNotes.split(/[.!?]\s+/).filter((sentence) => sentence.trim());
+
+  if (
+    sentences.some((sentence) =>
+      hasPositiveHostedReleaseClaim(sentence, /\b(?:pentest|penetration test)\b/i)
+    )
+  ) {
+    claims.push("pentest_claim");
+  }
+
+  if (
+    sentences.some((sentence) =>
+      hasPositiveHostedReleaseClaim(sentence, /\b(?:certification|certified)\b/i)
+    )
+  ) {
+    claims.push("certification_claim");
+  }
+
+  if (
+    sentences.some((sentence) =>
+      hasPositiveHostedReleaseClaim(sentence, /\bfull(?:\s+security)?\s+audit\b/i)
+    )
+  ) {
+    claims.push("full_audit_claim");
+  }
+
+  return claims;
+}
+
+function hasPositiveHostedReleaseClaim(sentence: string, termPattern: RegExp): boolean {
+  const termRegex = new RegExp(termPattern.source, termPattern.flags.replace("g", ""));
+  const termMatch = termRegex.exec(sentence);
+  if (!termMatch || termMatch.index === undefined) {
+    return false;
+  }
+
+  const prefix = sentence.slice(Math.max(0, termMatch.index - 120), termMatch.index);
+  const lastClaimVerbIndex = lastRegexMatchIndex(
+    prefix,
+    /\b(?:is|are|as|provides?|delivers?|offers?|certifies?)\b/gi
+  );
+  if (lastClaimVerbIndex === -1) {
+    return false;
+  }
+
+  const lastNegationIndex = lastRegexMatchIndex(
+    prefix,
+    /\b(?:not|never|does not|do not|is not|are not)\b/gi
+  );
+  return lastNegationIndex < lastClaimVerbIndex;
+}
+
+function lastRegexMatchIndex(value: string, pattern: RegExp): number {
+  let lastIndex = -1;
+  for (const match of value.matchAll(pattern)) {
+    if (match.index !== undefined) {
+      lastIndex = match.index;
+    }
+  }
+
+  return lastIndex;
 }
 
 function isTerminalQueueStatus(status: HostedQueueJobStatus): boolean {

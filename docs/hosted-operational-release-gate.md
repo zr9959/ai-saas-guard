@@ -36,6 +36,31 @@ Every hosted release must record:
 9. Monitoring and alerting checks cover ingress, queue depth, worker failures, check run failures, and cleanup failures.
 10. Manual rollback is tested against the release candidate.
 
+## Current Source Candidate Evidence Notes
+
+The current public package release is still a local CLI and pure hosted-contract release. No hosted production environment is exposed by this release.
+
+The pure evaluator `evaluateHostedOperationalReleaseGate` and the exported `HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS` list make the gate machine-checkable for the next hosted service stage. The evaluator blocks hosted exposure unless every P0 item has fresh evidence, a `sha256:<digest>` container image digest is recorded, and release notes avoid positive pentest, certification, and full-audit claims. Explicit wording such as "not a pentest, certification, or full security audit" remains allowed.
+
+Source-level evidence notes for this release candidate:
+
+| Gate ID | Requirement | Evidence link or note | Current source status |
+| --- | --- | --- | --- |
+| `clean_ci` | Clean install, tests, build, CLI help, JSON/SARIF scan, PR-risk, npm audit, pack dry-run | Local release gate plus GitHub Actions CI run from the release commit | Passed for source package |
+| `hosted_contract_tests` | Hosted contract tests for webhook, scope, queue, worker, check summaries, cleanup, retention, and release gate evaluation | `tests/hosted-contracts.test.mjs` | Passed for pure contracts |
+| `webhook_replay` | Valid events queue work; invalid, missing, malformed, replayed, removed, and non-installed events queue nothing | Pure replay coverage in hosted webhook intake tests | Passed for pure contracts; must replay against deployed ingress before exposure |
+| `workflow_static_checks` | GitHub Actions static analysis | `actionlint` and `uvx zizmor --offline .github/workflows` | Passed for repository workflows |
+| `dependency_scan` | Dependency scan has no unresolved high or critical production findings | `npm audit --audit-level=high --registry=https://registry.npmjs.org` | Passed for source package |
+| `container_scan` | Container image scan has no unresolved high or critical runtime-layer findings | No hosted container image exists in the public package release | Not applicable to current non-hosted release; required before hosted exposure |
+| `queue_worker_cleanup` | Queue dedupe, running cancellation, terminal cleanup, worker checkout deletion, and no long-running processes | Pure queue, worker, checkout, and retention cleanup planner tests | Passed for pure contracts; must verify against deployed queue and worker before exposure |
+| `privacy_retention` | No raw source, raw diffs, secrets, customer payloads, private URLs, or full file contents; retention and uninstall cleanup are proven | Compact report, Check Run publication, retention/deletion cleanup, and docs tests | Passed for pure contracts; log sampling still required before exposure |
+| `monitoring_alerting` | Ingress, queue depth, worker failures, Check Run failures, cleanup failures, retention failures, and credential rotation alerts | Required alert list remains in this document | Documented; must attach provider evidence before exposure |
+| `manual_rollback` | Worker pause, previous artifact redeploy, queue resume, controlled ingress failure, and affected Check Run identification | Manual rollback procedure remains in this document | Documented; must execute against deployed artifact before exposure |
+| `incident_response` | Owner, backup, credential rotation, queue pause, customer communication, status path, and privacy-safe evidence collection | Incident response checklist remains in this document | Documented; must name live owners before exposure |
+| `release_cleanup` | Temporary files, package tarballs, scratch SARIF/JSON, test queues/stores, and long-running processes are removed | Local cleanup checks after each release task | Passed for local release run |
+
+For the current non-hosted package, these notes are enough to keep the repository implementation-ready while still blocking real hosted exposure until the deployment-specific evidence rows are completed with live provider links or notes.
+
 ## CI Checks
 
 Hosted release CI must include the existing public package gate:

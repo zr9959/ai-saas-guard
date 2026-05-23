@@ -115,6 +115,29 @@ async function loadRetentionAndDeletionCleanupPlanner() {
   return contracts.planHostedRetentionAndDeletionCleanup;
 }
 
+async function loadOperationalReleaseGateEvaluator() {
+  const contracts = await import("../dist/hosted/contracts.js");
+  assert.equal(typeof contracts.evaluateHostedOperationalReleaseGate, "function");
+  assert.equal(Array.isArray(contracts.HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS), true);
+  return {
+    evaluateHostedOperationalReleaseGate: contracts.evaluateHostedOperationalReleaseGate,
+    requirements: contracts.HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS
+  };
+}
+
+function completeOperationalEvidence(requirements, overrides = []) {
+  const overrideMap = new Map(overrides.map((evidence) => [evidence.id, evidence]));
+
+  return requirements.map((requirement) => ({
+    id: requirement.id,
+    status: "passed",
+    collectedAt: "2026-05-24T10:30:00.000Z",
+    evidenceUrl: `https://github.com/zr9959/ai-saas-guard/actions/runs/${requirement.id}`,
+    owner: "release-owner",
+    ...overrideMap.get(requirement.id)
+  }));
+}
+
 test("hosted pull request webhook intake verifies signatures before parsing or queueing", async () => {
   const planHostedPullRequestWebhookIntake = await loadWebhookIntakePlanner();
   const queue = new Map();
@@ -1286,4 +1309,76 @@ test("hosted retention cleanup expires only compact reports past their retention
   assert.equal(plan.cancelQueuedJobs, false);
   assert.equal(plan.requestRunningCancellation, false);
   assert.equal(plan.deleteWorkerCheckouts, false);
+});
+
+test("hosted operational release gate passes only with complete fresh evidence", async () => {
+  const { evaluateHostedOperationalReleaseGate, requirements } =
+    await loadOperationalReleaseGateEvaluator();
+  const decision = evaluateHostedOperationalReleaseGate({
+    commitSha: "31c71b61ec2d37b24f10fe62a3b463e4f77bef3d",
+    scannerVersion: "0.16.0",
+    deploymentTarget: "staging-hosted",
+    containerImageDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    evaluatedAt: "2026-05-24T11:00:00.000Z",
+    releaseNotes:
+      "This hosted release candidate is not a pentest, certification, or full security audit. The local CLI remains account-free.",
+    evidence: completeOperationalEvidence(requirements),
+    rawSource: "const secret = 'redacted';",
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    secretValues: ["redacted"],
+    customerPayload: { email: "person@example.test" }
+  });
+  const serialized = JSON.stringify(decision);
+
+  assert.equal(requirements.length >= 10, true);
+  assert.equal(decision.shouldExposeHostedEnvironment, true);
+  assert.equal(decision.blocked, false);
+  assert.deepEqual(decision.missingEvidenceIds, []);
+  assert.deepEqual(decision.failedEvidenceIds, []);
+  assert.deepEqual(decision.staleEvidenceIds, []);
+  assert.equal(decision.containerImageDigestRecorded, true);
+  assert.equal(decision.releaseNotesCompliant, true);
+  assert.deepEqual(decision.releaseNotesForbiddenClaims, []);
+  assert.equal(decision.localCliBoundary.localCliUsableWithoutHostedService, true);
+  assert.equal(decision.localCliBoundary.accountRequiredForLocalCli, false);
+  assert.equal(decision.privacy.includesRawSource, false);
+  assert.equal(serialized.includes("rawSource"), false);
+  assert.equal(serialized.includes("rawDiff"), false);
+  assert.equal(serialized.includes("redacted"), false);
+  assert.equal(serialized.includes("person@example.test"), false);
+});
+
+test("hosted operational release gate blocks missing stale failed evidence and unsafe claims", async () => {
+  const { evaluateHostedOperationalReleaseGate, requirements } =
+    await loadOperationalReleaseGateEvaluator();
+  const decision = evaluateHostedOperationalReleaseGate({
+    commitSha: "31c71b61ec2d37b24f10fe62a3b463e4f77bef3d",
+    scannerVersion: "0.16.0",
+    deploymentTarget: "production-hosted",
+    evaluatedAt: "2026-05-24T11:00:00.000Z",
+    releaseNotes: "This release is not a pentest but provides a full security audit and certification.",
+    evidence: completeOperationalEvidence(requirements, [
+      { id: "webhook_replay", status: "failed", evidenceUrl: "https://example.test/webhook" },
+      {
+        id: "container_scan",
+        status: "passed",
+        collectedAt: "2026-04-01T10:30:00.000Z",
+        evidenceUrl: "https://example.test/container"
+      },
+      { id: "manual_rollback", status: "missing", note: "not run" }
+    ]).filter((evidence) => evidence.id !== "incident_response")
+  });
+
+  assert.equal(decision.shouldExposeHostedEnvironment, false);
+  assert.equal(decision.blocked, true);
+  assert.equal(decision.containerImageDigestRecorded, false);
+  assert.deepEqual(decision.missingEvidenceIds, ["manual_rollback", "incident_response"]);
+  assert.deepEqual(decision.failedEvidenceIds, ["webhook_replay"]);
+  assert.deepEqual(decision.staleEvidenceIds, ["container_scan"]);
+  assert.equal(decision.releaseNotesCompliant, false);
+  assert.deepEqual(decision.releaseNotesForbiddenClaims, [
+    "certification_claim",
+    "full_audit_claim"
+  ]);
+  assert.match(decision.visibleUserMessage, /blocked/i);
 });
