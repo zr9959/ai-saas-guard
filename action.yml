@@ -1,0 +1,69 @@
+name: AI SaaS Guard
+description: Run repo-local launch-readiness checks for AI-built SaaS apps.
+author: ai-saas-guard
+
+inputs:
+  command:
+    description: Command to run: scan, check-supabase, check-stripe, check-mcp, or pr-risk.
+    required: false
+    default: scan
+  root:
+    description: Repository path to scan.
+    required: false
+    default: ${{ github.workspace }}
+  format:
+    description: Output format: terminal, json, or sarif.
+    required: false
+    default: terminal
+  fail-on:
+    description: Fail the workflow when findings meet this severity: critical, high, medium, low, info, or none.
+    required: false
+    default: none
+  base:
+    description: Base ref for pr-risk.
+    required: false
+    default: ""
+  output:
+    description: Optional path to write output while also keeping the command exit code.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Install ai-saas-guard action dependencies
+      shell: bash
+      run: npm install
+      working-directory: ${{ github.action_path }}
+
+    - name: Build ai-saas-guard
+      shell: bash
+      run: npm run build
+      working-directory: ${{ github.action_path }}
+
+    - name: Run ai-saas-guard
+      shell: bash
+      run: |
+        set -o pipefail
+
+        args=("${{ inputs.command }}" "--root" "${{ inputs.root }}")
+
+        if [ "${{ inputs.format }}" = "json" ]; then
+          args+=("--json")
+        elif [ "${{ inputs.format }}" = "sarif" ]; then
+          args+=("--sarif")
+        fi
+
+        if [ "${{ inputs.fail-on }}" != "none" ]; then
+          args+=("--fail-on" "${{ inputs.fail-on }}")
+        fi
+
+        if [ -n "${{ inputs.base }}" ]; then
+          args+=("--base" "${{ inputs.base }}")
+        fi
+
+        if [ -n "${{ inputs.output }}" ]; then
+          node "${GITHUB_ACTION_PATH}/dist/cli.js" "${args[@]}" | tee "${{ inputs.output }}"
+        else
+          node "${GITHUB_ACTION_PATH}/dist/cli.js" "${args[@]}"
+        fi

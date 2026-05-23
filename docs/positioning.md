@@ -1,0 +1,66 @@
+# Positioning Notes
+
+This project should compete by being narrow, trustworthy, and review-oriented.
+
+## Public Position
+
+`ai-saas-guard` is a local-first launch preflight for AI-built SaaS apps. It finds common production-readiness risks and produces concrete verification steps.
+
+Use these phrases:
+
+- launch preflight
+- evidence-first scanner
+- review-first file list
+- two-account authorization test
+- Stripe webhook replay checklist
+- local-only, no upload
+
+Avoid these phrases:
+
+- full security audit
+- pentest
+- proves your app is secure
+- finds every vulnerability
+- automatic security certification
+
+## Differentiation
+
+The broad market already has strong tools:
+
+- secret scanners
+- SAST platforms
+- MCP scanners
+- hosted AI SaaS audit products
+- Supabase-specific scanners
+
+The wedge should be:
+
+1. `pr-risk` for AI-generated PRs.
+2. Founder-readable launch verification, not only findings.
+3. Stack-specific checks for Next.js + Supabase + Stripe + Vercel + MCP.
+4. Local-first trust model for private repos.
+5. Open-source CLI first, hosted GitHub App later.
+
+## Monetization Path
+
+Start with GitHub reputation:
+
+- public repo
+- good fixtures
+- high-signal README
+- short demos
+- issues labeled `good first rule`
+- example reports
+- GitHub Action usage
+
+Then add paid layers:
+
+- saved reports
+- shareable launch-readiness page
+- PR comments
+- scan history
+- policy thresholds
+- private GitHub App
+- optional human review
+
+The open-source CLI should remain useful enough to earn trust. Paid features should save time and add workflow integration.

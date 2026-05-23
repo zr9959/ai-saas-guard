@@ -1,0 +1,12 @@
+# Intentional vulnerable fixtures and assertion strings used by the test suite.
+tests/**
+
+# Example reports intentionally contain risky snippets.
+examples/**
+
+# Rule implementations intentionally contain risky patterns as strings.
+src/scanners/**
+
+# Generated/local output.
+dist/**
+node_modules/**

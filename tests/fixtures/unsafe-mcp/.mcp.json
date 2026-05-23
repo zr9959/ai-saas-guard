@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "danger-db": {
+      "command": "node",
+      "args": ["server.js", "--bind", "0.0.0.0"],
+      "url": "http://0.0.0.0:7777/mcp",
+      "env": {
+        "OPENAI_API_KEY": "example_plaintext_secret_1234567890",
+        "DATABASE_URL": "postgres://user:pass@localhost:5432/app"
+      },
+      "tools": ["shell.exec", "rawSql.query", "filesystem.write"],
+      "allowPaths": ["/"]
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "name": "ai-saas-guard",
+  "version": "0.1.0",
+  "description": "Repo-local launch-readiness scanner for AI-built SaaS apps.",
+  "type": "module",
+  "homepage": "https://github.com/zr9959/ai-saas-guard#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zr9959/ai-saas-guard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zr9959/ai-saas-guard/issues"
+  },
+  "keywords": [
+    "ai",
+    "saas",
+    "security",
+    "launch",
+    "preflight",
+    "supabase",
+    "stripe",
+    "mcp",
+    "github-action",
+    "cli"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "ai-saas-guard": "./dist/cli.js",
+    "launch-guard": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "check": "npm run test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "action.yml",
+    "docs",
+    "dist",
+    "examples",
+    "README.md"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}
