@@ -5,7 +5,7 @@
 ## Current State
 
 - Package name: `ai-saas-guard`
-- Current version: `0.1.0`
+- Current version: `0.1.1`
 - npm registry state: not published at the time of this document update
 - GitHub Release: `v0.1.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
@@ -16,7 +16,7 @@ Use GitHub Actions with npm provenance:
 
 1. Create an npm automation token with publish rights for this package.
 2. Add it to this GitHub repository as `NPM_TOKEN`.
-3. Run the `Publish npm` workflow manually with `ref` set to `v0.1.0`.
+3. Run the `Publish npm` workflow manually with `ref` set to `v0.1.1`.
 4. After the first publish succeeds, configure npm Trusted Publisher for future releases:
    - Provider: GitHub Actions
    - Organization or user: `zr9959`

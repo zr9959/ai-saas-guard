@@ -347,6 +347,7 @@ test("npm publish workflow uses provenance-capable GitHub Actions publishing", a
 
   assert.match(workflow, /release:\s*\n\s+types:\s*\[published\]/);
   assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /default:\s*v0\.1\.1/);
   assert.match(workflow, /id-token:\s*write/);
   assert.match(workflow, /node-version:\s*24/);
   assert.match(workflow, /registry-url:\s*https:\/\/registry\.npmjs\.org/);

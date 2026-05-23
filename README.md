@@ -40,7 +40,7 @@ It is intentionally evidence-first. Findings include a rule ID, severity, file e
 
 This repository is public on GitHub.
 
-The first GitHub release and Action tag are `v0.1.0`. The npm package is not published yet, so run the CLI from source for now. If you need stricter supply-chain pinning in CI, pin the GitHub Action to a reviewed commit SHA instead of a mutable tag.
+The first GitHub release and Action tag are `v0.1.0`; the npm-ready patch release is `v0.1.1`. The npm package is not published yet, so run the CLI from source for now. If you need stricter supply-chain pinning in CI, pin the GitHub Action to a reviewed commit SHA instead of a mutable tag.
 
 | Area | Status |
 | --- | --- |
@@ -48,7 +48,7 @@ The first GitHub release and Action tag are `v0.1.0`. The npm package is not pub
 | Local CLI from source | Available |
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
-| Versioned Action tags | `v0.1.0` |
+| Versioned Action tags | `v0.1.1` |
 | npm package | Not published yet |
 
 ## Quick Start From Source
@@ -162,7 +162,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
-      - uses: zr9959/ai-saas-guard@v0.1.0
+      - uses: zr9959/ai-saas-guard@v0.1.1
         with:
           command: pr-risk
           root: ${{ github.workspace }}
@@ -173,7 +173,7 @@ jobs:
 For SARIF upload:
 
 ```yaml
-      - uses: zr9959/ai-saas-guard@v0.1.0
+      - uses: zr9959/ai-saas-guard@v0.1.1
         with:
           command: scan
           format: sarif
@@ -183,7 +183,7 @@ For SARIF upload:
           sarif_file: ai-saas-guard.sarif
 ```
 
-For maximum reproducibility, replace `v0.1.0` with the full commit SHA from the release notes.
+For maximum reproducibility, replace `v0.1.1` with the full commit SHA from the release notes.
 
 ## Ignore File
 
