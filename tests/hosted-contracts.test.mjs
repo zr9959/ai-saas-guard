@@ -7,6 +7,8 @@ import {
   authorizeInstallationTokenScope,
   buildHostedScanIdentity,
   createCompactHostedReport,
+  createHostedDeletionPlan,
+  getHostedDeletionIdempotencyKey,
   getHostedScanIdempotencyKey,
   resolveHostedRetentionDays,
   upsertHostedScanJob,
@@ -226,4 +228,52 @@ test("hosted compact reports keep retention conservative and avoid raw source", 
   assert.equal(JSON.stringify(report).includes("fullFileContents"), false);
   assert.equal(JSON.stringify(report).includes("redacted"), false);
   assert.equal(JSON.stringify(report).includes("person@example.test"), false);
+});
+
+test("hosted deletion plans cover repository removal installation deletion and repeated cleanup", () => {
+  const repositoryRemoval = createHostedDeletionPlan({
+    trigger: "repository_removed",
+    installationId: 123,
+    repositoryId: 456,
+    requestedAt: "2026-05-23T12:00:00.000Z"
+  });
+  const installationDeletion = createHostedDeletionPlan({
+    trigger: "installation_deleted",
+    installationId: 123,
+    requestedAt: "2026-05-23T12:00:00.000Z"
+  });
+  const repeated = createHostedDeletionPlan({
+    trigger: "repeated_cleanup",
+    installationId: 123,
+    repositoryId: 456,
+    requestedAt: "2026-05-23T12:05:00.000Z"
+  });
+
+  assert.equal(
+    getHostedDeletionIdempotencyKey({
+      trigger: "repository_removed",
+      installationId: 123,
+      repositoryId: 456
+    }),
+    "repository_removed:123:456"
+  );
+  assert.equal(repositoryRemoval.scope, "repository");
+  assert.equal(repositoryRemoval.deleteCompactReports, true);
+  assert.equal(repositoryRemoval.cancelQueuedJobs, true);
+  assert.equal(repositoryRemoval.deleteWorkerCheckouts, true);
+  assert.equal(repositoryRemoval.deleteRawSource, false);
+  assert.equal(repositoryRemoval.deleteRawDiffs, false);
+  assert.equal(repositoryRemoval.deleteSecrets, false);
+  assert.equal(repositoryRemoval.deleteCustomerPayloads, false);
+  assert.equal(repositoryRemoval.deleteGitHubOwnedCheckRuns, false);
+  assert.equal(repositoryRemoval.auditRecordRetentionDays, 90);
+
+  assert.equal(installationDeletion.scope, "installation");
+  assert.equal(installationDeletion.repositoryId, undefined);
+  assert.equal(installationDeletion.idempotencyKey, "installation_deleted:123:all");
+  assert.equal(installationDeletion.preserveAuditRecord, true);
+
+  assert.equal(repeated.idempotent, true);
+  assert.equal(repeated.idempotencyKey, "repeated_cleanup:123:456");
+  assert.deepEqual(repeated.visibleUserMessage, repositoryRemoval.visibleUserMessage);
 });

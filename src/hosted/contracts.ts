@@ -121,8 +121,43 @@ export interface CompactHostedReport {
   workerCheckoutDeletion: "after_scan_completion";
 }
 
+export type HostedDeletionTrigger =
+  | "repository_removed"
+  | "installation_deleted"
+  | "repeated_cleanup";
+
+export interface HostedDeletionPlanInput {
+  trigger: HostedDeletionTrigger;
+  installationId: number;
+  repositoryId?: number;
+  requestedAt: string;
+  auditRecordRetentionDays?: number;
+}
+
+export interface HostedDeletionPlan {
+  trigger: HostedDeletionTrigger;
+  scope: "repository" | "installation";
+  installationId: number;
+  repositoryId?: number;
+  requestedAt: string;
+  idempotencyKey: string;
+  idempotent: true;
+  deleteCompactReports: true;
+  cancelQueuedJobs: true;
+  deleteWorkerCheckouts: true;
+  deleteRawSource: false;
+  deleteRawDiffs: false;
+  deleteSecrets: false;
+  deleteCustomerPayloads: false;
+  deleteGitHubOwnedCheckRuns: false;
+  preserveAuditRecord: true;
+  auditRecordRetentionDays: number;
+  visibleUserMessage: string;
+}
+
 export const HOSTED_PRIVACY_DEFAULTS = {
   retentionDays: 30,
+  auditRecordRetentionDays: 90,
   modelTraining: "disabled",
   deleteWorkerCheckout: "after_scan_completion"
 } as const;
@@ -277,6 +312,46 @@ export function createCompactHostedReport(input: CompactHostedReportInput): Comp
     retentionDays: resolveHostedRetentionDays({ teamRequestedDays: input.retentionDays }),
     modelTraining: HOSTED_PRIVACY_DEFAULTS.modelTraining,
     workerCheckoutDeletion: HOSTED_PRIVACY_DEFAULTS.deleteWorkerCheckout
+  };
+}
+
+export function getHostedDeletionIdempotencyKey(input: {
+  trigger: HostedDeletionTrigger;
+  installationId: number;
+  repositoryId?: number;
+}): string {
+  return [input.trigger, input.installationId, input.repositoryId ?? "all"].join(":");
+}
+
+export function createHostedDeletionPlan(input: HostedDeletionPlanInput): HostedDeletionPlan {
+  const scope = input.trigger === "installation_deleted" ? "installation" : "repository";
+  const repositoryId = scope === "repository" ? input.repositoryId : undefined;
+
+  return {
+    trigger: input.trigger,
+    scope,
+    installationId: input.installationId,
+    ...(repositoryId === undefined ? {} : { repositoryId }),
+    requestedAt: input.requestedAt,
+    idempotencyKey: getHostedDeletionIdempotencyKey({
+      trigger: input.trigger,
+      installationId: input.installationId,
+      repositoryId
+    }),
+    idempotent: true,
+    deleteCompactReports: true,
+    cancelQueuedJobs: true,
+    deleteWorkerCheckouts: true,
+    deleteRawSource: false,
+    deleteRawDiffs: false,
+    deleteSecrets: false,
+    deleteCustomerPayloads: false,
+    deleteGitHubOwnedCheckRuns: false,
+    preserveAuditRecord: true,
+    auditRecordRetentionDays:
+      input.auditRecordRetentionDays ?? HOSTED_PRIVACY_DEFAULTS.auditRecordRetentionDays,
+    visibleUserMessage:
+      "Hosted app-side compact reports and queued work are removed; GitHub-owned check runs remain in GitHub according to repository settings."
   };
 }
 

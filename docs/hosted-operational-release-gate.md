@@ -135,6 +135,7 @@ Required checks:
 - compact report schema excludes raw source, raw diffs, secrets, customer payloads, private URLs, and full file contents.
 - log sampling confirms redaction at ingress, queue, worker, and report boundaries.
 - retention job deletes or expires compact records according to policy.
+- uninstall cleanup follows [docs/hosted-uninstall-data-deletion.md](hosted-uninstall-data-deletion.md) for repository removal, installation deletion, repeated cleanup, and audit record retention.
 - worker checkout directories are deleted after scan completion.
 - model training remains disabled for customer code and findings.
 - local CLI usage remains documented as account-free.

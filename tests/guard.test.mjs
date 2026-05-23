@@ -827,6 +827,31 @@ test("public docs define the hosted operational release gate", async () => {
   assert.doesNotMatch(gate, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs define hosted uninstall and data deletion behavior", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+  const deletion = await readFile(resolve(packageRoot, "docs", "hosted-uninstall-data-deletion.md"), "utf8");
+
+  assert.match(readme, /docs\/hosted-uninstall-data-deletion\.md/);
+  assert.match(design, /docs\/hosted-uninstall-data-deletion\.md/);
+  assert.match(deletion, /Hosted Uninstall And Data Deletion/i);
+  assert.match(deletion, /repository removal from installation/i);
+  assert.match(deletion, /full app uninstall/i);
+  assert.match(deletion, /compact report deletion/i);
+  assert.match(deletion, /queue cancellation/i);
+  assert.match(deletion, /audit record retention/i);
+  assert.match(deletion, /repeated cleanup/i);
+  assert.match(deletion, /deleted immediately/i);
+  assert.match(deletion, /may remain briefly/i);
+  assert.match(deletion, /GitHub-owned check runs/i);
+  assert.match(deletion, /no raw source/i);
+  assert.match(deletion, /no raw diffs/i);
+  assert.match(deletion, /no secrets/i);
+  assert.match(deletion, /customer payloads/i);
+  assert.match(deletion, /local CLI remains available/i);
+  assert.doesNotMatch(deletion, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
 test("hosted GitHub App docs define an implementation-ready permission contract", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");

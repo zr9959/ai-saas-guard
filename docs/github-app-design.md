@@ -52,6 +52,8 @@ The hosted deployment model is scoped in [docs/hosted-deployment-model.md](hoste
 
 The hosted operational release gate is scoped in [docs/hosted-operational-release-gate.md](hosted-operational-release-gate.md). It blocks hosted exposure unless CI, webhook replay, signature verification, token scoping, idempotency, privacy and retention, worker cleanup, monitoring, alerting, rollback, and incident response evidence are fresh for the release candidate.
 
+Hosted uninstall and data deletion behavior is scoped in [docs/hosted-uninstall-data-deletion.md](hosted-uninstall-data-deletion.md). It defines repository removal, full app uninstall, compact report deletion, queue cancellation, limited audit record retention, repeated cleanup idempotency, and user-facing deletion wording.
+
 ## Least-Privilege Permissions
 
 Use least-privilege permissions and install on selected repositories only. This section is the Implementation-ready permission contract for the first hosted GitHub App version.
