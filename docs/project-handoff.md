@@ -57,9 +57,9 @@ Implemented surfaces:
 - hosted operational release gate document requiring hosted CI, webhook replay, dependency and container scanning, privacy and retention verification, worker cleanup, monitoring and alerting, manual rollback, and incident response evidence before exposure
 - hosted uninstall and data deletion document defining repository removal, full app uninstall, compact report deletion, queue cancellation, audit record retention, repeated cleanup idempotency, and user-facing deletion wording
 - hosted pricing and packaging document defining open-source CLI boundaries, free/public repo hosted behavior, private repo hosted behavior, PR comments, saved reports, team policy, optional Launch Review, and no pentest/certification/full-audit claims
-- hosted pre-implementation contracts document, hosted compact report fixture, and pure helpers for queue-safe pull request event parsing from trusted GitHub event fields, bounded check-run summary rendering, idempotent queue cleanup planning, and worker checkout cleanup planning
+- hosted pre-implementation contracts document, hosted compact report fixture, and pure helpers for pull request webhook intake planning, queue-safe pull request event parsing from trusted GitHub event fields, bounded check-run summary rendering, idempotent queue cleanup planning, and worker checkout cleanup planning
 - implementation-ready hosted GitHub App permission contract for required permissions, optional PR comment permissions, selected repository installation, and out-of-scope broad permissions
-- pure hosted GitHub App contract helpers and tests for webhook verification, installation token scoping, scan queue idempotency, compact reports, and retention limits
+- pure hosted GitHub App contract helpers and tests for webhook intake order, webhook verification, installation token scoping, scan queue idempotency, compact reports, and retention limits
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
 - CODEOWNERS for source, tests, docs, workflows, Action, and package metadata
 - JSON output
@@ -113,7 +113,7 @@ GitHub Project:
 
 Current issue set:
 
-- No open roadmap issues after the hosted pre-implementation contract batch.
+- Open hosted MVP roadmap issues: #24 webhook intake, #25 idempotent queue contract, #26 read-only worker checkout, #27 Check summaries, #28 retention/uninstall cleanup, and #29 hosted operational release gate.
 
 CI:
 
@@ -125,7 +125,7 @@ CI:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.10.0`
+- Current release line: `v0.11.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.

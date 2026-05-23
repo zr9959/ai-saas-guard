@@ -4,6 +4,28 @@ This document collects pure hosted contracts that can be tested before any hoste
 
 The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`.
 
+## Pull Request Webhook Intake Planner
+
+The pull request webhook intake planner is the first pure implementation slice for the future hosted service. It composes the earlier contracts into one safe order without starting a server or calling GitHub APIs.
+
+Default behavior:
+
+- verify `X-Hub-Signature-256` before parsing JSON, queueing work, authorizing token scope, or planning repository fetches
+- reject invalid, missing, malformed, or replayed signatures before payload parsing
+- parse only signed pull request payloads
+- derive scan identity from trusted GitHub event fields through the webhook event parser
+- authorize selected-repository installation scope before any fetch is planned
+- upsert one idempotent scan job by installation, repository, pull request, head SHA, and scanner version
+- default to check-run-only output; PR comments remain disabled for the first hosted slice
+
+Privacy boundaries:
+
+- return only trusted identity, queue metadata, stage, reason, and booleans needed by an ingress or worker
+- do not return raw webhook payloads, untrusted PR text, raw source, raw diffs, secrets, or customer payloads
+- keep local CLI usage independent from the hosted service
+
+The exported helper is `planHostedPullRequestWebhookIntake`. It is intentionally service-free: callers still need a real webhook server, queue provider, installation token lookup, worker checkout, scanner execution, compact report storage, and GitHub Checks API writer before any hosted environment exists.
+
 ## Webhook Event Parser
 
 The webhook event parser runs after webhook signature verification. It converts a reduced GitHub `pull_request` webhook payload into a queue-safe scan request identity.
@@ -139,6 +161,9 @@ These contracts do not:
 
 Automated tests must cover:
 
+- signed pull request webhook intake verifies signatures before JSON parsing or queueing
+- accepted pull request webhook intake queues one check-run-only scan request from trusted fields
+- rejected installation scope stops before repository fetch planning
 - accepted pull request events build the expected trusted scan identity
 - unsupported actions are rejected
 - draft pull requests are rejected by default

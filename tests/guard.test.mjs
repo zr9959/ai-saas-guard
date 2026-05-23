@@ -923,6 +923,10 @@ test("public docs define hosted pre-implementation contracts", async () => {
 
   assert.match(readme, /docs\/hosted-preimplementation-contracts\.md/);
   assert.match(contracts, /Hosted Pre-Implementation Contracts/i);
+  assert.match(contracts, /pull request webhook intake planner/i);
+  assert.match(contracts, /planHostedPullRequestWebhookIntake/);
+  assert.match(contracts, /verifies signatures before JSON parsing or queueing/i);
+  assert.match(contracts, /check-run-only scan request/i);
   assert.match(contracts, /webhook event parser/i);
   assert.match(contracts, /trusted GitHub event fields/i);
   assert.match(contracts, /opened, reopened, synchronize, and ready_for_review/i);

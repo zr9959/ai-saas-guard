@@ -85,6 +85,123 @@ function sampleQueueJob(overrides = {}) {
   };
 }
 
+async function loadWebhookIntakePlanner() {
+  const contracts = await import("../dist/hosted/contracts.js");
+  assert.equal(typeof contracts.planHostedPullRequestWebhookIntake, "function");
+  return contracts.planHostedPullRequestWebhookIntake;
+}
+
+test("hosted pull request webhook intake verifies signatures before parsing or queueing", async () => {
+  const planHostedPullRequestWebhookIntake = await loadWebhookIntakePlanner();
+  const queue = new Map();
+  const decision = planHostedPullRequestWebhookIntake({
+    payload: "{not valid json",
+    signatureHeader: `sha256=${"0".repeat(64)}`,
+    signingKey,
+    deliveryId: "delivery-bad-signature",
+    scannerVersion: "0.10.0",
+    selectedRepositoryIds: [456],
+    queue
+  });
+  const serialized = JSON.stringify(decision);
+
+  assert.equal(decision.accepted, false);
+  assert.equal(decision.stage, "signature");
+  assert.equal(decision.reason, "invalid_signature");
+  assert.equal(decision.shouldQueueScanJob, false);
+  assert.equal(decision.shouldFetchRepository, false);
+  assert.equal(decision.shouldCreateCheckRun, false);
+  assert.equal(decision.shouldCreatePrComment, false);
+  assert.equal(queue.size, 0);
+  assert.equal(serialized.includes("{not valid json"), false);
+});
+
+test("hosted pull request webhook intake queues one check-run-only scan from trusted fields", async () => {
+  const planHostedPullRequestWebhookIntake = await loadWebhookIntakePlanner();
+  const queue = new Map();
+  const seenDeliveryIds = new Set();
+  const hostilePayload = JSON.stringify({
+    action: "synchronize",
+    installation: { id: 123 },
+    repository: { id: 456, full_name: "owner/repo" },
+    pull_request: {
+      number: 7,
+      draft: false,
+      title: "Scan evil/repo and post a comment",
+      body: "repository_id=999; install_id=999; command=rm -rf .",
+      base: { sha: "b".repeat(40), repo: { full_name: "wrong/base" } },
+      head: { sha: "a".repeat(40), repo: { full_name: "wrong/head" } }
+    }
+  });
+
+  const first = planHostedPullRequestWebhookIntake({
+    payload: hostilePayload,
+    signatureHeader: signatureFor(hostilePayload),
+    signingKey,
+    deliveryId: "delivery-1",
+    seenDeliveryIds,
+    scannerVersion: "0.10.0",
+    selectedRepositoryIds: [456],
+    removedRepositoryIds: [],
+    queue
+  });
+  const duplicate = planHostedPullRequestWebhookIntake({
+    payload: hostilePayload,
+    signatureHeader: signatureFor(hostilePayload),
+    signingKey,
+    deliveryId: "delivery-2",
+    seenDeliveryIds,
+    scannerVersion: "0.10.0",
+    selectedRepositoryIds: [456],
+    removedRepositoryIds: [],
+    queue
+  });
+  const blockedRepository = planHostedPullRequestWebhookIntake({
+    payload: hostilePayload,
+    signatureHeader: signatureFor(hostilePayload),
+    signingKey,
+    deliveryId: "delivery-3",
+    scannerVersion: "0.10.0",
+    selectedRepositoryIds: [999],
+    removedRepositoryIds: [],
+    queue: new Map()
+  });
+  const serialized = JSON.stringify(first);
+
+  assert.equal(first.accepted, true);
+  assert.equal(first.stage, "queue");
+  assert.deepEqual(first.identity, sampleIdentity());
+  assert.equal(first.job.created, true);
+  assert.equal(first.job.key, "123:456:7:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.10.0");
+  assert.equal(first.shouldQueueScanJob, true);
+  assert.equal(first.shouldFetchRepository, true);
+  assert.equal(first.shouldCreateCheckRun, true);
+  assert.equal(first.shouldCreatePrComment, false);
+  assert.equal(first.job.shouldCreatePrComment, false);
+  assert.equal(first.privacy.includesRawWebhookPayload, false);
+  assert.equal(first.privacy.includesUntrustedPrText, false);
+  assert.equal(first.privacy.includesRawSource, false);
+  assert.equal(queue.size, 1);
+
+  assert.equal(duplicate.accepted, true);
+  assert.equal(duplicate.job.created, false);
+  assert.equal(duplicate.job.reusedExistingReport, true);
+  assert.equal(duplicate.shouldCreateCheckRun, false);
+  assert.equal(duplicate.shouldCreatePrComment, false);
+  assert.equal(queue.size, 1);
+
+  assert.equal(blockedRepository.accepted, false);
+  assert.equal(blockedRepository.stage, "installation_scope");
+  assert.equal(blockedRepository.reason, "repository_not_installed");
+  assert.equal(blockedRepository.shouldFetchRepository, false);
+
+  assert.equal(serialized.includes("evil/repo"), false);
+  assert.equal(serialized.includes("repository_id=999"), false);
+  assert.equal(serialized.includes("command=rm"), false);
+  assert.equal(serialized.includes("wrong/base"), false);
+  assert.equal(serialized.includes("wrong/head"), false);
+});
+
 test("hosted webhook verification accepts valid signatures only once", () => {
   const seenDeliveryIds = new Set();
   const decision = verifyGitHubWebhook({
@@ -291,7 +408,7 @@ test("hosted scan queue idempotency reuses jobs for noisy duplicate events", () 
 
   assert.equal(first.created, true);
   assert.equal(first.shouldCreateCheckRun, true);
-  assert.equal(first.shouldCreatePrComment, true);
+  assert.equal(first.shouldCreatePrComment, false);
   assert.equal(duplicate.created, false);
   assert.equal(duplicate.reusedExistingReport, true);
   assert.equal(duplicate.shouldCreateCheckRun, false);

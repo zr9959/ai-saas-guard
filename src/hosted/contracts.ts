@@ -63,6 +63,57 @@ export interface HostedPullRequestEventDecision {
   identity?: HostedScanIdentity;
 }
 
+export type HostedPullRequestWebhookIntakeStage =
+  | "signature"
+  | "payload"
+  | "event"
+  | "installation_scope"
+  | "queue";
+
+export type HostedPullRequestWebhookIntakeRejectReason =
+  | WebhookRejectReason
+  | PullRequestEventRejectReason
+  | InstallationScopeRejectReason
+  | "invalid_json"
+  | "missing_delivery_id";
+
+export interface HostedPullRequestWebhookIntakeInput {
+  payload: string | Buffer;
+  signatureHeader?: string;
+  signingKey: string | Buffer;
+  deliveryId?: string;
+  seenDeliveryIds?: Set<string>;
+  scannerVersion: string;
+  selectedRepositoryIds: number[];
+  removedRepositoryIds?: number[];
+  queue: Map<string, HostedScanJobState>;
+  allowDraft?: boolean;
+  supportedActions?: string[];
+  manualRerun?: boolean;
+}
+
+export interface HostedPullRequestWebhookIntakeDecision {
+  accepted: boolean;
+  stage: HostedPullRequestWebhookIntakeStage;
+  reason?: HostedPullRequestWebhookIntakeRejectReason;
+  action?: string;
+  deliveryId?: string;
+  identity?: HostedScanIdentity;
+  job?: HostedScanJobDecision;
+  shouldQueueScanJob: boolean;
+  shouldFetchRepository: boolean;
+  shouldCreateCheckRun: boolean;
+  shouldCreatePrComment: false;
+  privacy: {
+    includesRawWebhookPayload: false;
+    includesUntrustedPrText: false;
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesSecrets: false;
+    includesCustomerPayloads: false;
+  };
+}
+
 export type InstallationScopeRejectReason =
   | "installation_mismatch"
   | "repository_not_installed"
@@ -368,6 +419,92 @@ export function verifyGitHubWebhook(input: GitHubWebhookInput): GitHubWebhookDec
   };
 }
 
+export function planHostedPullRequestWebhookIntake(
+  input: HostedPullRequestWebhookIntakeInput
+): HostedPullRequestWebhookIntakeDecision {
+  const signatureDecision = verifyGitHubWebhook({
+    payload: input.payload,
+    signatureHeader: input.signatureHeader,
+    signingKey: input.signingKey,
+    deliveryId: input.deliveryId,
+    seenDeliveryIds: input.seenDeliveryIds
+  });
+
+  if (!signatureDecision.accepted) {
+    return rejectPullRequestWebhookIntake(
+      "signature",
+      signatureDecision.reason ?? "invalid_signature",
+      input.deliveryId
+    );
+  }
+
+  if (!input.deliveryId) {
+    return rejectPullRequestWebhookIntake("event", "missing_delivery_id");
+  }
+
+  const payload = parseJsonPayload(input.payload);
+  if (!payload) {
+    return rejectPullRequestWebhookIntake("payload", "invalid_json", input.deliveryId);
+  }
+
+  const eventDecision = parseHostedPullRequestEvent({
+    payload,
+    scannerVersion: input.scannerVersion,
+    allowDraft: input.allowDraft,
+    supportedActions: input.supportedActions
+  });
+
+  if (!eventDecision.accepted || !eventDecision.identity) {
+    return rejectPullRequestWebhookIntake(
+      "event",
+      eventDecision.reason ?? "missing_required_field",
+      input.deliveryId,
+      eventDecision.action
+    );
+  }
+
+  const scopeDecision = authorizeInstallationTokenScope({
+    identity: eventDecision.identity,
+    installationId: eventDecision.identity.installationId,
+    selectedRepositoryIds: input.selectedRepositoryIds,
+    removedRepositoryIds: input.removedRepositoryIds
+  });
+
+  if (!scopeDecision.authorized) {
+    return rejectPullRequestWebhookIntake(
+      "installation_scope",
+      scopeDecision.reason ?? "repository_not_installed",
+      input.deliveryId,
+      eventDecision.action,
+      eventDecision.identity
+    );
+  }
+
+  const queueDecision = upsertHostedScanJob(input.queue, {
+    identity: eventDecision.identity,
+    deliveryId: input.deliveryId,
+    manualRerun: input.manualRerun
+  });
+  const checkRunOnlyQueueDecision = {
+    ...queueDecision,
+    shouldCreatePrComment: false
+  };
+
+  return {
+    accepted: true,
+    stage: "queue",
+    action: eventDecision.action,
+    deliveryId: input.deliveryId,
+    identity: eventDecision.identity,
+    job: checkRunOnlyQueueDecision,
+    shouldQueueScanJob: queueDecision.created || input.manualRerun === true,
+    shouldFetchRepository: queueDecision.shouldCreateCheckRun,
+    shouldCreateCheckRun: queueDecision.shouldCreateCheckRun,
+    shouldCreatePrComment: false,
+    privacy: hostedWebhookIntakePrivacy()
+  };
+}
+
 export function buildHostedScanIdentity(input: HostedScanIdentityInput): HostedScanIdentity {
   return {
     installationId: input.installationId,
@@ -496,7 +633,7 @@ export function upsertHostedScanJob(
       reusedExistingReport: false,
       attempt: 1,
       shouldCreateCheckRun: true,
-      shouldCreatePrComment: true
+      shouldCreatePrComment: false
     };
   }
 
@@ -753,6 +890,47 @@ function rejectInstallationScope(reason: InstallationScopeRejectReason): Install
     shouldFetchSource: false,
     reason
   };
+}
+
+function rejectPullRequestWebhookIntake(
+  stage: HostedPullRequestWebhookIntakeStage,
+  reason: HostedPullRequestWebhookIntakeRejectReason,
+  deliveryId?: string,
+  action?: string,
+  identity?: HostedScanIdentity
+): HostedPullRequestWebhookIntakeDecision {
+  return {
+    accepted: false,
+    stage,
+    reason,
+    ...(deliveryId === undefined ? {} : { deliveryId }),
+    ...(action === undefined ? {} : { action }),
+    ...(identity === undefined ? {} : { identity }),
+    shouldQueueScanJob: false,
+    shouldFetchRepository: false,
+    shouldCreateCheckRun: false,
+    shouldCreatePrComment: false,
+    privacy: hostedWebhookIntakePrivacy()
+  };
+}
+
+function hostedWebhookIntakePrivacy(): HostedPullRequestWebhookIntakeDecision["privacy"] {
+  return {
+    includesRawWebhookPayload: false,
+    includesUntrustedPrText: false,
+    includesRawSource: false,
+    includesRawDiffs: false,
+    includesSecrets: false,
+    includesCustomerPayloads: false
+  };
+}
+
+function parseJsonPayload(payload: string | Buffer): unknown | undefined {
+  try {
+    return JSON.parse(Buffer.isBuffer(payload) ? payload.toString("utf8") : payload);
+  } catch {
+    return undefined;
+  }
 }
 
 function queueCleanupMatches(

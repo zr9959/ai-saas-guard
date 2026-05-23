@@ -73,8 +73,8 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.10.0`, `v0` |
-| npm package | `ai-saas-guard@0.10.0` |
+| Versioned Action tags | `v0.11.0`, `v0` |
+| npm package | `ai-saas-guard@0.11.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
@@ -214,13 +214,13 @@ Hosted uninstall and data deletion behavior is documented in [docs/hosted-uninst
 
 Hosted pricing and packaging boundaries are documented in [docs/hosted-pricing-packaging.md](docs/hosted-pricing-packaging.md). Core local scanning stays useful without an account; hosted plans may add workflow convenience, saved reports, team policy, and optional human review, but they do not gate local CLI scanning.
 
-Hosted pre-implementation pure contracts are documented in [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md). They cover queue-safe webhook event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, and other service-free helpers exported from `ai-saas-guard/hosted/contracts`.
+Hosted pre-implementation pure contracts are documented in [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md). They now include a pull request webhook intake planner that verifies signatures before parsing or queueing, builds trusted scan identity, authorizes selected-repository scope, and defaults to check-run-only output. They also cover queue-safe webhook event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, and other service-free helpers exported from `ai-saas-guard/hosted/contracts`.
 
 A public hosted compact report schema fixture is available at [examples/hosted-compact-report.json](examples/hosted-compact-report.json). It is synthetic and public-safe: compact evidence only, no raw source, raw diffs, secrets, webhook payload bodies, customer payloads, private URLs, or worker checkout paths.
 
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
-The repository also includes pure pre-implementation hosted contract helpers and tests for webhook verification, installation token scoping, queue idempotency, compact reports, and retention limits. These helpers do not implement or deploy a hosted service.
+The repository also includes pure pre-implementation hosted contract helpers and tests for webhook intake order, webhook verification, installation token scoping, queue idempotency, compact reports, and retention limits. These helpers do not implement or deploy a hosted service.
 
 Users should prefer the local CLI for private repositories, offline review, or no-account workflows where hosted code processing is not acceptable.
 
@@ -254,7 +254,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.10.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.11.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
