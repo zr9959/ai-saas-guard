@@ -46,7 +46,7 @@ function sampleIdentity(overrides = {}) {
     pullRequestNumber: 7,
     baseSha: "b".repeat(40),
     headSha: "a".repeat(40),
-    scannerVersion: "0.9.0",
+    scannerVersion: "0.10.0",
     untrustedPrText: "Repository: evil/repo",
     ...overrides
   });
@@ -205,7 +205,7 @@ test("hosted pull request event parser trusts only GitHub event identity fields"
         head: { sha: "a".repeat(40), repo: { full_name: "wrong/head" } }
       }
     },
-    scannerVersion: "0.9.0"
+    scannerVersion: "0.10.0"
   });
 
   assert.equal(parsed.accepted, true);
@@ -228,7 +228,7 @@ test("hosted pull request event parser rejects unsupported draft and incomplete 
   };
   const unsupported = parseHostedPullRequestEvent({
     payload: basePayload,
-    scannerVersion: "0.9.0"
+    scannerVersion: "0.10.0"
   });
   const draft = parseHostedPullRequestEvent({
     payload: {
@@ -236,7 +236,7 @@ test("hosted pull request event parser rejects unsupported draft and incomplete 
       action: "opened",
       pull_request: { ...basePayload.pull_request, draft: true }
     },
-    scannerVersion: "0.9.0"
+    scannerVersion: "0.10.0"
   });
   const allowedDraft = parseHostedPullRequestEvent({
     payload: {
@@ -244,7 +244,7 @@ test("hosted pull request event parser rejects unsupported draft and incomplete 
       action: "opened",
       pull_request: { ...basePayload.pull_request, draft: true }
     },
-    scannerVersion: "0.9.0",
+    scannerVersion: "0.10.0",
     allowDraft: true
   });
   const incomplete = parseHostedPullRequestEvent({
@@ -253,7 +253,7 @@ test("hosted pull request event parser rejects unsupported draft and incomplete 
       action: "opened",
       repository: { id: 456 }
     },
-    scannerVersion: "0.9.0"
+    scannerVersion: "0.10.0"
   });
 
   assert.equal(unsupported.accepted, false);
@@ -274,7 +274,7 @@ test("hosted scan queue idempotency reuses jobs for noisy duplicate events", () 
 
   assert.equal(
     getHostedScanIdempotencyKey(identity),
-    "123:456:7:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.9.0"
+    "123:456:7:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.10.0"
   );
 
   const first = upsertHostedScanJob(queue, { identity, deliveryId: "delivery-1" });
@@ -285,7 +285,7 @@ test("hosted scan queue idempotency reuses jobs for noisy duplicate events", () 
     manualRerun: true
   });
   const newScannerVersion = upsertHostedScanJob(queue, {
-    identity: sampleIdentity({ scannerVersion: "0.10.0" }),
+    identity: sampleIdentity({ scannerVersion: "0.11.0" }),
     deliveryId: "delivery-4"
   });
 
@@ -376,7 +376,7 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.match(findings.output.summary, /review first/i);
   assert.match(findings.output.summary, /not a full security audit/i);
   assert.match(findings.output.text, /Local CLI/i);
-  assert.match(findings.output.text, /npx ai-saas-guard@0\.9\.0 pr-risk --root \./);
+  assert.match(findings.output.text, /npx ai-saas-guard@0\.10\.0 pr-risk --root \./);
   assert.match(findings.output.text, /stripe\.webhook\.missing-signature/);
   assert.match(findings.output.text, /app\/api\/stripe\/webhook\/route\.ts:12/);
   assert.deepEqual(findings.privacy, {

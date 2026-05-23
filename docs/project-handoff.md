@@ -113,19 +113,19 @@ GitHub Project:
 
 Current issue set:
 
-- #23 `Roadmap: define hosted report schema fixture`
+- No open roadmap issues after the hosted pre-implementation contract batch.
 
 CI:
 
 - Workflow: `.github/workflows/ci.yml`
 - Runs on pull requests and pushes to `main`
 - Uses `permissions: contents: read`
-- Latest verified run after setup succeeded
+- Latest verified run for the hosted report fixture batch succeeded
 
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.9.0`
+- Current release line: `v0.10.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.
