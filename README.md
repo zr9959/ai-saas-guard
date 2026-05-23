@@ -50,8 +50,9 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Local CLI from source | Available for development |
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
-| Versioned Action tags | `v0.2.0`, `v0` |
-| npm package | `ai-saas-guard@0.2.0` |
+| Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
+| Versioned Action tags | `v0.3.0`, `v0` |
+| npm package | `ai-saas-guard@0.3.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
@@ -77,6 +78,7 @@ Machine-readable output:
 npx ai-saas-guard@latest scan --root /path/to/your-saas --json
 npx ai-saas-guard@latest scan --root /path/to/your-saas --sarif > ai-saas-guard.sarif
 npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --markdown > ai-saas-guard-pr.md
+npx ai-saas-guard@latest scan --root /path/to/your-saas --config <file> --json
 npx ai-saas-guard@latest scan --root /path/to/your-saas --fail-on high
 ```
 
@@ -168,9 +170,28 @@ If `--base` cannot be resolved, `pr-risk` emits `pr-risk.diff-unavailable` inste
 | `check-stripe` | Inspect webhook handlers and billing lifecycle coverage |
 | `check-mcp` | Inventory MCP configs and classify side effects |
 
+## Project Configuration
+
+Add `.ai-saas-guard.json` at the repository root to tune findings without changing scanner code. The CLI auto-loads this file from `--root` when it exists. Use `--config <file>` to point to a different JSON file.
+
+```json
+{
+  "failOn": "high",
+  "rules": {
+    "stripe.webhook.missing-signature": "off",
+    "stripe.webhook.missing-idempotency": "critical",
+    "deploy.env.example-missing": "info"
+  }
+}
+```
+
+`rules` is keyed by published rule ID from [docs/rules.md](docs/rules.md). Set a rule to `off` to remove matching findings from terminal, JSON, SARIF, and markdown output. Set a rule to `critical`, `high`, `medium`, `low`, or `info` to override severity before summaries and `--fail-on` are evaluated.
+
+`failOn` sets the default CI failure threshold for the project. A CLI `--fail-on` value takes precedence, so local runs can still use `--fail-on none` or a stricter threshold.
+
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.2.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.3.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
@@ -194,6 +215,7 @@ jobs:
           root: ${{ github.workspace }}
           base: origin/main
           fail-on: high
+          config: .ai-saas-guard.json
 ```
 
 For SARIF upload:
@@ -298,10 +320,10 @@ Open-source core:
 
 Near-term priorities:
 
-- configurable severity and rule toggles
 - expanded Supabase RLS fixtures
 - Stripe webhook replay cookbook
 - launch-readiness checklist content
+- false-positive suppression and rule stability labels
 
 Potential paid layer later:
 

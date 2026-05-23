@@ -23,6 +23,10 @@ inputs:
     description: Base ref for pr-risk.
     required: false
     default: ""
+  config:
+    description: Optional ai-saas-guard JSON config path.
+    required: false
+    default: ""
   output:
     description: Optional path to write output while also keeping the command exit code.
     required: false
@@ -49,6 +53,7 @@ runs:
         INPUT_FORMAT: ${{ inputs.format }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
         INPUT_BASE: ${{ inputs.base }}
+        INPUT_CONFIG: ${{ inputs.config }}
         INPUT_OUTPUT: ${{ inputs.output }}
       run: |
         set -o pipefail
@@ -93,6 +98,10 @@ runs:
 
         if [ -n "${INPUT_BASE}" ]; then
           args+=("--base" "${INPUT_BASE}")
+        fi
+
+        if [ -n "${INPUT_CONFIG}" ]; then
+          args+=("--config" "${INPUT_CONFIG}")
         fi
 
         if [ -n "${INPUT_OUTPUT}" ]; then

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { resolve } from "node:path";
+import { applyGuardConfig, loadGuardConfig } from "./config.js";
 import { checkMcp, checkStripe, checkSupabase, classifyPrRisk, scanRepository } from "./index.js";
 import { formatJsonReport } from "./report/json.js";
 import { formatMarkdownReport } from "./report/markdown.js";
@@ -14,6 +15,7 @@ interface ParsedArgs {
   format: "terminal" | "json" | "sarif" | "markdown";
   base?: string;
   failOn?: Severity | "none";
+  configPath?: string;
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -23,6 +25,7 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
+  const config = await loadGuardConfig(args.rootDir, args.configPath);
   let report: BaseReport;
   switch (args.command) {
     case "scan":
@@ -45,10 +48,12 @@ async function main(argv: string[]): Promise<number> {
       return 2;
   }
 
+  report = applyGuardConfig(report, config);
   process.stdout.write(formatReport(report, args.format));
 
-  if (shouldFail(report, args.failOn)) {
-    process.stderr.write(`Failing because findings met --fail-on ${args.failOn}\n`);
+  const failOn = args.failOn ?? config.failOn;
+  if (shouldFail(report, failOn)) {
+    process.stderr.write(`Failing because findings met --fail-on ${failOn}\n`);
     return 1;
   }
 
@@ -105,6 +110,14 @@ function parseArgs(argv: string[]): ParsedArgs {
       const value = argv[index + 1];
       if (!isFailOnValue(value)) throw new Error("--fail-on requires critical, high, medium, low, info, or none");
       result.failOn = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--config") {
+      const value = argv[index + 1];
+      if (!value) throw new Error("--config requires a path");
+      result.configPath = resolve(value);
       index += 1;
       continue;
     }
@@ -167,11 +180,11 @@ function helpText(): string {
 Repo-local launch-readiness scanner for AI-built SaaS apps.
 
 Usage:
-  ai-saas-guard scan [--root <repo>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard check-supabase [--root <repo>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard check-stripe [--root <repo>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard check-mcp [--root <repo>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard pr-risk [--root <repo>] [--base <branch>] [--json|--sarif|--markdown] [--fail-on <severity>]
+  ai-saas-guard scan [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
+  ai-saas-guard check-supabase [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
+  ai-saas-guard check-stripe [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
+  ai-saas-guard check-mcp [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
+  ai-saas-guard pr-risk [--root <repo>] [--config <file>] [--base <branch>] [--json|--sarif|--markdown] [--fail-on <severity>]
 
 Defaults:
   - read-only
@@ -180,6 +193,7 @@ Defaults:
   - terminal output by default, JSON with --json
   - SARIF output for GitHub code scanning with --sarif
   - PR-focused markdown summary with --markdown
+  - project config auto-loaded from .ai-saas-guard.json when present
 `;
 }
 

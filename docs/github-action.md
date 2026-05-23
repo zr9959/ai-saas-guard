@@ -2,7 +2,7 @@
 
 `ai-saas-guard` ships as a composite GitHub Action for pull request and code scanning workflows.
 
-Use `zr9959/ai-saas-guard@v0` for the latest compatible pre-1.0 Action. Use a specific tag such as `v0.2.0` or a reviewed commit SHA when reproducibility is more important than automatic minor updates.
+Use `zr9959/ai-saas-guard@v0` for the latest compatible pre-1.0 Action. Use a specific tag such as `v0.3.0` or a reviewed commit SHA when reproducibility is more important than automatic minor updates.
 
 ## PR Summary
 
@@ -29,12 +29,28 @@ jobs:
           command: pr-risk
           root: ${{ github.workspace }}
           base: origin/main
+          config: .ai-saas-guard.json
           format: markdown
           output: ai-saas-guard-pr.md
       - run: cat ai-saas-guard-pr.md >> "$GITHUB_STEP_SUMMARY"
 ```
 
 Use markdown for PR review triage. It is intentionally short enough for a GitHub step summary or a PR comment created by your own workflow. It does not require a hosted service.
+
+## Project Config
+
+The Action auto-loads `.ai-saas-guard.json` from `root` when the file exists. Use the `config` input when the policy file lives somewhere else or when you want the workflow to be explicit:
+
+```yaml
+      - uses: zr9959/ai-saas-guard@v0
+        with:
+          command: scan
+          root: ${{ github.workspace }}
+          config: .ai-saas-guard.json
+          fail-on: none
+```
+
+Project config can disable noisy rules, override severity by rule ID, and set a default `failOn` threshold. A workflow `fail-on` input overrides the config threshold for that run.
 
 ## SARIF Upload
 

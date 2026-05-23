@@ -368,6 +368,124 @@ test("CLI --fail-on exits non-zero only because findings meet the threshold", as
   assert.doesNotMatch(result.stderr, /Unknown argument/);
 });
 
+test("CLI applies checked-in rule config to JSON, SARIF, and terminal output", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-config-"));
+
+  try {
+    await writeMinimalStripeWebhook(rootDir);
+    await writeFile(
+      resolve(rootDir, ".ai-saas-guard.json"),
+      `${JSON.stringify(
+        {
+          rules: {
+            "stripe.webhook.missing-signature": "off",
+            "stripe.webhook.missing-critical-event": "off",
+            "stripe.webhook.missing-idempotency": "low"
+          }
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const jsonResult = await runCli(["check-stripe", "--root", rootDir, "--json"]);
+    assert.equal(jsonResult.code, 0);
+    const report = JSON.parse(jsonResult.stdout);
+    const ruleIds = findingRuleIds(report);
+
+    assert.deepEqual(ruleIds, ["stripe.webhook.missing-idempotency"]);
+    assert.equal(report.findings[0].severity, "low");
+    assert.deepEqual(report.summary, {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 1,
+      info: 0,
+      total: 1
+    });
+
+    const sarifResult = await runCli(["check-stripe", "--root", rootDir, "--sarif"]);
+    assert.equal(sarifResult.code, 0);
+    const sarif = JSON.parse(sarifResult.stdout);
+    assert.deepEqual(
+      sarif.runs[0].results.map((result) => result.ruleId),
+      ["stripe.webhook.missing-idempotency"]
+    );
+    assert.equal(sarif.runs[0].results[0].level, "warning");
+
+    const terminalResult = await runCli(["check-stripe", "--root", rootDir]);
+    assert.equal(terminalResult.code, 0);
+    assert.match(terminalResult.stdout, /\[LOW\] Stripe webhook lacks obvious duplicate event idempotency/);
+    assert.doesNotMatch(terminalResult.stdout, /missing-signature|missing-critical-event/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("CLI uses config failOn unless --fail-on overrides it", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-config-fail-on-"));
+  const configPath = resolve(rootDir, "guard.config.json");
+
+  try {
+    await writeMinimalStripeWebhook(rootDir);
+    await writeFile(
+      configPath,
+      `${JSON.stringify(
+        {
+          failOn: "low",
+          rules: {
+            "stripe.webhook.missing-signature": "off",
+            "stripe.webhook.missing-critical-event": "off",
+            "stripe.webhook.missing-idempotency": "low"
+          }
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const configThresholdResult = await runCli(["check-stripe", "--root", rootDir, "--config", configPath]);
+    assert.equal(configThresholdResult.code, 1);
+    assert.match(configThresholdResult.stderr, /Failing because findings met --fail-on low/);
+
+    const cliOverrideResult = await runCli([
+      "check-stripe",
+      "--root",
+      rootDir,
+      "--config",
+      configPath,
+      "--fail-on",
+      "none"
+    ]);
+    assert.equal(cliOverrideResult.code, 0);
+    assert.doesNotMatch(cliOverrideResult.stderr, /Failing because/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("CLI rejects unknown rule IDs in project config", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-config-invalid-"));
+
+  try {
+    await writeFile(
+      resolve(rootDir, ".ai-saas-guard.json"),
+      `${JSON.stringify({
+        rules: {
+          "not.a.real-rule": "off"
+        }
+      })}\n`
+    );
+
+    const result = await runCli(["scan", "--root", rootDir, "--json"]);
+
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /Unknown rule ID in config: not\.a\.real-rule/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("repository exposes a GitHub Action wrapper", async () => {
   const action = await readFile(resolve(packageRoot, "action.yml"), "utf8");
 
@@ -384,6 +502,7 @@ test("GitHub Action does not interpolate action inputs directly inside bash", as
   assert.doesNotMatch(runStep[1], /\$\{\{\s*inputs\./);
   assert.match(action, /INPUT_COMMAND:\s*\$\{\{\s*inputs\.command\s*\}\}/);
   assert.match(action, /INPUT_OUTPUT:\s*\$\{\{\s*inputs\.output\s*\}\}/);
+  assert.match(action, /INPUT_CONFIG:\s*\$\{\{\s*inputs\.config\s*\}\}/);
   assert.match(action, /run:\s+npm ci/);
 });
 
@@ -396,6 +515,7 @@ test("GitHub Action validates enumerated inputs before invoking the CLI", async 
   assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif\|markdown/);
   assert.match(runStep[1], /case "\$\{INPUT_FAIL_ON\}" in[\s\S]*none\|critical\|high\|medium\|low\|info/);
   assert.match(runStep[1], /--markdown/);
+  assert.match(runStep[1], /--config/);
   assert.match(runStep[1], /exit 2/);
 });
 
@@ -406,8 +526,12 @@ test("public docs explain PR summary, SARIF, and the v0 Action tag", async () =>
   assert.match(readme, /zr9959\/ai-saas-guard@v0/);
   assert.match(readme, /format:\s*markdown/);
   assert.match(readme, /GITHUB_STEP_SUMMARY/);
+  assert.match(readme, /\.ai-saas-guard\.json/);
+  assert.match(readme, /--config <file>/);
+  assert.match(readme, /"stripe\.webhook\.missing-signature": "off"/);
   assert.match(actionDocs, /PR summary/i);
   assert.match(actionDocs, /SARIF/i);
+  assert.match(actionDocs, /config:\s*\.ai-saas-guard\.json/);
   assert.match(actionDocs, /Use SARIF/i);
   assert.match(actionDocs, /Use markdown/i);
 });
@@ -471,4 +595,20 @@ async function runCli(args) {
       stderr: error.stderr ?? ""
     };
   }
+}
+
+async function writeMinimalStripeWebhook(rootDir) {
+  const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");
+  await mkdir(apiDir, { recursive: true });
+  await writeFile(
+    resolve(apiDir, "route.ts"),
+    `export async function POST(req: Request) {
+  const event = await req.json();
+  if (event.type === "checkout.session.completed") {
+    await grantAccess(event.data.object.customer);
+  }
+  return Response.json({ ok: true });
+}
+`
+  );
 }
