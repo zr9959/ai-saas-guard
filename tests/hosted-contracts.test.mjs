@@ -91,6 +91,12 @@ async function loadWebhookIntakePlanner() {
   return contracts.planHostedPullRequestWebhookIntake;
 }
 
+async function loadScanQueuePlanner() {
+  const contracts = await import("../dist/hosted/contracts.js");
+  assert.equal(typeof contracts.planHostedScanQueueUpsert, "function");
+  return contracts.planHostedScanQueueUpsert;
+}
+
 test("hosted pull request webhook intake verifies signatures before parsing or queueing", async () => {
   const planHostedPullRequestWebhookIntake = await loadWebhookIntakePlanner();
   const queue = new Map();
@@ -418,6 +424,118 @@ test("hosted scan queue idempotency reuses jobs for noisy duplicate events", () 
   assert.equal(rerun.reusedExistingReport, true);
   assert.equal(newScannerVersion.created, true);
   assert.equal(queue.size, 2);
+});
+
+test("hosted durable scan queue deduplicates queued running and completed jobs", async () => {
+  const planHostedScanQueueUpsert = await loadScanQueuePlanner();
+  const queue = new Map();
+  const identity = sampleIdentity();
+  const first = planHostedScanQueueUpsert({
+    identity,
+    deliveryId: "delivery-1",
+    requestedAt: "2026-05-23T15:20:00.000Z",
+    queue,
+    rawSource: "const secret = 'redacted';",
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    secretValues: ["redacted"],
+    untrustedPrText: "repository_id=999; command=rm -rf .",
+    customerPayload: { email: "person@example.test" }
+  });
+  const queuedDuplicate = planHostedScanQueueUpsert({
+    identity,
+    deliveryId: "delivery-2",
+    requestedAt: "2026-05-23T15:21:00.000Z",
+    queue
+  });
+
+  queue.get(first.key).status = "running";
+  const runningDuplicate = planHostedScanQueueUpsert({
+    identity,
+    deliveryId: "delivery-3",
+    requestedAt: "2026-05-23T15:22:00.000Z",
+    queue
+  });
+
+  queue.get(first.key).status = "completed";
+  queue.get(first.key).reportId = "compact-report-1";
+  const completedDuplicate = planHostedScanQueueUpsert({
+    identity,
+    deliveryId: "delivery-4",
+    requestedAt: "2026-05-23T15:23:00.000Z",
+    queue
+  });
+  const serialized = JSON.stringify([first, queuedDuplicate, runningDuplicate, completedDuplicate]);
+
+  assert.equal(first.created, true);
+  assert.equal(first.reusedExistingJob, false);
+  assert.equal(first.queueRecord.status, "queued");
+  assert.equal(first.shouldEnqueueWorker, true);
+  assert.equal(first.shouldReuseCompletedReport, false);
+  assert.equal(first.shouldCreatePrComment, false);
+  assert.deepEqual(Object.keys(first.queuePayload).sort(), [
+    "attempt",
+    "deliveryId",
+    "identity",
+    "key",
+    "requestedAt",
+    "source"
+  ]);
+
+  assert.equal(queuedDuplicate.created, false);
+  assert.equal(queuedDuplicate.reusedExistingJob, true);
+  assert.equal(queuedDuplicate.existingStatus, "queued");
+  assert.equal(queuedDuplicate.shouldEnqueueWorker, false);
+  assert.equal(runningDuplicate.existingStatus, "running");
+  assert.equal(runningDuplicate.shouldEnqueueWorker, false);
+  assert.equal(completedDuplicate.existingStatus, "completed");
+  assert.equal(completedDuplicate.shouldReuseCompletedReport, true);
+  assert.equal(completedDuplicate.shouldEnqueueWorker, false);
+  assert.deepEqual(queue.get(first.key).deliveryIds, [
+    "delivery-1",
+    "delivery-2",
+    "delivery-3",
+    "delivery-4"
+  ]);
+  assert.equal(queue.size, 1);
+
+  assert.equal(serialized.includes("rawSource"), false);
+  assert.equal(serialized.includes("rawDiff"), false);
+  assert.equal(serialized.includes("redacted"), false);
+  assert.equal(serialized.includes("repository_id=999"), false);
+  assert.equal(serialized.includes("person@example.test"), false);
+});
+
+test("hosted durable scan queue manual rerun increments attempt without changing logical key", async () => {
+  const planHostedScanQueueUpsert = await loadScanQueuePlanner();
+  const queue = new Map();
+  const identity = sampleIdentity();
+  const first = planHostedScanQueueUpsert({
+    identity,
+    deliveryId: "delivery-1",
+    requestedAt: "2026-05-23T15:25:00.000Z",
+    queue
+  });
+  queue.get(first.key).status = "completed";
+
+  const rerun = planHostedScanQueueUpsert({
+    identity,
+    deliveryId: "delivery-rerun",
+    requestedAt: "2026-05-23T15:26:00.000Z",
+    queue,
+    manualRerun: true
+  });
+
+  assert.equal(rerun.key, first.key);
+  assert.equal(rerun.created, false);
+  assert.equal(rerun.reusedExistingJob, false);
+  assert.equal(rerun.attempt, 2);
+  assert.equal(rerun.queueRecord.status, "queued");
+  assert.equal(rerun.queuePayload.attempt, 2);
+  assert.equal(rerun.shouldEnqueueWorker, true);
+  assert.equal(rerun.shouldReuseCompletedReport, false);
+  assert.equal(rerun.shouldCreateCheckRun, true);
+  assert.equal(rerun.shouldCreatePrComment, false);
+  assert.deepEqual(queue.get(first.key).deliveryIds, ["delivery-1", "delivery-rerun"]);
 });
 
 test("hosted compact reports keep retention conservative and avoid raw source", () => {

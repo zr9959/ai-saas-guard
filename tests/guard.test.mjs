@@ -927,6 +927,10 @@ test("public docs define hosted pre-implementation contracts", async () => {
   assert.match(contracts, /planHostedPullRequestWebhookIntake/);
   assert.match(contracts, /verifies signatures before JSON parsing or queueing/i);
   assert.match(contracts, /check-run-only scan request/i);
+  assert.match(contracts, /durable scan queue planner/i);
+  assert.match(contracts, /planHostedScanQueueUpsert/);
+  assert.match(contracts, /duplicate deliveries reuse queued, running, and completed jobs/i);
+  assert.match(contracts, /manual reruns increment attempt/i);
   assert.match(contracts, /webhook event parser/i);
   assert.match(contracts, /trusted GitHub event fields/i);
   assert.match(contracts, /opened, reopened, synchronize, and ready_for_review/i);

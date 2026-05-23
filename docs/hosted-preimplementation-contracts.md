@@ -26,6 +26,27 @@ Privacy boundaries:
 
 The exported helper is `planHostedPullRequestWebhookIntake`. It is intentionally service-free: callers still need a real webhook server, queue provider, installation token lookup, worker checkout, scanner execution, compact report storage, and GitHub Checks API writer before any hosted environment exists.
 
+## Durable Scan Queue Planner
+
+The durable scan queue planner defines how the future hosted service should create or reuse scan jobs once a signed pull request webhook has produced trusted scan identity. It is a pure planner only: it does not connect to a queue provider, run a worker, fetch source, write reports, or call GitHub APIs.
+
+Default behavior:
+
+- compute the same logical scan key from installation ID, repository ID, pull request number, head SHA, and scanner version
+- create one queued job when no matching job exists
+- reuse existing queued, running, or completed jobs for duplicate deliveries
+- reuse completed compact reports instead of enqueueing duplicate worker work
+- allow manual reruns to increment `attempt` while keeping the same logical scan key
+- keep the first hosted slice check-run-only; PR comments remain disabled
+
+Queue payload boundaries:
+
+- include only scan identity, job key, delivery ID, attempt, requested time, and source
+- do not include raw source, raw diffs, secret values, untrusted PR text, webhook payload bodies, customer payloads, private URLs, or worker checkout paths
+- return safe queue metadata that can be stored by a durable queue without leaking source code
+
+The exported helper is `planHostedScanQueueUpsert`. It is intended to be the queue-provider-independent contract for the first real hosted queue implementation.
+
 ## Webhook Event Parser
 
 The webhook event parser runs after webhook signature verification. It converts a reduced GitHub `pull_request` webhook payload into a queue-safe scan request identity.
@@ -164,6 +185,10 @@ Automated tests must cover:
 - signed pull request webhook intake verifies signatures before JSON parsing or queueing
 - accepted pull request webhook intake queues one check-run-only scan request from trusted fields
 - rejected installation scope stops before repository fetch planning
+- durable scan queue planning creates one queued job for a new trusted scan key
+- duplicate deliveries reuse queued, running, and completed jobs without enqueueing duplicate worker work
+- completed duplicate jobs reuse compact reports
+- manual reruns increment attempt without changing the logical scan key
 - accepted pull request events build the expected trusted scan identity
 - unsupported actions are rejected
 - draft pull requests are rejected by default

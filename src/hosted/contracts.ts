@@ -155,6 +155,61 @@ export interface HostedScanJobDecision {
 
 export type HostedQueueJobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 
+export interface HostedScanQueueRecord {
+  key: string;
+  identity: HostedScanIdentity;
+  status: HostedQueueJobStatus;
+  attempt: number;
+  deliveryIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  reportId?: string;
+}
+
+export interface HostedScanQueuePayload {
+  key: string;
+  identity: HostedScanIdentity;
+  deliveryId: string;
+  attempt: number;
+  requestedAt: string;
+  source: "github_pull_request";
+}
+
+export interface HostedScanQueueUpsertInput {
+  identity: HostedScanIdentity;
+  deliveryId: string;
+  requestedAt: string;
+  queue: Map<string, HostedScanQueueRecord>;
+  manualRerun?: boolean;
+  rawSource?: string;
+  rawDiff?: string;
+  secretValues?: string[];
+  untrustedPrText?: string;
+  customerPayload?: unknown;
+}
+
+export interface HostedScanQueueUpsertDecision {
+  key: string;
+  idempotent: true;
+  created: boolean;
+  reusedExistingJob: boolean;
+  existingStatus?: HostedQueueJobStatus;
+  attempt: number;
+  queueRecord: HostedScanQueueRecord;
+  queuePayload: HostedScanQueuePayload;
+  shouldEnqueueWorker: boolean;
+  shouldReuseCompletedReport: boolean;
+  shouldCreateCheckRun: boolean;
+  shouldCreatePrComment: false;
+  privacy: {
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesSecrets: false;
+    includesUntrustedPrText: false;
+    includesCustomerPayloads: false;
+  };
+}
+
 export type HostedQueueCleanupTrigger =
   | "repository_removed"
   | "installation_deleted"
@@ -655,6 +710,86 @@ export function upsertHostedScanJob(
   };
 }
 
+export function planHostedScanQueueUpsert(
+  input: HostedScanQueueUpsertInput
+): HostedScanQueueUpsertDecision {
+  const key = getHostedScanIdempotencyKey(input.identity);
+  const existing = input.queue.get(key);
+
+  if (!existing) {
+    const record: HostedScanQueueRecord = {
+      key,
+      identity: input.identity,
+      status: "queued",
+      attempt: 1,
+      deliveryIds: [input.deliveryId],
+      createdAt: input.requestedAt,
+      updatedAt: input.requestedAt
+    };
+    input.queue.set(key, record);
+
+    return {
+      key,
+      idempotent: true,
+      created: true,
+      reusedExistingJob: false,
+      attempt: record.attempt,
+      queueRecord: { ...record, deliveryIds: [...record.deliveryIds] },
+      queuePayload: createHostedScanQueuePayload(record, input.deliveryId, input.requestedAt),
+      shouldEnqueueWorker: true,
+      shouldReuseCompletedReport: false,
+      shouldCreateCheckRun: true,
+      shouldCreatePrComment: false,
+      privacy: hostedScanQueuePrivacy()
+    };
+  }
+
+  if (!existing.deliveryIds.includes(input.deliveryId)) {
+    existing.deliveryIds.push(input.deliveryId);
+  }
+
+  const existingStatus = existing.status;
+  if (input.manualRerun) {
+    existing.attempt += 1;
+    existing.status = "queued";
+    existing.updatedAt = input.requestedAt;
+
+    return {
+      key,
+      idempotent: true,
+      created: false,
+      reusedExistingJob: false,
+      existingStatus,
+      attempt: existing.attempt,
+      queueRecord: cloneHostedScanQueueRecord(existing),
+      queuePayload: createHostedScanQueuePayload(existing, input.deliveryId, input.requestedAt),
+      shouldEnqueueWorker: true,
+      shouldReuseCompletedReport: false,
+      shouldCreateCheckRun: true,
+      shouldCreatePrComment: false,
+      privacy: hostedScanQueuePrivacy()
+    };
+  }
+
+  existing.updatedAt = input.requestedAt;
+
+  return {
+    key,
+    idempotent: true,
+    created: false,
+    reusedExistingJob: true,
+    existingStatus,
+    attempt: existing.attempt,
+    queueRecord: cloneHostedScanQueueRecord(existing),
+    queuePayload: createHostedScanQueuePayload(existing, input.deliveryId, input.requestedAt),
+    shouldEnqueueWorker: false,
+    shouldReuseCompletedReport: existingStatus === "completed",
+    shouldCreateCheckRun: false,
+    shouldCreatePrComment: false,
+    privacy: hostedScanQueuePrivacy()
+  };
+}
+
 export function getHostedQueueCleanupIdempotencyKey(input: {
   trigger: HostedQueueCleanupTrigger;
   installationId: number;
@@ -921,6 +1056,39 @@ function hostedWebhookIntakePrivacy(): HostedPullRequestWebhookIntakeDecision["p
     includesRawSource: false,
     includesRawDiffs: false,
     includesSecrets: false,
+    includesCustomerPayloads: false
+  };
+}
+
+function createHostedScanQueuePayload(
+  record: HostedScanQueueRecord,
+  deliveryId: string,
+  requestedAt: string
+): HostedScanQueuePayload {
+  return {
+    key: record.key,
+    identity: record.identity,
+    deliveryId,
+    attempt: record.attempt,
+    requestedAt,
+    source: "github_pull_request"
+  };
+}
+
+function cloneHostedScanQueueRecord(record: HostedScanQueueRecord): HostedScanQueueRecord {
+  return {
+    ...record,
+    identity: { ...record.identity },
+    deliveryIds: [...record.deliveryIds]
+  };
+}
+
+function hostedScanQueuePrivacy(): HostedScanQueueUpsertDecision["privacy"] {
+  return {
+    includesRawSource: false,
+    includesRawDiffs: false,
+    includesSecrets: false,
+    includesUntrustedPrText: false,
     includesCustomerPayloads: false
   };
 }
