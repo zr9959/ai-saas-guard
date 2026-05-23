@@ -1,107 +1,150 @@
-# ai-saas-guard
+<h1 align="center">ai-saas-guard</h1>
 
-Local-first launch preflight for AI-built SaaS apps.
+<p align="center">
+  <strong>Local-first launch preflight for AI-built SaaS apps.</strong>
+</p>
 
-`ai-saas-guard` helps founders and reviewers answer a narrow question before launch or merge:
+<p align="center">
+  Find the auth, billing, data-access, secret, MCP, and deploy surfaces a human should review before launch or merge.
+</p>
 
-> What changed in auth, billing, data access, secrets, MCP tools, or deploy config that a human should verify first?
+<p align="center">
+  <a href="https://github.com/zr9959/ai-saas-guard/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zr9959/ai-saas-guard/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <a href="package.json"><img alt="Node.js >=20" src="https://img.shields.io/badge/node-%3E%3D20-339933.svg"></a>
+  <a href="docs/release-quality-knowledge-base.md"><img alt="Release gate documented" src="https://img.shields.io/badge/release%20gate-documented-0f766e.svg"></a>
+</p>
 
-It is built for Next.js, Supabase, Stripe, Vercel, Prisma/SQL migrations, MCP configs, and AI-generated pull requests. It is not a pentest, a full SAST platform, or a promise that your app is secure.
+---
 
-## Why This Exists
+## What It Does
 
-AI coding tools make it easy to ship a polished MVP before the production trust boundaries are ready. The app can look done while these risks are still hidden:
+`ai-saas-guard` is a command-line launch preflight for founders, solo builders, and reviewers shipping SaaS apps with AI coding tools.
 
-- login exists, but users can access each other's data
-- Supabase RLS is disabled or uses `USING (true)`
-- Stripe webhooks accept unsigned or duplicate events
-- `NEXT_PUBLIC_*` exposes a secret-like value to the browser
-- MCP configs contain plaintext secrets or shell/raw SQL tools
-- AI PRs mix billing, auth, migrations, deploy config, and UI refactors in one huge diff
+It answers one narrow question:
 
-This CLI is intentionally evidence-first. Every finding includes a file, severity, why it matters, a verification step, and a fix direction.
+> What changed in auth, billing, data access, secrets, MCP tools, or deploy config that deserves human review first?
 
-## Quick Start
+It is built for common AI-SaaS stacks:
+
+- Next.js and Vercel
+- Supabase row-level security and storage policies
+- Stripe checkout, subscriptions, and webhooks
+- Prisma or SQL migrations
+- MCP server configuration
+- AI-generated pull requests with large mixed diffs
+
+It is intentionally evidence-first. Findings include a rule ID, severity, file evidence, why it matters, how to verify it, and a fix direction.
+
+## Current Status
+
+This repository is public on GitHub.
+
+The npm package and versioned GitHub Action tags are not published yet. Until the first release, run the CLI from source or pin the GitHub Action to a reviewed commit SHA if you are evaluating it in CI.
+
+| Area | Status |
+| --- | --- |
+| Public GitHub repository | Available |
+| Local CLI from source | Available |
+| JSON and SARIF output | Available |
+| Composite GitHub Action | Available in repo |
+| Versioned Action tags | Not released yet |
+| npm package | Not published yet |
+
+## Quick Start From Source
 
 ```bash
-npx ai-saas-guard scan
-npx ai-saas-guard pr-risk
-npx ai-saas-guard check-supabase
-npx ai-saas-guard check-stripe
-npx ai-saas-guard check-mcp
+git clone https://github.com/zr9959/ai-saas-guard.git
+cd ai-saas-guard
+npm ci
+npm run build
+node dist/cli.js scan --root /path/to/your-saas
 ```
 
-Local development:
+Run focused checks:
 
 ```bash
-npm install
-npm test
-node dist/cli.js scan --root /path/to/repo
-node dist/cli.js pr-risk --root /path/to/repo --base origin/main
+node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main
+node dist/cli.js check-supabase --root /path/to/your-saas
+node dist/cli.js check-stripe --root /path/to/your-saas
+node dist/cli.js check-mcp --root /path/to/your-saas
 ```
 
-Output formats:
+Machine-readable output:
 
 ```bash
-node dist/cli.js scan --json
-node dist/cli.js scan --sarif > ai-saas-guard.sarif
-node dist/cli.js scan --fail-on high
+node dist/cli.js scan --root /path/to/your-saas --json
+node dist/cli.js scan --root /path/to/your-saas --sarif > ai-saas-guard.sarif
+node dist/cli.js scan --root /path/to/your-saas --fail-on high
 ```
+
+## Example Finding
+
+Terminal output is designed to be useful to a reviewer, not just a scanner dashboard.
+
+```text
+[HIGH] Stripe webhook lacks obvious duplicate event idempotency
+Rule: stripe.webhook.missing-idempotency
+Why: Stripe can retry and deliver duplicate events; without storing processed event IDs, access grants and revocations can drift.
+Verify: Replay the same Stripe event ID twice and confirm the second delivery does not create duplicate fulfillment or inconsistent state.
+Fix direction: Persist processed Stripe event IDs and make entitlement updates idempotent around event ID and subscription/customer IDs.
+Evidence:
+- app/api/stripe/webhook/route.ts:41 -> switch (event.type) {
+```
+
+## What It Checks
+
+| Surface | Examples of risks it flags |
+| --- | --- |
+| Secrets and env | Secret-like values, risky `NEXT_PUBLIC_*` exposure |
+| Stripe | Missing webhook route, unsigned webhook handling, parsed-body signature risk, missing idempotency, missing failure/cancel/update/refund paths |
+| Supabase | RLS disabled on sensitive tables, `USING (true)`, missing ownership filters, public storage hints |
+| API routes | Auth checks without obvious ownership guards, missing rate-limit hints on sensitive mutation routes |
+| MCP | Plaintext secrets, non-localhost binds, broad filesystem/write access, shell tools, raw SQL tools |
+| Deploy config | Next static export/runtime mismatches, Edge runtime with Node-only APIs, missing important env documentation |
+| PR risk | Auth, billing, RLS, env, deploy, API, storage, test-removal, and large mixed-diff classification |
+
+See [docs/rules.md](docs/rules.md) for the full rule map.
 
 ## The Main Bet: PR Risk Triage
 
-Most security scanners start with "scan the whole repo." `ai-saas-guard` also supports that, but the sharper wedge is pull request review.
+Most scanners start with "scan the whole repository." `ai-saas-guard` can do that, but its sharper wedge is pull request review.
 
-`pr-risk` classifies the current diff into sensitive surfaces:
+AI-generated PRs often combine unrelated work:
 
-- auth/session
-- billing/subscription
-- database schema/migration
-- RLS/policy
-- API contract
-- env/secrets/deploy
-- permissions/storage
-- tests removed or weakened
-- large AI-generated/refactor-like diff
+- UI polish
+- auth/session changes
+- database migrations
+- Stripe checkout edits
+- Supabase policies
+- Vercel config
+- removed or weakened tests
 
-The output is designed for a reviewer:
+`pr-risk` classifies the current diff and returns:
 
-- top risky files
+- top risky files to review first
+- sensitive categories touched by the PR
 - review-first checklist
 - suggested PR split
 - required tests or manual verification
 
-This is the part to make excellent before expanding into broader security claims.
+```bash
+node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --json
+```
 
 ## Commands
 
-### `scan`
-
-Runs the broad repo launch preflight: secrets, public env risk, Stripe webhook heuristics, Supabase policy risk, MCP config risk, sensitive API routes, and deploy/env hints.
-
-### `pr-risk`
-
-Classifies the current `git diff` or a base branch diff. Use it on AI-generated PRs to decide what a human should inspect first.
-
-```bash
-ai-saas-guard pr-risk --base origin/main
-```
-
-### `check-supabase`
-
-Looks for missing RLS, broad policies, missing ownership filters, and public storage hints. It also outputs a two-account IDOR verification script.
-
-### `check-stripe`
-
-Looks for webhook route evidence, signature verification, raw body handling, missing failure/cancel/update/refund handlers, duplicate event idempotency, and entitlement update paths.
-
-### `check-mcp`
-
-Inventories repo-local MCP configs and classifies side effects: read-only, write, network, shell, database, and secret-bearing.
+| Command | Purpose |
+| --- | --- |
+| `scan` | Broad local launch preflight across secrets, Stripe, Supabase, MCP, API routes, and deploy config |
+| `pr-risk` | Classify the current git diff or a base branch diff for review priority |
+| `check-supabase` | Inspect migrations and policy files for RLS and ownership risks |
+| `check-stripe` | Inspect webhook handlers and billing lifecycle coverage |
+| `check-mcp` | Inventory MCP configs and classify side effects |
 
 ## GitHub Action
 
-This repo includes a composite action:
+The repo includes a composite Action. Before the first versioned release, pin a reviewed commit SHA if you test it in CI:
 
 ```yaml
 name: ai-saas-guard
@@ -109,14 +152,17 @@ name: ai-saas-guard
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   preflight:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
-      - uses: your-github-user/ai-saas-guard@v0
+      - uses: zr9959/ai-saas-guard@<reviewed-commit-sha>
         with:
           command: pr-risk
           root: ${{ github.workspace }}
@@ -124,10 +170,10 @@ jobs:
           fail-on: high
 ```
 
-For GitHub code scanning:
+For SARIF upload:
 
 ```yaml
-      - uses: your-github-user/ai-saas-guard@v0
+      - uses: zr9959/ai-saas-guard@<reviewed-commit-sha>
         with:
           command: scan
           format: sarif
@@ -137,11 +183,11 @@ For GitHub code scanning:
           sarif_file: ai-saas-guard.sarif
 ```
 
-Replace `your-github-user` after publishing the public repository.
+After release tags exist, replace the commit SHA with the documented release tag.
 
 ## Ignore File
 
-Add `.ai-saas-guardignore` at the repository root to suppress generated fixtures, snapshots, or known noisy paths:
+Add `.ai-saas-guardignore` at the repository root to suppress generated fixtures, snapshots, vendored output, or known noisy paths:
 
 ```gitignore
 fixtures/**
@@ -149,76 +195,88 @@ snapshots/**
 vendor/generated/**
 ```
 
-Use this sparingly. The goal is not to hide launch blockers; it is to keep reports focused enough that founders and reviewers act on them.
-
-## Rule Coverage
-
-The first rule set includes checks for:
-
-- secret-like values in source/config/examples
-- risky `NEXT_PUBLIC_*` names or values
-- Stripe webhook signature verification
-- Stripe raw body compatibility
-- missing Stripe failure/cancel/update/refund handlers
-- missing Stripe duplicate event idempotency
-- missing Stripe entitlement update paths
-- Supabase sensitive tables without RLS
-- broad Supabase `USING (true)` policies
-- policies missing `auth.uid()` or ownership filters
-- public Supabase storage hints
-- auth-checked API routes without obvious ownership guards
-- missing rate-limit hints on sensitive routes
-- plaintext secrets in MCP configs
-- MCP non-localhost bind addresses
-- MCP broad filesystem/write access
-- MCP shell/raw SQL tools
-- Next/Vercel env and runtime footguns
-- PR diff sensitive-surface classification
-
-See [docs/rules.md](docs/rules.md) for the current rule map.
-
-## Release Quality Gate
-
-Before publishing a CLI update, GitHub Action update, plugin, npm package, or public repository change, follow [docs/release-quality-knowledge-base.md](docs/release-quality-knowledge-base.md).
-
-That knowledge base is the required release checklist for code correctness, security review, GitHub repository settings, workflow hardening, dependency review, package publishing, plugin/agent risks, and release evidence.
+Use this sparingly. The goal is not to hide launch blockers; it is to keep reports focused enough that reviewers act on them.
 
 ## Privacy Model
 
+`ai-saas-guard` is designed to be safe to run against private local repositories.
+
 - Runs locally.
 - Reads repository files and git diffs.
-- Makes no network calls.
+- Makes no network calls during scan commands.
 - Does not upload code.
 - Requires no account or login.
-- Does not modify files.
-- Redacts secret-like evidence where a value is matched.
+- Does not modify scanned repositories.
+- Redacts matched secret-like evidence.
 
-## What This Does Not Do
+## What This Is Not
 
+This project deliberately avoids broad security claims.
+
+- It is not a pentest.
+- It is not a full SAST platform.
 - It does not prove your app is secure.
 - It does not replace manual two-account authorization testing.
 - It does not execute Stripe, Supabase, Vercel, or browser flows.
 - It does not inspect production settings unless they are represented locally.
-- It does not try to be a full Semgrep/Gitleaks/Bearer replacement.
+- It does not try to replace Semgrep, Gitleaks, TruffleHog, Bearer, CodeQL, or human review.
 
-## Open-Core Roadmap
+## When To Use It
+
+Use `ai-saas-guard` when:
+
+- you are about to launch an AI-built SaaS MVP
+- you are reviewing a large AI-generated pull request
+- you added checkout, subscriptions, RLS, MCP tools, or deploy config
+- you want a local, readable checklist before asking a human to review
+- you need JSON or SARIF output for automation
+
+Do not use it as the only launch approval signal. Treat it as a preflight that helps you decide where to spend review time.
+
+## Development
+
+```bash
+npm ci
+npm test
+npm run build
+node dist/cli.js scan --root .
+```
+
+Before publishing a CLI update, GitHub Action update, npm package, plugin, or public repository change, follow [docs/release-quality-knowledge-base.md](docs/release-quality-knowledge-base.md).
+
+## Roadmap
 
 Open-source core:
 
 - local CLI
-- deterministic rules
-- JSON/SARIF output
-- GitHub Action
-- rule docs and fixtures
+- deterministic scanner rules
+- vulnerable and safe fixtures
+- JSON and SARIF output
+- GitHub Action wrapper
+- rule documentation
 
-Potential paid layer:
+Near-term priorities:
+
+- npm trusted publishing and provenance
+- versioned GitHub Action release packaging
+- PR comment summary mode
+- configurable severity and rule toggles
+- expanded Supabase RLS fixtures
+- Stripe webhook replay cookbook
+- SARIF upload workflow example
+
+Potential paid layer later:
 
 - hosted GitHub App
-- saved/shareable reports
+- saved and shareable reports
 - PR comments and review-first annotations
 - scan history
 - team policy settings
-- deeper Stripe/Supabase/Vercel integrations
-- optional human review for launch readiness
+- deeper Stripe, Supabase, Vercel, and MCP integrations
+- optional human launch-readiness review
 
-The open-source project should stay useful on its own. Paid features should save time, preserve history, integrate with GitHub, and support teams that want recurring checks.
+The open-source CLI should remain useful on its own. Paid features should save time, preserve history, and integrate with team workflows.
+
+## Security
+
+Please read [SECURITY.md](SECURITY.md) before reporting vulnerabilities. Do not post real API keys, customer data, private source code, or production URLs in public issues.
