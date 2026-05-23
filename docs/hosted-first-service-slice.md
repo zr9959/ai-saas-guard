@@ -194,7 +194,6 @@ Do not deploy the hosted slice if any of these are true:
 
 After this slice is accepted, continue in this order:
 
-1. Choose the hosted app deployment model.
-2. Define the hosted operational release gate.
-3. Define uninstall and data deletion behavior.
-4. Define hosted pricing and packaging boundaries.
+1. Define the hosted operational release gate.
+2. Define uninstall and data deletion behavior.
+3. Define hosted pricing and packaging boundaries.

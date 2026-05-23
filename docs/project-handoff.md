@@ -53,6 +53,7 @@ Implemented surfaces:
 - rule stability labels in catalog metadata, public rule docs, and SARIF rule properties
 - hosted GitHub App design note covering least-privilege permissions, webhook verification, privacy, data retention, prompt-injection handling, and implementation gates
 - first hosted service slice document defining signed webhook intake, trusted scan identity, idempotent queueing, read-only worker behavior, check-run-only output, compact report storage, and explicit non-goals
+- hosted deployment model document choosing containerized Node.js ingress and worker roles, a managed durable queue, managed compact report storage, platform secret manager usage, structured redacted logs, installation/repository rate limits, rollback, and incident response paths
 - implementation-ready hosted GitHub App permission contract for required permissions, optional PR comment permissions, selected repository installation, and out-of-scope broad permissions
 - pure hosted GitHub App contract helpers and tests for webhook verification, installation token scoping, scan queue idempotency, compact reports, and retention limits
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
@@ -108,7 +109,6 @@ GitHub Project:
 
 Current issue set:
 
-- #15 `Roadmap: choose hosted app deployment model`
 - #16 `Roadmap: define hosted operational release gate`
 - #17 `Roadmap: define hosted uninstall and data deletion`
 - #18 `Roadmap: define hosted pricing and packaging boundaries`
@@ -150,7 +150,7 @@ Not allowed:
 
 Recommended order:
 
-1. Work #15 and #16 before any hosted deployment.
+1. Work #16 before any hosted deployment.
 2. Work #17 and #18 before private repo onboarding or paid hosted features.
 
 For every feature, keep the scanner evidence-first:

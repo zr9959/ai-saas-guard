@@ -769,6 +769,36 @@ test("public docs define the first hosted service slice", async () => {
   assert.doesNotMatch(slice, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs choose the hosted deployment model", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+  const model = await readFile(resolve(packageRoot, "docs", "hosted-deployment-model.md"), "utf8");
+
+  assert.match(readme, /docs\/hosted-deployment-model\.md/);
+  assert.match(design, /docs\/hosted-deployment-model\.md/);
+  assert.match(model, /Hosted Deployment Model/i);
+  assert.match(model, /containerized Node\.js runtime/i);
+  assert.match(model, /webhook ingress/i);
+  assert.match(model, /managed durable queue/i);
+  assert.match(model, /short-lived worker/i);
+  assert.match(model, /platform secret manager/i);
+  assert.match(model, /structured logs/i);
+  assert.match(model, /redaction/i);
+  assert.match(model, /installation and repository/i);
+  assert.match(model, /rate limits/i);
+  assert.match(model, /rollback/i);
+  assert.match(model, /incident response/i);
+  assert.match(model, /verify the webhook signature before any queue write/i);
+  assert.match(model, /delete checkout directories/i);
+  assert.match(model, /no raw source/i);
+  assert.match(model, /no raw diffs/i);
+  assert.match(model, /no secrets/i);
+  assert.match(model, /customer payloads/i);
+  assert.match(model, /private URLs/i);
+  assert.match(model, /does not replace the local CLI/i);
+  assert.doesNotMatch(model, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
 test("hosted GitHub App docs define an implementation-ready permission contract", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");

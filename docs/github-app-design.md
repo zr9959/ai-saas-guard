@@ -48,6 +48,8 @@ The first version should prefer check runs over noisy PR comments. PR comments s
 
 The first hosted service slice is scoped in [docs/hosted-first-service-slice.md](hosted-first-service-slice.md). That slice is check-run-only and exists to prove signed webhook intake, trusted identity construction, idempotent queueing, read-only worker behavior, compact report storage, and local-first positioning before any PR comments, dashboard, billing, or AI summaries are added.
 
+The hosted deployment model is scoped in [docs/hosted-deployment-model.md](hosted-deployment-model.md). It chooses containerized Node.js ingress and worker roles connected by a managed durable queue, with platform-managed secrets, structured redacted logs, installation/repository rate limits, rollback, and incident response paths.
+
 ## Least-Privilege Permissions
 
 Use least-privilege permissions and install on selected repositories only. This section is the Implementation-ready permission contract for the first hosted GitHub App version.
