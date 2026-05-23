@@ -40,15 +40,15 @@ It is intentionally evidence-first. Findings include a rule ID, severity, file e
 
 This repository is public on GitHub.
 
-The npm package and versioned GitHub Action tags are not published yet. Until the first release, run the CLI from source or pin the GitHub Action to a reviewed commit SHA if you are evaluating it in CI.
+The first GitHub release and Action tag are `v0.1.0`. The npm package is not published yet, so run the CLI from source for now. If you need stricter supply-chain pinning in CI, pin the GitHub Action to a reviewed commit SHA instead of a mutable tag.
 
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
 | Local CLI from source | Available |
 | JSON and SARIF output | Available |
-| Composite GitHub Action | Available in repo |
-| Versioned Action tags | Not released yet |
+| Composite GitHub Action | Available |
+| Versioned Action tags | `v0.1.0` |
 | npm package | Not published yet |
 
 ## Quick Start From Source
@@ -144,7 +144,7 @@ node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --json
 
 ## GitHub Action
 
-The repo includes a composite Action. Before the first versioned release, pin a reviewed commit SHA if you test it in CI:
+The repo includes a composite Action. Use the latest release tag or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
@@ -162,7 +162,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
-      - uses: zr9959/ai-saas-guard@REVIEWED_COMMIT_SHA
+      - uses: zr9959/ai-saas-guard@v0.1.0
         with:
           command: pr-risk
           root: ${{ github.workspace }}
@@ -173,7 +173,7 @@ jobs:
 For SARIF upload:
 
 ```yaml
-      - uses: zr9959/ai-saas-guard@REVIEWED_COMMIT_SHA
+      - uses: zr9959/ai-saas-guard@v0.1.0
         with:
           command: scan
           format: sarif
@@ -183,7 +183,7 @@ For SARIF upload:
           sarif_file: ai-saas-guard.sarif
 ```
 
-After release tags exist, replace the commit SHA with the documented release tag.
+For maximum reproducibility, replace `v0.1.0` with the full commit SHA from the release notes.
 
 ## Ignore File
 
@@ -258,7 +258,6 @@ Open-source core:
 Near-term priorities:
 
 - npm trusted publishing and provenance
-- versioned GitHub Action release packaging
 - PR comment summary mode
 - configurable severity and rule toggles
 - expanded Supabase RLS fixtures
