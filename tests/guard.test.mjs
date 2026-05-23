@@ -765,6 +765,77 @@ test("hosted GitHub App docs define an implementation-ready permission contract"
   assert.match(readme, /optional PR comments require repository policy opt-in/i);
 });
 
+test("hosted GitHub App docs define webhook verification test gates", async () => {
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+
+  assert.match(design, /Webhook Verification Test Contract/i);
+  assert.match(design, /valid signature/i);
+  assert.match(design, /invalid signature/i);
+  assert.match(design, /missing signature/i);
+  assert.match(design, /malformed signature/i);
+  assert.match(design, /replayed delivery ID/i);
+  assert.match(design, /duplicate event/i);
+  assert.match(design, /Failed verification produces no scan job/i);
+  assert.match(design, /no repository fetch/i);
+  assert.match(design, /no real credentials/i);
+  assert.match(design, /no customer payloads/i);
+  assert.match(design, /signed-webhook boundary/i);
+});
+
+test("hosted GitHub App docs define installation token scoping test gates", async () => {
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+
+  assert.match(design, /Installation Token Scoping Test Contract/i);
+  assert.match(design, /selected-repository installs/i);
+  assert.match(design, /non-installed repositories/i);
+  assert.match(design, /repository removal from an installation/i);
+  assert.match(design, /mismatched installation IDs/i);
+  assert.match(design, /installationId/i);
+  assert.match(design, /repositoryId/i);
+  assert.match(design, /pullRequestNumber/i);
+  assert.match(design, /baseSha/i);
+  assert.match(design, /headSha/i);
+  assert.match(design, /scannerVersion/i);
+  assert.match(design, /token lookup failure stops before source fetch/i);
+  assert.match(design, /never accept repository identity from untrusted PR text/i);
+  assert.match(design, /read-only worker behavior/i);
+});
+
+test("hosted GitHub App docs define scan queue idempotency test gates", async () => {
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+
+  assert.match(design, /Hosted Scan Queue Idempotency Test Contract/i);
+  assert.match(design, /idempotency key/i);
+  assert.match(design, /installationId:repositoryId:pullRequestNumber:headSha:scannerVersion/i);
+  assert.match(design, /duplicate webhook deliveries/i);
+  assert.match(design, /rapid synchronize events/i);
+  assert.match(design, /manual reruns/i);
+  assert.match(design, /scanner version changes/i);
+  assert.match(design, /reuse the existing report/i);
+  assert.match(design, /no duplicate check runs/i);
+  assert.match(design, /no duplicate PR comments/i);
+  assert.match(design, /without logging raw source content/i);
+});
+
+test("hosted GitHub App docs define privacy and retention gates", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+
+  assert.match(design, /Privacy And Data Retention Contract/i);
+  assert.match(design, /Default app-side retention is 30 days/i);
+  assert.match(design, /Team admins can shorten retention/i);
+  assert.match(design, /uninstall cleanup/i);
+  assert.match(design, /Stored fields/i);
+  assert.match(design, /Avoided fields/i);
+  assert.match(design, /full file contents/i);
+  assert.match(design, /raw diffs/i);
+  assert.match(design, /Raw worker checkout directories are deleted after scan completion/i);
+  assert.match(design, /Do not train models on customer code or findings/i);
+  assert.match(design, /prefer the local CLI/i);
+  assert.match(readme, /prefer the local CLI/i);
+  assert.match(readme, /private repositories, offline review, or no-account workflows/i);
+});
+
 test("repository exposes security-safe GitHub issue templates", async () => {
   const templateDir = resolve(packageRoot, ".github", "ISSUE_TEMPLATE");
   const expectedTemplates = [

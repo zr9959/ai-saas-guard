@@ -113,6 +113,21 @@ Additional requirements:
 - Make scan jobs idempotent by installation, repository, PR, head SHA, and scanner version.
 - Rate-limit repeated events for the same PR and commit.
 
+### Webhook Verification Test Contract
+
+Before hosted implementation starts, automated tests must cover:
+
+- valid signature requests queue exactly one scan request.
+- invalid signature requests are rejected.
+- missing signature requests are rejected.
+- malformed signature requests are rejected.
+- replayed delivery ID requests are rejected or treated as already processed.
+- duplicate event requests for the same delivery and PR head do not create duplicate scan work.
+
+Failed verification produces no scan job and no repository fetch. The webhook handler must verify the signed-webhook boundary before any queue write, installation lookup, token lookup, repository lookup, or worker dispatch.
+
+Fixtures for these tests must use no real credentials and no customer payloads. Payload examples should be reduced synthetic GitHub-shaped JSON with inert repository names, fake installation IDs, and fake SHAs.
+
 ## Data Flow
 
 The hosted app should keep the data flow simple and inspectable:
@@ -125,7 +140,46 @@ The hosted app should keep the data flow simple and inspectable:
 6. The app writes a check run and optional PR comment.
 7. The report is retained according to team policy.
 
-Prefer storing:
+### Installation Token Scoping Test Contract
+
+Every hosted scan request should carry explicit identity fields:
+
+- `installationId`
+- `repositoryId`
+- `repositoryFullName`
+- `pullRequestNumber`
+- `baseSha`
+- `headSha`
+- `scannerVersion`
+
+Automated tests must cover selected-repository installs, non-installed repositories, repository removal from an installation, and mismatched installation IDs.
+
+Worker behavior:
+
+- Token lookup must use `installationId` and `repositoryId` from the verified GitHub event, not from PR title, body, branch name, comments, README, or code.
+- A token lookup failure stops before source fetch.
+- Workers must never accept repository identity from untrusted PR text.
+- Workers must keep read-only worker behavior: fetch content or diffs, run the scanner, write checks or permitted comments, and avoid repository mutation.
+
+### Hosted Scan Queue Idempotency Test Contract
+
+The idempotency key is:
+
+```text
+installationId:repositoryId:pullRequestNumber:headSha:scannerVersion
+```
+
+Automated tests must cover duplicate webhook deliveries, rapid synchronize events, manual reruns, and scanner version changes.
+
+Queue behavior:
+
+- Repeated events with the same idempotency key should reuse the existing report or update the existing queued/running job.
+- Repeated events must produce no duplicate check runs and no duplicate PR comments.
+- Manual reruns may create a new attempt record, but they should keep the same logical report identity unless `headSha` or `scannerVersion` changes.
+- Scanner version changes should create a distinct scan identity so teams can compare old and new rule behavior.
+- Failure and retry state should be observable by installation, repository, PR, head SHA, scanner version, attempt number, and error class without logging raw source content.
+
+Prefer storing these compact report fields:
 
 - repository ID and name
 - PR number
@@ -137,7 +191,7 @@ Prefer storing:
 - reviewer checklist
 - suppression policy version
 
-Avoid storing by default:
+Avoid storing these fields by default:
 
 - full file contents
 - raw diffs
@@ -147,17 +201,44 @@ Avoid storing by default:
 
 ## Privacy And Data Retention
 
+### Privacy And Data Retention Contract
+
 Privacy should be a first-version feature, not a later add-on.
 
-Default data retention:
+Default app-side retention is 30 days for compact scan reports.
 
-- Keep compact scan reports for 30 days.
+Stored fields:
+
+- repository ID and name
+- PR number
+- base SHA and head SHA
+- scanner version
+- summary counts
+- rule IDs
+- evidence file paths and line numbers
+- reviewer checklist
+- suppression policy version
+- scan state, attempt number, and error class
+
+Avoided fields:
+
+- full file contents
+- raw diffs
+- secrets or matched secret values
+- generated logs with unredacted code snippets
+- customer data copied from application fixtures
+- private issue text, private comments, or unrelated repository documents that are not needed for the scan
+
+Retention and deletion rules:
+
 - Keep check run and PR comment content in GitHub as controlled by the customer's repository settings.
-- Delete raw worker checkout directories immediately after scan completion.
+- Raw worker checkout directories are deleted after scan completion.
 - Do not train models on customer code or findings.
 - Provide repository uninstall cleanup for stored app-side records.
+- Team admins can shorten retention.
+- Longer retention must be explicit and tied to paid audit history.
 
-Team admins should be able to shorten retention. Longer retention should be explicit and tied to paid audit history.
+Users should prefer the local CLI for private repositories, offline review, strict no-account workflows, or repositories where hosted processing is not acceptable.
 
 ## Prompt Injection Handling
 
@@ -277,3 +358,9 @@ Do not start implementation until the hosted app has:
 - privacy and data retention docs
 - prompt injection abuse-case tests if AI summaries are included
 - release gate evidence equivalent to the CLI package process
+
+Current pre-implementation gate evidence:
+
+- `tests/guard.test.mjs` verifies that this public design note keeps the permission, webhook, token scoping, idempotency, privacy, and retention contracts documented.
+- `tests/hosted-contracts.test.mjs` verifies pure contract helpers for valid signature, invalid signature, missing signature, malformed signature, replayed delivery ID, selected-repository installs, non-installed repositories, repository removal from an installation, mismatched installation IDs, deterministic queue idempotency, duplicate event reuse, manual reruns, scanner version changes, compact reports, retention limits, and raw-source exclusion.
+- `src/hosted/contracts.ts` is intentionally service-free: it does not start a server, call GitHub, request tokens, fetch repositories, write comments, or persist reports.

@@ -53,6 +53,7 @@ Implemented surfaces:
 - rule stability labels in catalog metadata, public rule docs, and SARIF rule properties
 - hosted GitHub App design note covering least-privilege permissions, webhook verification, privacy, data retention, prompt-injection handling, and implementation gates
 - implementation-ready hosted GitHub App permission contract for required permissions, optional PR comment permissions, selected repository installation, and out-of-scope broad permissions
+- pure hosted GitHub App contract helpers and tests for webhook verification, installation token scoping, scan queue idempotency, compact reports, and retention limits
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
 - JSON output
 - SARIF output
@@ -105,10 +106,7 @@ GitHub Project:
 
 Current issue set:
 
-- #10 `Roadmap: add hosted app webhook verification tests`
-- #11 `Roadmap: test hosted app installation token scoping`
-- #12 `Roadmap: design hosted scan queue idempotency`
-- #13 `Roadmap: define hosted app privacy and retention`
+- No open roadmap issues after the hosted GitHub App contract gate work.
 
 CI:
 
@@ -147,8 +145,8 @@ Not allowed:
 
 Recommended order:
 
-1. Work the remaining hosted GitHub App implementation gates through issues #10 through #13 before any hosted service code.
-2. Add CODEOWNERS once there are multiple maintainers.
+1. Add CODEOWNERS once there are multiple maintainers.
+2. Before any hosted service implementation, create new public issues for the first service slice, deployment model, and operational release gate.
 
 For every feature, keep the scanner evidence-first:
 

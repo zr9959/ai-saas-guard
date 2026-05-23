@@ -184,6 +184,8 @@ See [docs/github-app-design.md](docs/github-app-design.md) for the proposed host
 
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
+Users should prefer the local CLI for private repositories, offline review, or no-account workflows where hosted code processing is not acceptable.
+
 ## Project Configuration
 
 Add `.ai-saas-guard.json` at the repository root to tune findings without changing scanner code. The CLI auto-loads this file from `--root` when it exists. Use `--config <file>` to point to a different JSON file.
