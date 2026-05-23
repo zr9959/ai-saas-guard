@@ -8,5 +8,6 @@ examples/**
 src/scanners/**
 
 # Generated/local output.
+.local/**
 dist/**
 node_modules/**
