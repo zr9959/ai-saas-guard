@@ -103,7 +103,11 @@ GitHub Project:
 
 Current issue set:
 
-- No open roadmap issues after the `v0.8.0` GitHub App design note release.
+- #9 `Roadmap: finalize hosted GitHub App permission model`
+- #10 `Roadmap: add hosted app webhook verification tests`
+- #11 `Roadmap: test hosted app installation token scoping`
+- #12 `Roadmap: design hosted scan queue idempotency`
+- #13 `Roadmap: define hosted app privacy and retention`
 
 CI:
 
@@ -142,8 +146,8 @@ Not allowed:
 
 Recommended order:
 
-1. Open new roadmap issues for the hosted GitHub App implementation gates in `docs/github-app-design.md`.
-2. Add issue templates for bug reports, false positives, false negatives, rule requests, and security-safe reports.
+1. Add issue templates for bug reports, false positives, false negatives, rule requests, and security-safe reports.
+2. Work the hosted GitHub App implementation gates through issues #9 through #13 before any hosted service code.
 3. Add CODEOWNERS once there are multiple maintainers.
 
 For every feature, keep the scanner evidence-first:
