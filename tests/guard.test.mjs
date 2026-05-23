@@ -357,6 +357,7 @@ test("npm package excludes macOS AppleDouble metadata files", async () => {
     const npmIgnore = await readFile(resolve(packageRoot, ".npmignore"), "utf8");
 
     assert.match(npmIgnore, /\*\*\/\._\*/);
+    assert.ok(packedPaths.includes("README.zh-CN.md"));
     assert.ok(!packedPaths.some((filePath) => filePath.startsWith("._") || filePath.includes("/._")));
   } finally {
     await rm(appleDoubleFile, { force: true });
@@ -685,6 +686,32 @@ test("public docs explain PR summary, SARIF, and the v0 Action tag", async () =>
   assert.match(rulesDocs, /Stability/i);
   assert.match(rulesDocs, /Strict/i);
   assert.match(rulesDocs, /Experimental/i);
+});
+
+test("public README keeps an updated Chinese translation entry point", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const releaseGate = await readFile(
+    resolve(packageRoot, "docs", "release-quality-knowledge-base.md"),
+    "utf8"
+  );
+
+  assert.match(readme.slice(0, 900), /README\.zh-CN\.md/);
+  assert.match(zhReadme.slice(0, 900), /README\.md/);
+  assert.match(zhReadme, /本地优先/);
+  assert.match(zhReadme, /AI 构建的 SaaS/);
+  assert.match(zhReadme, /目标用户/);
+  assert.match(zhReadme, /scan/);
+  assert.match(zhReadme, /pr-risk/);
+  assert.match(zhReadme, /check-supabase/);
+  assert.match(zhReadme, /check-stripe/);
+  assert.match(zhReadme, /check-mcp/);
+  assert.match(zhReadme, /GitHub Action/);
+  assert.match(zhReadme, /Hosted GitHub App/);
+  assert.match(zhReadme, /不是渗透测试/);
+  assert.match(zhReadme, /不上传代码/);
+  assert.match(releaseGate, /README\.zh-CN\.md/);
+  assert.doesNotMatch(zhReadme, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
 test("public docs include a Stripe webhook replay cookbook", async () => {

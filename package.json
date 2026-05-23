@@ -52,7 +52,8 @@
     "docs",
     "dist",
     "examples",
-    "README.md"
+    "README.md",
+    "README.zh-CN.md"
   ],
   "license": "MIT",
   "devDependencies": {

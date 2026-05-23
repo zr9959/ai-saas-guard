@@ -137,6 +137,7 @@ Allowed in this public repository:
 - CLI source code
 - tests and intentionally vulnerable fixtures
 - public docs
+- English README and Chinese README; when `README.md` changes, review and update `README.zh-CN.md` in the same change
 - GitHub Action wrapper
 - examples that contain only inert fake data
 - release-quality process docs

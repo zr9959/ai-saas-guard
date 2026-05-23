@@ -1,0 +1,274 @@
+<h1 align="center">ai-saas-guard</h1>
+
+<p align="center">
+  <strong>面向 AI 构建的 SaaS 应用的本地优先上线预检工具。</strong>
+</p>
+
+<p align="center">
+  在上线或合并 PR 前，找出登录鉴权、支付计费、数据访问、密钥、MCP 工具和部署配置里最值得人工 review 的风险点。
+</p>
+
+<p align="center">
+  <a href="README.md">English README</a> | 中文
+</p>
+
+---
+
+## 它是做什么的
+
+`ai-saas-guard` 是一个命令行预检工具，服务于正在用 AI 编程工具快速交付 SaaS 的 founder、独立开发者、小团队和 code reviewer。
+
+它回答的问题很窄：
+
+> 这次改动里，哪些 auth、billing、data access、secrets、MCP tools 或 deploy config 需要先人工认真看？
+
+它适合常见 AI SaaS 技术栈：
+
+- Next.js 和 Vercel
+- Supabase RLS、storage policy、SQL migration
+- Stripe checkout、subscription、webhook
+- Prisma 或 SQL migration
+- MCP server 配置
+- AI 生成的大型混合 PR
+
+它是 evidence-first 的工具。每个 finding 会包含 rule ID、severity、文件证据、为什么重要、如何验证、修复方向。
+
+## 当前状态
+
+这个仓库是公开 GitHub 仓库。
+
+CLI 已发布到 npm：`ai-saas-guard@0.10.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.10.0`。
+
+| 模块 | 状态 |
+| --- | --- |
+| 公开 GitHub 仓库 | 已可用 |
+| npm CLI | 已发布为 `ai-saas-guard` |
+| 本地源码运行 | 已可用 |
+| JSON 和 SARIF 输出 | 已可用 |
+| Markdown PR summary | 已可用 |
+| GitHub Action | 已可用 |
+| 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖和 fail threshold |
+| 当前版本 | `0.10.0` |
+| Action 标签 | `v0.10.0`、`v0` |
+| npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
+
+## 快速开始
+
+无需全局安装，直接运行：
+
+```bash
+npx ai-saas-guard@latest scan --root /path/to/your-saas
+```
+
+运行专项检查：
+
+```bash
+npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main
+npx ai-saas-guard@latest check-supabase --root /path/to/your-saas
+npx ai-saas-guard@latest check-stripe --root /path/to/your-saas
+npx ai-saas-guard@latest check-mcp --root /path/to/your-saas
+```
+
+机器可读输出：
+
+```bash
+npx ai-saas-guard@latest scan --root /path/to/your-saas --json
+npx ai-saas-guard@latest scan --root /path/to/your-saas --sarif > ai-saas-guard.sarif
+npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --markdown > ai-saas-guard-pr.md
+```
+
+本地开发：
+
+```bash
+git clone https://github.com/zr9959/ai-saas-guard.git
+cd ai-saas-guard
+npm ci
+npm run build
+node dist/cli.js scan --root /path/to/your-saas
+```
+
+## 主要命令
+
+| 命令 | 用途 |
+| --- | --- |
+| `scan` | 对 secrets、Stripe、Supabase、MCP、API routes、deploy config 做整体上线预检 |
+| `pr-risk` | 分析当前 git diff 或指定 base branch diff，判断哪些文件和风险面应该先 review |
+| `check-supabase` | 检查 migration 和 policy 文件里的 RLS、ownership、storage policy 风险 |
+| `check-stripe` | 检查 webhook 签名、raw body、幂等、订阅生命周期和 entitlement 更新路径 |
+| `check-mcp` | 检查 MCP 配置里的 secret、非 localhost 绑定、shell/db/filesystem 等副作用 |
+
+## 它会检查什么
+
+| 风险面 | 例子 |
+| --- | --- |
+| Secrets 和 env | 类似密钥的字符串、危险的 `NEXT_PUBLIC_*` 暴露 |
+| Stripe | webhook 缺失、未验证签名、raw body 签名风险、缺幂等、缺失败/取消/退款/更新处理 |
+| Supabase | 敏感表没启用 RLS、policy 过宽、缺少 ownership filter、`WITH CHECK` 过弱、storage object policy 过宽 |
+| API routes | 有 auth 但缺少明显 ownership guard，敏感 mutation route 缺少 rate-limit 提示 |
+| MCP | 明文 secret、非 localhost 绑定、过宽文件系统权限、shell 工具、raw SQL 工具 |
+| Deploy config | Next static export 和 API route 冲突、Edge runtime 使用 Node-only API、关键 env 文档缺失 |
+| PR risk | auth、billing、RLS、env、deploy、API、storage、测试删除、大型混合 diff |
+
+完整规则请看 [docs/rules.md](docs/rules.md)。
+
+## PR 风险分流
+
+`scan` 可以扫整个仓库，但这个项目更锋利的入口是 PR review。
+
+AI 生成的 PR 经常把很多东西混在一起：
+
+- UI 调整
+- auth/session 改动
+- database migration
+- Stripe checkout 或 webhook 改动
+- Supabase policy
+- Vercel 配置
+- 测试被删除或削弱
+
+`pr-risk` 会输出：
+
+- 最应该先 review 的文件
+- PR 触碰到的敏感类别
+- review-first checklist
+- 建议拆分 PR 的方向
+- 必要测试或人工验证步骤
+- 当 base ref 或 shallow checkout 导致无法比较时，给出明确诊断
+
+```bash
+node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --json
+node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --markdown
+```
+
+## 目标用户
+
+这个工具主要面向：
+
+- 用 AI 编程工具快速做 SaaS MVP 的 founder 或独立开发者
+- 没有专职安全工程师的小团队
+- 需要 review 大型 AI-generated PR 的 reviewer
+- 给客户交付 SaaS 的开发者或 agency
+- 希望在 CI 里加一道轻量上线预检的小团队
+
+它的目标不是吓人，也不是制造大量噪音，而是帮你把 review 时间用在最值得看的地方。
+
+## GitHub Action
+
+可以在 GitHub Actions 里直接使用：
+
+```yaml
+name: ai-saas-guard
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: zr9959/ai-saas-guard@v0
+        with:
+          command: pr-risk
+          root: ${{ github.workspace }}
+          base: origin/main
+          fail-on: high
+          config: .ai-saas-guard.json
+```
+
+更多 GitHub Action 示例请看 [docs/github-action.md](docs/github-action.md)。
+
+## 项目配置
+
+在仓库根目录添加 `.ai-saas-guard.json` 可以调整规则：
+
+```json
+{
+  "failOn": "high",
+  "rules": {
+    "stripe.webhook.missing-signature": "off",
+    "stripe.webhook.missing-idempotency": "critical",
+    "deploy.env.example-missing": "info"
+  },
+  "suppressions": [
+    {
+      "ruleId": "stripe.webhook.missing-idempotency",
+      "paths": ["app/api/stripe/webhook/route.ts"],
+      "reason": "Temporary launch exception with duplicate-event coverage in integration tests."
+    }
+  ]
+}
+```
+
+`rules` 可以关闭规则或覆盖 severity。`suppressions` 适合处理某个具体路径上的 false positive。`failOn` 用于设置 CI 失败阈值。
+
+## 隐私模型
+
+`ai-saas-guard` 设计上适合在私有本地仓库中运行。
+
+- 本地运行
+- 读取仓库文件和 git diff
+- scan 命令无网络调用
+- 不上传代码
+- 不需要账号或登录
+- 不修改被扫描仓库
+- 对类似 secret 的 evidence 做 redaction
+
+## Hosted GitHub App 设计
+
+当前仓库已经包含未来 Hosted GitHub App 的设计文档和纯契约测试，但还没有部署真实 hosted 服务。
+
+相关文档：
+
+- [docs/github-app-design.md](docs/github-app-design.md)
+- [docs/hosted-first-service-slice.md](docs/hosted-first-service-slice.md)
+- [docs/hosted-deployment-model.md](docs/hosted-deployment-model.md)
+- [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md)
+- [docs/hosted-uninstall-data-deletion.md](docs/hosted-uninstall-data-deletion.md)
+- [docs/hosted-pricing-packaging.md](docs/hosted-pricing-packaging.md)
+- [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md)
+
+已经实现的 hosted 预实现纯契约包括：
+
+- webhook event parser
+- check-run summary renderer
+- queue cleanup planner
+- worker checkout cleanup planner
+- hosted compact report fixture：[examples/hosted-compact-report.json](examples/hosted-compact-report.json)
+
+这些 helper 不会启动服务、不会调用 GitHub API、不会请求 installation token、不会写 check run，也不会上传源码。
+
+## 它不是什么
+
+这个项目刻意避免过度安全承诺。
+
+- 不是渗透测试
+- 不是完整 SAST 平台
+- 不能证明你的应用绝对安全
+- 不能替代两账号权限测试
+- 不执行 Stripe、Supabase、Vercel 或浏览器流程
+- 不检查没有体现在本地文件里的生产设置
+- 不替代 Semgrep、Gitleaks、TruffleHog、Bearer、CodeQL 或人工 review
+
+正确使用方式是：把它当成上线前和 PR review 前的 preflight，帮助你决定应该先把人工注意力放在哪里。
+
+## 开发
+
+```bash
+npm ci
+npm test
+npm run build
+node dist/cli.js scan --root .
+```
+
+发布 CLI、GitHub Action、npm package 或任何公开仓库更新前，必须按照 [docs/release-quality-knowledge-base.md](docs/release-quality-knowledge-base.md) 的 release gate 执行。
+
+以后更新英文 `README.md` 时，也要同步检查并更新本中文 `README.zh-CN.md`。
+
+## 安全报告
+
+报告漏洞前请阅读 [SECURITY.md](SECURITY.md)。不要在公开 issue 中发布真实 API key、客户数据、私有源码或生产 URL。
