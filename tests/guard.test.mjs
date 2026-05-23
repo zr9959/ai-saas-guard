@@ -125,6 +125,28 @@ test("Stripe scanner ignores documentation-only mentions", async () => {
   assert.equal(report.missingCriticalEvents.length, 0);
 });
 
+test("Stripe scanner ignores webhook replay documentation files", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stripe-docs-"));
+  await mkdir(resolve(rootDir, "docs"), { recursive: true });
+  await writeFile(
+    resolve(rootDir, "docs", "stripe-webhook-replay.md"),
+    `# Stripe Webhook Replay Cookbook
+
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+stripe trigger checkout.session.completed
+stripe trigger invoice.payment_failed
+stripe trigger customer.subscription.updated
+stripe trigger customer.subscription.deleted
+stripe trigger charge.refunded
+`
+  );
+
+  const report = await checkStripe({ rootDir });
+
+  assert.equal(report.findings.length, 0);
+  assert.equal(report.missingCriticalEvents.length, 0);
+});
+
 test("broad Supabase policy is reported with concrete RLS evidence", async () => {
   const report = await checkSupabase({
     rootDir: resolve(fixtureRoot, "broad-supabase-policy")
@@ -581,6 +603,25 @@ test("public docs explain PR summary, SARIF, and the v0 Action tag", async () =>
   assert.match(actionDocs, /config:\s*\.ai-saas-guard\.json/);
   assert.match(actionDocs, /Use SARIF/i);
   assert.match(actionDocs, /Use markdown/i);
+});
+
+test("public docs include a Stripe webhook replay cookbook", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const cookbook = await readFile(resolve(packageRoot, "docs", "stripe-webhook-replay.md"), "utf8");
+
+  assert.match(readme, /docs\/stripe-webhook-replay\.md/);
+  assert.match(cookbook, /checkout\.session\.completed/);
+  assert.match(cookbook, /invoice\.payment_failed/);
+  assert.match(cookbook, /customer\.subscription\.updated/);
+  assert.match(cookbook, /customer\.subscription\.deleted/);
+  assert.match(cookbook, /charge\.refunded/);
+  assert.match(cookbook, /Duplicate event replay/i);
+  assert.match(cookbook, /Out-of-order/i);
+  assert.match(cookbook, /entitlement reconciliation/i);
+  assert.match(cookbook, /stripe trigger invoice\.payment_failed/);
+  assert.match(cookbook, /stripe listen --forward-to/);
+  assert.doesNotMatch(cookbook, /whsec_[A-Za-z0-9]+/);
+  assert.doesNotMatch(cookbook, /sk_(?:live|test)_[A-Za-z0-9]+/);
 });
 
 test("GitHub Action keeps colon-bearing descriptions YAML-safe", async () => {

@@ -40,6 +40,7 @@ Implemented surfaces:
 
 - secret-like values and risky public env exposure
 - Stripe webhook signature, raw body, idempotency, and lifecycle handler heuristics
+- Stripe webhook replay cookbook for checkout, renewal failure, updates, cancellation, refunds, duplicate delivery, and out-of-order review
 - Supabase RLS, tenant membership, ownership filter, weak `WITH CHECK`, and storage object policy heuristics
 - sensitive API route heuristics
 - MCP config side-effect and secret-bearing risk inventory
@@ -100,7 +101,6 @@ GitHub Project:
 Current issue set:
 
 - #1 Add launch-readiness checklist content
-- #5 Write Stripe webhook replay cookbook
 
 CI:
 
@@ -112,7 +112,7 @@ CI:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.4.0`
+- Current release line: `v0.5.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.
@@ -139,10 +139,9 @@ Not allowed:
 
 Recommended order:
 
-1. Write Stripe webhook replay cookbook.
-2. Add launch-readiness checklist content.
-3. Improve false-positive suppression and rule stability labels.
-4. Add a GitHub App design note for the potential hosted layer.
+1. Add launch-readiness checklist content.
+2. Improve false-positive suppression and rule stability labels.
+3. Add a GitHub App design note for the potential hosted layer.
 
 For every feature, keep the scanner evidence-first:
 

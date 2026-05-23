@@ -51,8 +51,8 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.4.0`, `v0` |
-| npm package | `ai-saas-guard@0.4.0` |
+| Versioned Action tags | `v0.5.0`, `v0` |
+| npm package | `ai-saas-guard@0.5.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
@@ -170,6 +170,10 @@ If `--base` cannot be resolved, `pr-risk` emits `pr-risk.diff-unavailable` inste
 | `check-stripe` | Inspect webhook handlers and billing lifecycle coverage |
 | `check-mcp` | Inventory MCP configs and classify side effects |
 
+## Stripe Webhook Replay
+
+Use [docs/stripe-webhook-replay.md](docs/stripe-webhook-replay.md) after `check-stripe` flags missing signature verification, idempotency, lifecycle handlers, or entitlement updates. The cookbook maps findings to concrete `stripe listen` and `stripe trigger` commands for checkout success, failed renewal, subscription update, cancellation, refund, duplicate delivery, and out-of-order event review.
+
 ## Project Configuration
 
 Add `.ai-saas-guard.json` at the repository root to tune findings without changing scanner code. The CLI auto-loads this file from `--root` when it exists. Use `--config <file>` to point to a different JSON file.
@@ -191,7 +195,7 @@ Add `.ai-saas-guard.json` at the repository root to tune findings without changi
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.4.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.5.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
@@ -320,7 +324,6 @@ Open-source core:
 
 Near-term priorities:
 
-- Stripe webhook replay cookbook
 - launch-readiness checklist content
 - false-positive suppression and rule stability labels
 - GitHub App design note for the potential hosted layer

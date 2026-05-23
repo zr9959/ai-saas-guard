@@ -16,8 +16,8 @@ const eventPattern =
 
 export async function checkStripe(input: ScanInput): Promise<StripeReport> {
   const context = await resolveScanContext(input);
-  const files = context.files;
-  const webhookFiles = files.filter((file) => {
+  const runtimeFiles = context.files.filter((file) => !isDocumentationFile(file.path));
+  const webhookFiles = runtimeFiles.filter((file) => {
     const path = file.path.toLowerCase();
     const content = file.content.toLowerCase();
     return (
@@ -27,7 +27,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
       content.includes("checkout.session.completed")
     );
   });
-  const stripeSignalFiles = files.filter((file) => !/\.(md|txt)$/i.test(file.path) && !file.path.startsWith("docs/"));
+  const stripeSignalFiles = runtimeFiles;
   const usesStripe =
     webhookFiles.length > 0 ||
     stripeSignalFiles.some((file) =>
@@ -217,4 +217,9 @@ function firstLineMatching(content: string, pattern: RegExp): number | undefined
 function firstSnippetMatching(content: string, pattern: RegExp): string | undefined {
   const line = firstLineMatching(content, pattern);
   return line ? lineAt(content, line) : undefined;
+}
+
+function isDocumentationFile(path: string): boolean {
+  const normalizedPath = path.replace(/\\/g, "/").toLowerCase();
+  return normalizedPath.startsWith("docs/") || /\.(md|mdx|rst|txt)$/i.test(normalizedPath);
 }
