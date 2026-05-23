@@ -46,6 +46,7 @@ Implemented surfaces:
 - Next/Vercel deploy and runtime footguns
 - PR diff risk triage for auth, billing, RLS, env, tests removed, and large mixed diffs
 - PR diff diagnostics when a base ref or shallow checkout prevents comparison
+- PR-focused markdown summary output for GitHub step summaries or PR comments
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper
@@ -98,13 +99,9 @@ GitHub Project:
 Current issue set:
 
 - #1 Add launch-readiness checklist content
-- #2 Add GitHub Action release packaging
 - #3 Add configurable rule severity and rule toggles
-- #4 Add PR comment summary mode
 - #5 Write Stripe webhook replay cookbook
-- #6 Add SARIF upload workflow example
 - #7 Expand Supabase RLS fixtures and ownership patterns
-- #8 Publish ai-saas-guard to npm
 
 CI:
 
@@ -116,7 +113,7 @@ CI:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.1.3`
+- Current release line: `v0.2.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.
@@ -143,13 +140,11 @@ Not allowed:
 
 Recommended order:
 
-1. Add PR comment summary mode.
-2. Add configurable severity and rule toggles.
-3. Expand Supabase RLS fixtures and ownership patterns.
-4. Write Stripe webhook replay cookbook.
-5. Add SARIF upload workflow example.
-6. Improve false-positive suppression and rule stability labels.
-7. Add a GitHub App design note for the potential hosted layer.
+1. Add configurable severity and rule toggles.
+2. Expand Supabase RLS fixtures and ownership patterns.
+3. Write Stripe webhook replay cookbook.
+4. Improve false-positive suppression and rule stability labels.
+5. Add a GitHub App design note for the potential hosted layer.
 
 For every feature, keep the scanner evidence-first:
 

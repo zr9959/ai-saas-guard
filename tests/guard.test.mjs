@@ -314,6 +314,45 @@ test("CLI can emit SARIF for GitHub code scanning", async () => {
   assert.ok(sarif.runs[0].results.some((result) => result.ruleId === "stripe.webhook.missing-signature"));
 });
 
+test("CLI can emit a PR-focused markdown summary for pr-risk", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-pr-markdown-"));
+  const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");
+  await mkdir(apiDir, { recursive: true });
+  await writeFile(resolve(apiDir, "route.ts"), "export async function POST() { return Response.json({ ok: true }); }\n");
+  await execFileAsync("git", ["init"], { cwd: rootDir });
+  await execFileAsync("git", ["config", "user.email", "test@example.com"], { cwd: rootDir });
+  await execFileAsync("git", ["config", "user.name", "Test User"], { cwd: rootDir });
+  await execFileAsync("git", ["add", "."], { cwd: rootDir });
+  await execFileAsync("git", ["commit", "-m", "base"], { cwd: rootDir });
+  await writeFile(
+    resolve(apiDir, "route.ts"),
+    `export async function POST(request: Request) {
+  const event = await request.json();
+  if (event.type === "checkout.session.completed") {
+    await grantSubscription(event.data.object.customer);
+  }
+  return Response.json({ ok: true });
+}
+`
+  );
+
+  const { stdout } = await execFileAsync("node", [
+    resolve(packageRoot, "dist/cli.js"),
+    "pr-risk",
+    "--root",
+    rootDir,
+    "--markdown"
+  ]);
+
+  assert.match(stdout, /^## ai-saas-guard PR risk summary/m);
+  assert.match(stdout, /### Review first/m);
+  assert.match(stdout, /app\/api\/stripe\/webhook\/route\.ts/);
+  assert.match(stdout, /billing\/subscription/);
+  assert.match(stdout, /### Required verification/m);
+  assert.match(stdout, /### Suggested PR split/m);
+  assert.doesNotMatch(stdout, /LGTM|ship it|looks good/i);
+});
+
 test("CLI --fail-on exits non-zero only because findings meet the threshold", async () => {
   const result = await runCli([
     "scan",
@@ -354,9 +393,23 @@ test("GitHub Action validates enumerated inputs before invoking the CLI", async 
 
   assert.ok(runStep, "expected action.yml to contain the Run ai-saas-guard step");
   assert.match(runStep[1], /case "\$\{INPUT_COMMAND\}" in[\s\S]*scan\|check-supabase\|check-stripe\|check-mcp\|pr-risk/);
-  assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif/);
+  assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif\|markdown/);
   assert.match(runStep[1], /case "\$\{INPUT_FAIL_ON\}" in[\s\S]*none\|critical\|high\|medium\|low\|info/);
+  assert.match(runStep[1], /--markdown/);
   assert.match(runStep[1], /exit 2/);
+});
+
+test("public docs explain PR summary, SARIF, and the v0 Action tag", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const actionDocs = await readFile(resolve(packageRoot, "docs", "github-action.md"), "utf8");
+
+  assert.match(readme, /zr9959\/ai-saas-guard@v0/);
+  assert.match(readme, /format:\s*markdown/);
+  assert.match(readme, /GITHUB_STEP_SUMMARY/);
+  assert.match(actionDocs, /PR summary/i);
+  assert.match(actionDocs, /SARIF/i);
+  assert.match(actionDocs, /Use SARIF/i);
+  assert.match(actionDocs, /Use markdown/i);
 });
 
 test("GitHub Action keeps colon-bearing descriptions YAML-safe", async () => {

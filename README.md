@@ -41,7 +41,7 @@ It is intentionally evidence-first. Findings include a rule ID, severity, file e
 
 This repository is public on GitHub.
 
-The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is available through versioned release tags. If you need stricter supply-chain pinning in CI, pin the GitHub Action to a reviewed commit SHA instead of a mutable tag.
+The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is available through versioned release tags. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag for controlled upgrades, or a reviewed commit SHA for stricter supply-chain pinning.
 
 | Area | Status |
 | --- | --- |
@@ -50,8 +50,8 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Local CLI from source | Available for development |
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
-| Versioned Action tags | `v0.1.3` |
-| npm package | `ai-saas-guard@0.1.3` |
+| Versioned Action tags | `v0.2.0`, `v0` |
+| npm package | `ai-saas-guard@0.2.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
@@ -76,6 +76,7 @@ Machine-readable output:
 ```bash
 npx ai-saas-guard@latest scan --root /path/to/your-saas --json
 npx ai-saas-guard@latest scan --root /path/to/your-saas --sarif > ai-saas-guard.sarif
+npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --markdown > ai-saas-guard-pr.md
 npx ai-saas-guard@latest scan --root /path/to/your-saas --fail-on high
 ```
 
@@ -148,9 +149,11 @@ AI-generated PRs often combine unrelated work:
 - suggested PR split
 - required tests or manual verification
 - explicit git-diff diagnostics when a base ref or shallow checkout prevents PR classification
+- PR-focused markdown for GitHub step summaries or PR comments
 
 ```bash
 node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --json
+node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --markdown
 ```
 
 If `--base` cannot be resolved, `pr-risk` emits `pr-risk.diff-unavailable` instead of silently reporting a clean or empty diff. In GitHub Actions, use `actions/checkout` with `fetch-depth: 0` when you need merge-base comparison against `origin/main`.
@@ -160,14 +163,14 @@ If `--base` cannot be resolved, `pr-risk` emits `pr-risk.diff-unavailable` inste
 | Command | Purpose |
 | --- | --- |
 | `scan` | Broad local launch preflight across secrets, Stripe, Supabase, MCP, API routes, and deploy config |
-| `pr-risk` | Classify the current git diff or a base branch diff for review priority |
+| `pr-risk` | Classify the current git diff or a base branch diff for review priority; supports JSON, SARIF, and PR-focused markdown |
 | `check-supabase` | Inspect migrations and policy files for RLS and ownership risks |
 | `check-stripe` | Inspect webhook handlers and billing lifecycle coverage |
 | `check-mcp` | Inventory MCP configs and classify side effects |
 
 ## GitHub Action
 
-The repo includes a composite Action. Use the latest release tag or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.2.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
@@ -185,7 +188,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
-      - uses: zr9959/ai-saas-guard@v0.1.3
+      - uses: zr9959/ai-saas-guard@v0
         with:
           command: pr-risk
           root: ${{ github.workspace }}
@@ -196,7 +199,7 @@ jobs:
 For SARIF upload:
 
 ```yaml
-      - uses: zr9959/ai-saas-guard@v0.1.3
+      - uses: zr9959/ai-saas-guard@v0
         with:
           command: scan
           format: sarif
@@ -206,7 +209,22 @@ For SARIF upload:
           sarif_file: ai-saas-guard.sarif
 ```
 
-For maximum reproducibility, replace `v0.1.3` with the full commit SHA from the release notes.
+For PR-readable markdown in the Actions run:
+
+```yaml
+      - uses: zr9959/ai-saas-guard@v0
+        with:
+          command: pr-risk
+          root: ${{ github.workspace }}
+          base: origin/main
+          format: markdown
+          output: ai-saas-guard-pr.md
+      - run: cat ai-saas-guard-pr.md >> "$GITHUB_STEP_SUMMARY"
+```
+
+Use markdown for reviewer-facing PR triage and SARIF for GitHub code scanning alerts. See [docs/github-action.md](docs/github-action.md) for copy-paste workflows and trade-offs.
+
+For maximum reproducibility, replace `v0` with the full commit SHA from the release notes.
 
 ## Ignore File
 
@@ -274,17 +292,16 @@ Open-source core:
 - local CLI
 - deterministic scanner rules
 - vulnerable and safe fixtures
-- JSON and SARIF output
+- JSON, SARIF, and PR-focused markdown output
 - GitHub Action wrapper
 - rule documentation
 
 Near-term priorities:
 
-- PR comment summary mode
 - configurable severity and rule toggles
 - expanded Supabase RLS fixtures
 - Stripe webhook replay cookbook
-- SARIF upload workflow example
+- launch-readiness checklist content
 
 Potential paid layer later:
 

@@ -12,7 +12,7 @@ inputs:
     required: false
     default: ${{ github.workspace }}
   format:
-    description: "Output format: terminal, json, or sarif."
+    description: "Output format: terminal, json, sarif, or markdown."
     required: false
     default: terminal
   fail-on:
@@ -62,7 +62,7 @@ runs:
         esac
 
         case "${INPUT_FORMAT}" in
-          terminal|json|sarif) ;;
+          terminal|json|sarif|markdown) ;;
           *)
             echo "Invalid format input: ${INPUT_FORMAT}" >&2
             exit 2
@@ -83,6 +83,8 @@ runs:
           args+=("--json")
         elif [ "${INPUT_FORMAT}" = "sarif" ]; then
           args+=("--sarif")
+        elif [ "${INPUT_FORMAT}" = "markdown" ]; then
+          args+=("--markdown")
         fi
 
         if [ "${INPUT_FAIL_ON}" != "none" ]; then

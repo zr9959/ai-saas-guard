@@ -3,6 +3,7 @@
 import { resolve } from "node:path";
 import { checkMcp, checkStripe, checkSupabase, classifyPrRisk, scanRepository } from "./index.js";
 import { formatJsonReport } from "./report/json.js";
+import { formatMarkdownReport } from "./report/markdown.js";
 import { formatSarifReport } from "./report/sarif.js";
 import { formatTerminalReport } from "./report/terminal.js";
 import type { BaseReport, CommandName, Severity } from "./types.js";
@@ -10,7 +11,7 @@ import type { BaseReport, CommandName, Severity } from "./types.js";
 interface ParsedArgs {
   command?: CommandName | "help";
   rootDir: string;
-  format: "terminal" | "json" | "sarif";
+  format: "terminal" | "json" | "sarif" | "markdown";
   base?: string;
   failOn?: Severity | "none";
 }
@@ -77,10 +78,15 @@ function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
 
+    if (arg === "--markdown") {
+      result.format = "markdown";
+      continue;
+    }
+
     if (arg === "--format") {
       const value = argv[index + 1];
-      if (value !== "terminal" && value !== "json" && value !== "sarif") {
-        throw new Error("--format requires terminal, json, or sarif");
+      if (value !== "terminal" && value !== "json" && value !== "sarif" && value !== "markdown") {
+        throw new Error("--format requires terminal, json, sarif, or markdown");
       }
       result.format = value;
       index += 1;
@@ -131,6 +137,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 function formatReport(report: BaseReport, format: ParsedArgs["format"]): string {
   if (format === "json") return formatJsonReport(report);
   if (format === "sarif") return formatSarifReport(report);
+  if (format === "markdown") return formatMarkdownReport(report);
   return `${formatTerminalReport(report)}\n`;
 }
 
@@ -164,7 +171,7 @@ Usage:
   ai-saas-guard check-supabase [--root <repo>] [--json|--sarif] [--fail-on <severity>]
   ai-saas-guard check-stripe [--root <repo>] [--json|--sarif] [--fail-on <severity>]
   ai-saas-guard check-mcp [--root <repo>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard pr-risk [--root <repo>] [--base <branch>] [--json|--sarif] [--fail-on <severity>]
+  ai-saas-guard pr-risk [--root <repo>] [--base <branch>] [--json|--sarif|--markdown] [--fail-on <severity>]
 
 Defaults:
   - read-only
@@ -172,6 +179,7 @@ Defaults:
   - no account or login required
   - terminal output by default, JSON with --json
   - SARIF output for GitHub code scanning with --sarif
+  - PR-focused markdown summary with --markdown
 `;
 }
 
