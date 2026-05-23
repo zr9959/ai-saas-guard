@@ -60,6 +60,27 @@ Privacy boundaries:
 - do not include raw source, raw diffs, secret values, webhook payload bodies, customer payloads, or private URLs
 - preserve `modelTraining: disabled`
 
+## Queue Cleanup Planner
+
+The queue cleanup planner turns repository removal, installation deletion, and repeated cleanup events into a safe cancellation plan for hosted scan jobs. It is a pure planner only: it does not connect to a queue provider, mutate jobs, delete worker files, call GitHub, or retry work.
+
+Default behavior:
+
+- support repository-scoped cleanup for repository removal
+- support installation-scoped cleanup for full GitHub App uninstall
+- keep repeated cleanup idempotent with a stable cleanup key
+- cancel queued jobs that match the cleanup scope
+- request running cancellation for matching jobs already in progress
+- preserve terminal jobs that are already completed, failed, or cancelled
+- keep unmatched jobs outside the cleanup scope
+- return job keys and counts only, not full job payloads
+
+Privacy boundaries:
+
+- do not return raw source, raw diffs, secret values, customer payloads, or worker checkout paths
+- do not delete GitHub-owned check runs
+- leave worker checkout deletion to the worker checkout cleanup contract
+
 ## Non-Goals
 
 These contracts do not:
@@ -87,5 +108,8 @@ Automated tests must cover:
 - check-run summary renderer conclusions stay success, neutral, or failure based on explicit compact-report rules
 - bounded Markdown truncates large check-run text and points readers to the local CLI
 - rendered summaries do not expose raw source, raw diffs, secret values, or customer payloads
+- queue cleanup planner cancels only matching repository-scoped queued work
+- queue cleanup planner handles installation-scoped cleanup without touching other installations
+- idempotent repeated cleanup preserves terminal jobs and does not create duplicate cancellation work
 
 Fixtures must be synthetic and public-safe. They must not include real credentials, customer payloads, private URLs, raw source, or raw diffs.

@@ -7,9 +7,11 @@ import {
   authorizeInstallationTokenScope,
   buildHostedScanIdentity,
   createHostedCheckRunSummary,
+  createHostedQueueCleanupPlan,
   createCompactHostedReport,
   createHostedDeletionPlan,
   getHostedDeletionIdempotencyKey,
+  getHostedQueueCleanupIdempotencyKey,
   getHostedScanIdempotencyKey,
   parseHostedPullRequestEvent,
   resolveHostedRetentionDays,
@@ -69,6 +71,17 @@ function sampleCompactReport(overrides = {}) {
     ],
     ...overrides
   });
+}
+
+function sampleQueueJob(overrides = {}) {
+  return {
+    key: "job-1",
+    identity: sampleIdentity(),
+    status: "queued",
+    attempt: 1,
+    deliveryIds: ["delivery-1"],
+    ...overrides
+  };
 }
 
 test("hosted webhook verification accepts valid signatures only once", () => {
@@ -394,6 +407,105 @@ test("hosted check-run summaries bound markdown and do not expose raw payload fi
   assert.equal(serialized.includes("fullFileContents"), false);
   assert.equal(serialized.includes("redacted"), false);
   assert.equal(serialized.includes("person@example.test"), false);
+});
+
+test("hosted queue cleanup cancels only matching repository work", () => {
+  const matchingQueued = sampleQueueJob({
+    key: "job-queued",
+    status: "queued"
+  });
+  const matchingRunning = sampleQueueJob({
+    key: "job-running",
+    status: "running"
+  });
+  const matchingCompleted = sampleQueueJob({
+    key: "job-completed",
+    status: "completed"
+  });
+  const otherRepository = sampleQueueJob({
+    key: "job-other-repo",
+    status: "queued",
+    identity: sampleIdentity({ repositoryId: 999, repositoryFullName: "owner/other" })
+  });
+
+  const plan = createHostedQueueCleanupPlan({
+    trigger: "repository_removed",
+    installationId: 123,
+    repositoryId: 456,
+    requestedAt: "2026-05-23T12:10:00.000Z",
+    jobs: [
+      matchingQueued,
+      matchingRunning,
+      matchingCompleted,
+      {
+        ...otherRepository,
+        rawSource: "const secret = 'redacted';",
+        rawDiff: "diff --git a/private.ts b/private.ts",
+        customerPayload: { email: "person@example.test" }
+      }
+    ]
+  });
+  const serialized = JSON.stringify(plan);
+
+  assert.equal(
+    getHostedQueueCleanupIdempotencyKey({
+      trigger: "repository_removed",
+      installationId: 123,
+      repositoryId: 456
+    }),
+    "queue-cleanup:repository_removed:123:456"
+  );
+  assert.equal(plan.scope, "repository");
+  assert.deepEqual(plan.cancelQueuedJobKeys, ["job-queued"]);
+  assert.deepEqual(plan.requestRunningCancellationJobKeys, ["job-running"]);
+  assert.deepEqual(plan.preserveTerminalJobKeys, ["job-completed"]);
+  assert.deepEqual(plan.keepUnmatchedJobKeys, ["job-other-repo"]);
+  assert.equal(plan.cancelQueuedJobs, true);
+  assert.equal(plan.deleteRawSource, false);
+  assert.equal(serialized.includes("rawSource"), false);
+  assert.equal(serialized.includes("rawDiff"), false);
+  assert.equal(serialized.includes("redacted"), false);
+  assert.equal(serialized.includes("person@example.test"), false);
+});
+
+test("hosted queue cleanup is installation-scoped and repeated cleanup is idempotent", () => {
+  const installationPlan = createHostedQueueCleanupPlan({
+    trigger: "installation_deleted",
+    installationId: 123,
+    requestedAt: "2026-05-23T12:10:00.000Z",
+    jobs: [
+      sampleQueueJob({ key: "job-a", status: "queued" }),
+      sampleQueueJob({
+        key: "job-b",
+        status: "queued",
+        identity: sampleIdentity({ repositoryId: 999, repositoryFullName: "owner/other" })
+      }),
+      sampleQueueJob({
+        key: "job-c",
+        status: "queued",
+        identity: sampleIdentity({ installationId: 999, repositoryId: 111 })
+      })
+    ]
+  });
+  const repeated = createHostedQueueCleanupPlan({
+    trigger: "repeated_cleanup",
+    installationId: 123,
+    repositoryId: 456,
+    requestedAt: "2026-05-23T12:15:00.000Z",
+    jobs: [
+      sampleQueueJob({ key: "job-cancelled", status: "cancelled" }),
+      sampleQueueJob({ key: "job-failed", status: "failed" })
+    ]
+  });
+
+  assert.equal(installationPlan.scope, "installation");
+  assert.deepEqual(installationPlan.cancelQueuedJobKeys, ["job-a", "job-b"]);
+  assert.deepEqual(installationPlan.keepUnmatchedJobKeys, ["job-c"]);
+  assert.equal(installationPlan.idempotencyKey, "queue-cleanup:installation_deleted:123:all");
+  assert.equal(repeated.idempotent, true);
+  assert.deepEqual(repeated.cancelQueuedJobKeys, []);
+  assert.deepEqual(repeated.requestRunningCancellationJobKeys, []);
+  assert.deepEqual(repeated.preserveTerminalJobKeys, ["job-cancelled", "job-failed"]);
 });
 
 test("hosted deletion plans cover repository removal installation deletion and repeated cleanup", () => {

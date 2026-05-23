@@ -57,7 +57,7 @@ Implemented surfaces:
 - hosted operational release gate document requiring hosted CI, webhook replay, dependency and container scanning, privacy and retention verification, worker cleanup, monitoring and alerting, manual rollback, and incident response evidence before exposure
 - hosted uninstall and data deletion document defining repository removal, full app uninstall, compact report deletion, queue cancellation, audit record retention, repeated cleanup idempotency, and user-facing deletion wording
 - hosted pricing and packaging document defining open-source CLI boundaries, free/public repo hosted behavior, private repo hosted behavior, PR comments, saved reports, team policy, optional Launch Review, and no pentest/certification/full-audit claims
-- hosted pre-implementation contracts document and pure helpers for queue-safe pull request event parsing from trusted GitHub event fields and bounded check-run summary rendering
+- hosted pre-implementation contracts document and pure helpers for queue-safe pull request event parsing from trusted GitHub event fields, bounded check-run summary rendering, and idempotent queue cleanup planning
 - implementation-ready hosted GitHub App permission contract for required permissions, optional PR comment permissions, selected repository installation, and out-of-scope broad permissions
 - pure hosted GitHub App contract helpers and tests for webhook verification, installation token scoping, scan queue idempotency, compact reports, and retention limits
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
@@ -113,7 +113,6 @@ GitHub Project:
 
 Current issue set:
 
-- #20 `Roadmap: define hosted check-run summary contract`
 - #21 `Roadmap: define hosted queue cleanup contract`
 - #22 `Roadmap: define hosted worker checkout cleanup contract`
 - #23 `Roadmap: define hosted report schema fixture`

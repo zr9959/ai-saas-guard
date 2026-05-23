@@ -895,6 +895,13 @@ test("public docs define hosted pre-implementation contracts", async () => {
   assert.match(contracts, /conservative check conclusions/i);
   assert.match(contracts, /review-first language/i);
   assert.match(contracts, /local CLI link/i);
+  assert.match(contracts, /queue cleanup planner/i);
+  assert.match(contracts, /repository-scoped cleanup/i);
+  assert.match(contracts, /installation-scoped cleanup/i);
+  assert.match(contracts, /idempotent repeated cleanup/i);
+  assert.match(contracts, /cancel queued jobs/i);
+  assert.match(contracts, /request running cancellation/i);
+  assert.match(contracts, /preserve terminal jobs/i);
   assert.match(contracts, /no network calls/i);
   assert.doesNotMatch(contracts, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });

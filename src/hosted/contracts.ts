@@ -102,6 +102,50 @@ export interface HostedScanJobDecision {
   shouldCreatePrComment: boolean;
 }
 
+export type HostedQueueJobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
+
+export type HostedQueueCleanupTrigger =
+  | "repository_removed"
+  | "installation_deleted"
+  | "repeated_cleanup";
+
+export interface HostedQueueCleanupJobState {
+  key: string;
+  identity: HostedScanIdentity;
+  status: HostedQueueJobStatus;
+  attempt?: number;
+  deliveryIds?: string[];
+}
+
+export interface HostedQueueCleanupPlanInput {
+  trigger: HostedQueueCleanupTrigger;
+  installationId: number;
+  repositoryId?: number;
+  requestedAt: string;
+  jobs: HostedQueueCleanupJobState[];
+}
+
+export interface HostedQueueCleanupPlan {
+  trigger: HostedQueueCleanupTrigger;
+  scope: "repository" | "installation";
+  installationId: number;
+  repositoryId?: number;
+  requestedAt: string;
+  idempotencyKey: string;
+  idempotent: true;
+  matchedJobKeys: string[];
+  cancelQueuedJobKeys: string[];
+  requestRunningCancellationJobKeys: string[];
+  preserveTerminalJobKeys: string[];
+  keepUnmatchedJobKeys: string[];
+  cancelQueuedJobs: true;
+  requestRunningCancellation: true;
+  deleteRawSource: false;
+  deleteRawDiffs: false;
+  deleteSecrets: false;
+  deleteCustomerPayloads: false;
+}
+
 export interface CompactHostedFinding {
   ruleId: string;
   severity: string;
@@ -422,6 +466,57 @@ export function upsertHostedScanJob(
   };
 }
 
+export function getHostedQueueCleanupIdempotencyKey(input: {
+  trigger: HostedQueueCleanupTrigger;
+  installationId: number;
+  repositoryId?: number;
+}): string {
+  return ["queue-cleanup", input.trigger, input.installationId, input.repositoryId ?? "all"].join(
+    ":"
+  );
+}
+
+export function createHostedQueueCleanupPlan(
+  input: HostedQueueCleanupPlanInput
+): HostedQueueCleanupPlan {
+  const scope = input.trigger === "installation_deleted" ? "installation" : "repository";
+  const matchedJobs = input.jobs.filter((job) => queueCleanupMatches(job, input, scope));
+  const unmatchedJobs = input.jobs.filter((job) => !queueCleanupMatches(job, input, scope));
+
+  return {
+    trigger: input.trigger,
+    scope,
+    installationId: input.installationId,
+    ...(scope === "repository" && input.repositoryId !== undefined
+      ? { repositoryId: input.repositoryId }
+      : {}),
+    requestedAt: input.requestedAt,
+    idempotencyKey: getHostedQueueCleanupIdempotencyKey({
+      trigger: input.trigger,
+      installationId: input.installationId,
+      repositoryId: scope === "repository" ? input.repositoryId : undefined
+    }),
+    idempotent: true,
+    matchedJobKeys: matchedJobs.map((job) => job.key),
+    cancelQueuedJobKeys: matchedJobs
+      .filter((job) => job.status === "queued")
+      .map((job) => job.key),
+    requestRunningCancellationJobKeys: matchedJobs
+      .filter((job) => job.status === "running")
+      .map((job) => job.key),
+    preserveTerminalJobKeys: matchedJobs
+      .filter((job) => isTerminalQueueStatus(job.status))
+      .map((job) => job.key),
+    keepUnmatchedJobKeys: unmatchedJobs.map((job) => job.key),
+    cancelQueuedJobs: true,
+    requestRunningCancellation: true,
+    deleteRawSource: false,
+    deleteRawDiffs: false,
+    deleteSecrets: false,
+    deleteCustomerPayloads: false
+  };
+}
+
 export function resolveHostedRetentionDays(input: { teamRequestedDays?: number } = {}): number {
   if (input.teamRequestedDays === undefined) {
     return HOSTED_PRIVACY_DEFAULTS.retentionDays;
@@ -568,6 +663,22 @@ function rejectInstallationScope(reason: InstallationScopeRejectReason): Install
     shouldFetchSource: false,
     reason
   };
+}
+
+function queueCleanupMatches(
+  job: HostedQueueCleanupJobState,
+  input: HostedQueueCleanupPlanInput,
+  scope: "repository" | "installation"
+): boolean {
+  if (job.identity.installationId !== input.installationId) {
+    return false;
+  }
+
+  return scope === "installation" || job.identity.repositoryId === input.repositoryId;
+}
+
+function isTerminalQueueStatus(status: HostedQueueJobStatus): boolean {
+  return status === "completed" || status === "failed" || status === "cancelled";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

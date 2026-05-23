@@ -56,7 +56,7 @@ Hosted uninstall and data deletion behavior is scoped in [docs/hosted-uninstall-
 
 Hosted pricing and packaging boundaries are scoped in [docs/hosted-pricing-packaging.md](hosted-pricing-packaging.md). Core local scanning stays useful without an account; future hosted plans may charge for workflow convenience, saved reports, team policy, private repo hosted behavior, and optional human review, but not for access to useful local scanning.
 
-Hosted pre-implementation pure contracts are scoped in [docs/hosted-preimplementation-contracts.md](hosted-preimplementation-contracts.md). They define service-free helpers such as queue-safe pull request event parsing and bounded check-run summary rendering before any hosted ingress, queue, worker, or GitHub API integration is added.
+Hosted pre-implementation pure contracts are scoped in [docs/hosted-preimplementation-contracts.md](hosted-preimplementation-contracts.md). They define service-free helpers such as queue-safe pull request event parsing, bounded check-run summary rendering, and idempotent queue cleanup planning before any hosted ingress, queue, worker, or GitHub API integration is added.
 
 ## Least-Privilege Permissions
 
