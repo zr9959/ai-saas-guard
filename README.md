@@ -182,6 +182,8 @@ Use [docs/stripe-webhook-replay.md](docs/stripe-webhook-replay.md) after `check-
 
 See [docs/github-app-design.md](docs/github-app-design.md) for the proposed hosted GitHub App layer. The note covers least-privilege permissions, selected repositories, webhook verification, PR comments, check runs, privacy, data retention, prompt injection handling, and why the hosted app should not replace the local CLI.
 
+The first hosted service slice is defined in [docs/hosted-first-service-slice.md](docs/hosted-first-service-slice.md). It is intentionally check-run-only: signed GitHub App webhook intake, trusted scan identity, idempotent scan queueing, read-only worker behavior, compact report storage, and no PR comments, dashboard, billing, or AI summaries.
+
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
 The repository also includes pure pre-implementation hosted contract helpers and tests for webhook verification, installation token scoping, queue idempotency, compact reports, and retention limits. These helpers do not implement or deploy a hosted service.

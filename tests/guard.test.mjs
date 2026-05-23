@@ -745,6 +745,30 @@ test("public docs include a GitHub App hosted-layer design note", async () => {
   assert.doesNotMatch(design, /client_secret|private key|webhook secret/i);
 });
 
+test("public docs define the first hosted service slice", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+  const slice = await readFile(resolve(packageRoot, "docs", "hosted-first-service-slice.md"), "utf8");
+
+  assert.match(readme, /docs\/hosted-first-service-slice\.md/);
+  assert.match(design, /docs\/hosted-first-service-slice\.md/);
+  assert.match(slice, /First Hosted Service Slice/i);
+  assert.match(slice, /signed GitHub App webhook/i);
+  assert.match(slice, /verify the webhook signature before/i);
+  assert.match(slice, /trusted GitHub event fields/i);
+  assert.match(slice, /idempotent scan request/i);
+  assert.match(slice, /check run summary only/i);
+  assert.match(slice, /No PR comments/i);
+  assert.match(slice, /No saved report dashboard/i);
+  assert.match(slice, /No billing/i);
+  assert.match(slice, /No AI summaries/i);
+  assert.match(slice, /no raw source/i);
+  assert.match(slice, /no raw diffs/i);
+  assert.match(slice, /no secrets/i);
+  assert.match(slice, /does not replace the local CLI/i);
+  assert.doesNotMatch(slice, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
 test("hosted GitHub App docs define an implementation-ready permission contract", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");

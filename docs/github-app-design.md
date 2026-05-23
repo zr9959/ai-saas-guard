@@ -46,6 +46,8 @@ Start with a PR review assistant that runs the same deterministic scanner logic 
 
 The first version should prefer check runs over noisy PR comments. PR comments should be opt-in per repository.
 
+The first hosted service slice is scoped in [docs/hosted-first-service-slice.md](hosted-first-service-slice.md). That slice is check-run-only and exists to prove signed webhook intake, trusted identity construction, idempotent queueing, read-only worker behavior, compact report storage, and local-first positioning before any PR comments, dashboard, billing, or AI summaries are added.
+
 ## Least-Privilege Permissions
 
 Use least-privilege permissions and install on selected repositories only. This section is the Implementation-ready permission contract for the first hosted GitHub App version.
