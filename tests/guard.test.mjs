@@ -858,6 +858,28 @@ test("public docs define the hosted service runtime", async () => {
   assert.doesNotMatch(runtime, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs define hosted GitHub App deployment planning", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+  const deployment = await readFile(resolve(packageRoot, "docs", "github-app-deployment.md"), "utf8");
+
+  assert.match(readme, /docs\/github-app-deployment\.md/);
+  assert.match(design, /docs\/github-app-deployment\.md/);
+  assert.match(deployment, /Hosted GitHub App Deployment/i);
+  assert.match(deployment, /planHostedGitHubAppDeployment/);
+  assert.match(deployment, /ai-saas-guard\/hosted\/github-app/);
+  assert.match(deployment, /contents: read/i);
+  assert.match(deployment, /pull_requests: read/i);
+  assert.match(deployment, /checks: write/i);
+  assert.match(deployment, /metadata: read/i);
+  assert.match(deployment, /pull_request/i);
+  assert.match(deployment, /installation_repositories/i);
+  assert.match(deployment, /secret reference/i);
+  assert.match(deployment, /blocks GitHub App creation/i);
+  assert.match(deployment, /does not create a GitHub App by itself/i);
+  assert.doesNotMatch(deployment, /client_secret|sk_(?:live|test)_|whsec_[A-Za-z0-9_]+/i);
+});
+
 test("public docs define the hosted operational release gate", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
@@ -1270,6 +1292,10 @@ test("hosted contract helpers have an explicit npm subpath export", async () => 
   assert.deepEqual(packageJson.exports["./hosted/service"], {
     types: "./dist/hosted/service.d.ts",
     default: "./dist/hosted/service.js"
+  });
+  assert.deepEqual(packageJson.exports["./hosted/github-app"], {
+    types: "./dist/hosted/github-app.d.ts",
+    default: "./dist/hosted/github-app.js"
   });
 });
 

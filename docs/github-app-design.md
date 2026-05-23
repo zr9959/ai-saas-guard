@@ -52,6 +52,8 @@ The hosted deployment model is scoped in [docs/hosted-deployment-model.md](hoste
 
 The hosted service runtime is scoped in [docs/hosted-service-runtime.md](hosted-service-runtime.md). It implements the provider-independent core for signed webhook intake, idempotent queue upsert, read-only worker orchestration, compact report storage, Check Run publication adapters, and worker cleanup planning. It does not deploy a public hosted environment by itself.
 
+The hosted GitHub App deployment planner is scoped in [docs/github-app-deployment.md](github-app-deployment.md). It generates the least-privilege first-slice manifest and blocks creation when release-gate evidence, HTTPS URLs, container digest, secret references, permissions, or events are incomplete or unsafe.
+
 The hosted operational release gate is scoped in [docs/hosted-operational-release-gate.md](hosted-operational-release-gate.md). It blocks hosted exposure unless CI, webhook replay, signature verification, token scoping, idempotency, privacy and retention, worker cleanup, monitoring, alerting, rollback, and incident response evidence are fresh for the release candidate.
 
 Hosted uninstall and data deletion behavior is scoped in [docs/hosted-uninstall-data-deletion.md](hosted-uninstall-data-deletion.md). It defines repository removal, full app uninstall, compact report deletion, queue cancellation, limited audit record retention, repeated cleanup idempotency, and user-facing deletion wording.

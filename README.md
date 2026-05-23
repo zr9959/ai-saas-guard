@@ -73,8 +73,8 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.17.0`, `v0` |
-| npm package | `ai-saas-guard@0.17.0` |
+| Versioned Action tags | `v0.18.0`, `v0` |
+| npm package | `ai-saas-guard@0.18.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
@@ -210,6 +210,8 @@ The hosted deployment model is documented in [docs/hosted-deployment-model.md](d
 
 The hosted service runtime is documented in [docs/hosted-service-runtime.md](docs/hosted-service-runtime.md). It exports `createHostedServiceRuntime` from `ai-saas-guard/hosted/service` and implements the provider-independent service core for signed webhook intake, idempotent queue upsert, read-only worker orchestration, compact report storage, Check Run publication adapters, and worker cleanup planning. It does not deploy a public hosted environment by itself.
 
+The hosted GitHub App deployment planner is documented in [docs/github-app-deployment.md](docs/github-app-deployment.md). It exports `planHostedGitHubAppDeployment` from `ai-saas-guard/hosted/github-app`, generates the least-privilege manifest for the first hosted slice, and blocks creation when the release gate, HTTPS URLs, container digest, secret references, permissions, or events are incomplete or unsafe.
+
 The hosted operational release gate is documented in [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md). It defines the hosted-specific CI, replay, queue, worker cleanup, privacy, monitoring, rollback, and incident-response evidence required before any hosted environment is exposed to users. The pure gate evaluator exported from `ai-saas-guard/hosted/contracts` blocks hosted exposure unless every P0 evidence item is fresh, a container digest is recorded, and release notes avoid pentest, certification, and full-audit claims.
 
 Hosted uninstall and data deletion behavior is documented in [docs/hosted-uninstall-data-deletion.md](docs/hosted-uninstall-data-deletion.md). It defines repository removal, full app uninstall, compact report deletion, queue cancellation, audit record retention, repeated cleanup, and user-facing deletion wording.
@@ -222,7 +224,7 @@ A public hosted compact report schema fixture is available at [examples/hosted-c
 
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
-The repository also includes hosted contract helpers and runtime tests for webhook intake order, webhook verification, installation token scoping, durable queue idempotency, compact reports, retention limits, uninstall cleanup, repeated cleanup idempotency, scoped deletion planning, operational release gate blocking, and provider-independent hosted service orchestration. These helpers do not deploy a public hosted service.
+The repository also includes hosted contract helpers and runtime tests for webhook intake order, webhook verification, installation token scoping, durable queue idempotency, compact reports, retention limits, uninstall cleanup, repeated cleanup idempotency, scoped deletion planning, operational release gate blocking, provider-independent hosted service orchestration, and GitHub App deployment planning. These helpers do not deploy a public hosted service.
 
 Users should prefer the local CLI for private repositories, offline review, or no-account workflows where hosted code processing is not acceptable.
 
@@ -256,7 +258,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.17.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.18.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
