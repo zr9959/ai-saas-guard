@@ -186,6 +186,8 @@ The first hosted service slice is defined in [docs/hosted-first-service-slice.md
 
 The hosted deployment model is documented in [docs/hosted-deployment-model.md](docs/hosted-deployment-model.md). It chooses a containerized Node.js ingress and worker model with a managed durable queue, platform secret manager, structured redacted logs, installation/repository rate limits, and rollback/incident response paths.
 
+The hosted operational release gate is documented in [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md). It defines the hosted-specific CI, replay, queue, worker cleanup, privacy, monitoring, rollback, and incident-response evidence required before any hosted environment is exposed to users.
+
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
 The repository also includes pure pre-implementation hosted contract helpers and tests for webhook verification, installation token scoping, queue idempotency, compact reports, and retention limits. These helpers do not implement or deploy a hosted service.

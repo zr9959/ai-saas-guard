@@ -50,6 +50,8 @@ The first hosted service slice is scoped in [docs/hosted-first-service-slice.md]
 
 The hosted deployment model is scoped in [docs/hosted-deployment-model.md](hosted-deployment-model.md). It chooses containerized Node.js ingress and worker roles connected by a managed durable queue, with platform-managed secrets, structured redacted logs, installation/repository rate limits, rollback, and incident response paths.
 
+The hosted operational release gate is scoped in [docs/hosted-operational-release-gate.md](hosted-operational-release-gate.md). It blocks hosted exposure unless CI, webhook replay, signature verification, token scoping, idempotency, privacy and retention, worker cleanup, monitoring, alerting, rollback, and incident response evidence are fresh for the release candidate.
+
 ## Least-Privilege Permissions
 
 Use least-privilege permissions and install on selected repositories only. This section is the Implementation-ready permission contract for the first hosted GitHub App version.

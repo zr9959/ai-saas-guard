@@ -218,3 +218,5 @@ Do not deploy hosted code if any of these are true:
 - worker concurrency has no installation and repository rate limits
 - rollback requires users to change their repositories
 - local CLI docs imply hosted account setup is required
+
+Before any environment is exposed to users, apply the hosted operational release gate in [docs/hosted-operational-release-gate.md](hosted-operational-release-gate.md).

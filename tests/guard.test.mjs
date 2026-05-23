@@ -799,6 +799,34 @@ test("public docs choose the hosted deployment model", async () => {
   assert.doesNotMatch(model, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs define the hosted operational release gate", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+  const gate = await readFile(resolve(packageRoot, "docs", "hosted-operational-release-gate.md"), "utf8");
+
+  assert.match(readme, /docs\/hosted-operational-release-gate\.md/);
+  assert.match(design, /docs\/hosted-operational-release-gate\.md/);
+  assert.match(gate, /Hosted Operational Release Gate/i);
+  assert.match(gate, /blocks release/i);
+  assert.match(gate, /CI checks/i);
+  assert.match(gate, /signature verification/i);
+  assert.match(gate, /installation token scoping/i);
+  assert.match(gate, /idempotency/i);
+  assert.match(gate, /retention/i);
+  assert.match(gate, /webhook replay/i);
+  assert.match(gate, /dependency and container scanning/i);
+  assert.match(gate, /manual rollback/i);
+  assert.match(gate, /monitoring and alerting/i);
+  assert.match(gate, /temporary files/i);
+  assert.match(gate, /worker checkouts/i);
+  assert.match(gate, /long-running processes/i);
+  assert.match(gate, /no raw source/i);
+  assert.match(gate, /no raw diffs/i);
+  assert.match(gate, /no secrets/i);
+  assert.match(gate, /does not replace the local CLI/i);
+  assert.doesNotMatch(gate, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
 test("hosted GitHub App docs define an implementation-ready permission contract", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
