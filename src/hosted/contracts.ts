@@ -146,6 +146,58 @@ export interface HostedQueueCleanupPlan {
   deleteCustomerPayloads: false;
 }
 
+export type HostedWorkerCheckoutTerminalState =
+  | "success"
+  | "failure"
+  | "timeout"
+  | "cancellation"
+  | "cleanup_failure";
+
+export type HostedWorkerCheckoutCleanupAction = "delete_checkout" | "record_cleanup_failure";
+
+export interface HostedWorkerCheckoutCleanupInput {
+  identity: HostedScanIdentity;
+  jobKey: string;
+  terminalState: HostedWorkerCheckoutTerminalState;
+  finishedAt: string;
+  checkoutPath?: string;
+  cleanupError?: string;
+  rawSource?: string;
+  rawDiff?: string;
+  secretValues?: string[];
+  customerPayload?: unknown;
+}
+
+export interface HostedWorkerCheckoutCleanupPlan {
+  cleanupAction: HostedWorkerCheckoutCleanupAction;
+  shouldDeleteWorkerCheckout: boolean;
+  shouldRemoveCredentials: boolean;
+  shouldRemoveRawSource: boolean;
+  shouldRemoveRawDiffs: boolean;
+  shouldRemoveGeneratedArtifacts: boolean;
+  requiresOperatorReview: boolean;
+  preserveAuditRecord: true;
+  visibleUserMessage: string;
+  safeMetadata: {
+    jobKey: string;
+    installationId: number;
+    repositoryId: number;
+    repositoryFullName: string;
+    pullRequestNumber: number;
+    scannerVersion: string;
+    terminalState: HostedWorkerCheckoutTerminalState;
+    finishedAt: string;
+  };
+  privacy: {
+    returnsCheckoutPath: false;
+    returnsCleanupError: false;
+    returnsRawSource: false;
+    returnsRawDiffs: false;
+    returnsSecrets: false;
+    returnsCustomerPayloads: false;
+  };
+}
+
 export interface CompactHostedFinding {
   ruleId: string;
   severity: string;
@@ -514,6 +566,44 @@ export function createHostedQueueCleanupPlan(
     deleteRawDiffs: false,
     deleteSecrets: false,
     deleteCustomerPayloads: false
+  };
+}
+
+export function createHostedWorkerCheckoutCleanupPlan(
+  input: HostedWorkerCheckoutCleanupInput
+): HostedWorkerCheckoutCleanupPlan {
+  const cleanupFailed = input.terminalState === "cleanup_failure";
+
+  return {
+    cleanupAction: cleanupFailed ? "record_cleanup_failure" : "delete_checkout",
+    shouldDeleteWorkerCheckout: !cleanupFailed,
+    shouldRemoveCredentials: !cleanupFailed,
+    shouldRemoveRawSource: !cleanupFailed,
+    shouldRemoveRawDiffs: !cleanupFailed,
+    shouldRemoveGeneratedArtifacts: !cleanupFailed,
+    requiresOperatorReview: cleanupFailed,
+    preserveAuditRecord: true,
+    visibleUserMessage: cleanupFailed
+      ? "Worker checkout cleanup failed; manual cleanup review is required without exposing checkout data."
+      : "Worker checkout is scheduled for deletion after scan completion.",
+    safeMetadata: {
+      jobKey: input.jobKey,
+      installationId: input.identity.installationId,
+      repositoryId: input.identity.repositoryId,
+      repositoryFullName: input.identity.repositoryFullName,
+      pullRequestNumber: input.identity.pullRequestNumber,
+      scannerVersion: input.identity.scannerVersion,
+      terminalState: input.terminalState,
+      finishedAt: input.finishedAt
+    },
+    privacy: {
+      returnsCheckoutPath: false,
+      returnsCleanupError: false,
+      returnsRawSource: false,
+      returnsRawDiffs: false,
+      returnsSecrets: false,
+      returnsCustomerPayloads: false
+    }
   };
 }
 

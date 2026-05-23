@@ -902,6 +902,11 @@ test("public docs define hosted pre-implementation contracts", async () => {
   assert.match(contracts, /cancel queued jobs/i);
   assert.match(contracts, /request running cancellation/i);
   assert.match(contracts, /preserve terminal jobs/i);
+  assert.match(contracts, /worker checkout cleanup planner/i);
+  assert.match(contracts, /success, failure, timeout, cancellation, and cleanup_failure/i);
+  assert.match(contracts, /safe metadata only/i);
+  assert.match(contracts, /never returns checkout paths/i);
+  assert.match(contracts, /manual cleanup review/i);
   assert.match(contracts, /no network calls/i);
   assert.doesNotMatch(contracts, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });

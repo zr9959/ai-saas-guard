@@ -81,6 +81,32 @@ Privacy boundaries:
 - do not delete GitHub-owned check runs
 - leave worker checkout deletion to the worker checkout cleanup contract
 
+## Worker Checkout Cleanup Planner
+
+The worker checkout cleanup planner defines what should happen to a worker checkout after a scan reaches a terminal state. It is a pure planner only: it does not delete files, inspect the filesystem, shell out, upload logs, or expose the checkout path.
+
+Normal terminal states:
+
+- success
+- failure
+- timeout
+- cancellation
+
+Default behavior for normal terminal states:
+
+- plan worker checkout deletion after scan completion
+- remove installation credentials from the worker environment
+- remove raw source, raw diffs, and generated worker artifacts from the checkout
+- preserve only safe metadata: job key, installation ID, repository ID, repository full name, pull request number, scanner version, terminal state, and finished time
+- return `returnsCheckoutPath: false`, `returnsRawSource: false`, `returnsRawDiffs: false`, `returnsSecrets: false`, and `returnsCustomerPayloads: false`
+
+Cleanup failure behavior:
+
+- record `cleanup_failure` as a terminal state
+- do not return the checkout path or low-level cleanup error
+- require manual cleanup review
+- preserve an audit record without exposing checkout contents
+
 ## Non-Goals
 
 These contracts do not:
@@ -111,5 +137,8 @@ Automated tests must cover:
 - queue cleanup planner cancels only matching repository-scoped queued work
 - queue cleanup planner handles installation-scoped cleanup without touching other installations
 - idempotent repeated cleanup preserves terminal jobs and does not create duplicate cancellation work
+- worker checkout cleanup planner covers success, failure, timeout, cancellation, and cleanup_failure terminal states
+- worker checkout cleanup planner returns safe metadata only and never returns checkout paths
+- cleanup_failure requires manual cleanup review without exposing low-level cleanup errors
 
 Fixtures must be synthetic and public-safe. They must not include real credentials, customer payloads, private URLs, raw source, or raw diffs.

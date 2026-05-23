@@ -8,6 +8,7 @@ import {
   buildHostedScanIdentity,
   createHostedCheckRunSummary,
   createHostedQueueCleanupPlan,
+  createHostedWorkerCheckoutCleanupPlan,
   createCompactHostedReport,
   createHostedDeletionPlan,
   getHostedDeletionIdempotencyKey,
@@ -506,6 +507,65 @@ test("hosted queue cleanup is installation-scoped and repeated cleanup is idempo
   assert.deepEqual(repeated.cancelQueuedJobKeys, []);
   assert.deepEqual(repeated.requestRunningCancellationJobKeys, []);
   assert.deepEqual(repeated.preserveTerminalJobKeys, ["job-cancelled", "job-failed"]);
+});
+
+test("hosted worker checkout cleanup plans deletion for every normal terminal state", () => {
+  const terminalStates = ["success", "failure", "timeout", "cancellation"];
+
+  for (const terminalState of terminalStates) {
+    const plan = createHostedWorkerCheckoutCleanupPlan({
+      identity: sampleIdentity(),
+      jobKey: `job-${terminalState}`,
+      terminalState,
+      finishedAt: "2026-05-23T12:20:00.000Z",
+      checkoutPath: `/tmp/private-checkouts/${terminalState}`,
+      rawSource: "const secret = 'redacted';",
+      rawDiff: "diff --git a/private.ts b/private.ts",
+      customerPayload: { email: "person@example.test" }
+    });
+    const serialized = JSON.stringify(plan);
+
+    assert.equal(plan.cleanupAction, "delete_checkout");
+    assert.equal(plan.shouldDeleteWorkerCheckout, true);
+    assert.equal(plan.shouldRemoveCredentials, true);
+    assert.equal(plan.requiresOperatorReview, false);
+    assert.deepEqual(Object.keys(plan.safeMetadata).sort(), [
+      "finishedAt",
+      "installationId",
+      "jobKey",
+      "pullRequestNumber",
+      "repositoryFullName",
+      "repositoryId",
+      "scannerVersion",
+      "terminalState"
+    ]);
+    assert.equal(serialized.includes("/tmp/private-checkouts"), false);
+    assert.equal(serialized.includes("rawSource"), false);
+    assert.equal(serialized.includes("rawDiff"), false);
+    assert.equal(serialized.includes("redacted"), false);
+    assert.equal(serialized.includes("person@example.test"), false);
+  }
+});
+
+test("hosted worker checkout cleanup records cleanup failures without exposing checkout data", () => {
+  const plan = createHostedWorkerCheckoutCleanupPlan({
+    identity: sampleIdentity(),
+    jobKey: "job-cleanup-failure",
+    terminalState: "cleanup_failure",
+    finishedAt: "2026-05-23T12:25:00.000Z",
+    checkoutPath: "/tmp/private-checkouts/failed",
+    cleanupError: "permission denied for /tmp/private-checkouts/failed"
+  });
+  const serialized = JSON.stringify(plan);
+
+  assert.equal(plan.cleanupAction, "record_cleanup_failure");
+  assert.equal(plan.shouldDeleteWorkerCheckout, false);
+  assert.equal(plan.requiresOperatorReview, true);
+  assert.equal(plan.preserveAuditRecord, true);
+  assert.match(plan.visibleUserMessage, /manual cleanup review/i);
+  assert.equal(plan.privacy.returnsCheckoutPath, false);
+  assert.equal(serialized.includes("/tmp/private-checkouts"), false);
+  assert.equal(serialized.includes("permission denied"), false);
 });
 
 test("hosted deletion plans cover repository removal installation deletion and repeated cleanup", () => {
