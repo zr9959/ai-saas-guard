@@ -47,7 +47,7 @@ body:
     attributes:
       label: Version
       description: CLI package version, GitHub Action tag, or commit SHA.
-      placeholder: ai-saas-guard@0.13.0 or zr9959/ai-saas-guard@v0
+      placeholder: ai-saas-guard@0.14.0 or zr9959/ai-saas-guard@v0
     validations:
       required: true
   - type: checkboxes

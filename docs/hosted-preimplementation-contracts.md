@@ -117,6 +117,7 @@ Default behavior:
 - include review-first language that tells readers to verify findings before release
 - state that the result is not a full security audit, pentest, or certification
 - include a local CLI link through the exact `npx ai-saas-guard@<version> pr-risk --root .` command
+- include review categories, files to review first, and verification steps
 - cap check-run text with bounded Markdown so oversized reports cannot create unbounded API payloads
 
 Privacy boundaries:
@@ -125,6 +126,27 @@ Privacy boundaries:
 - include rule IDs, severities, file paths, and line numbers as evidence
 - do not include raw source, raw diffs, secret values, webhook payload bodies, customer payloads, or private URLs
 - preserve `modelTraining: disabled`
+
+## Check-Run Publication Planner
+
+The check-run publication planner turns a compact hosted report into a GitHub Checks API request plan. It is a pure planner only: it does not call GitHub, request installation tokens, write check runs, post PR comments, fetch repositories, or store report data.
+
+Default behavior:
+
+- authorize the same installation and selected-repository scope before planning a Check Run write
+- require installation token permissions to include repository `checks: write`
+- create a Check Run payload for the trusted head SHA
+- use conservative conclusions from the summary renderer: `success` for no findings, `neutral` for review-needed findings, and `failure` only when a configured policy threshold is met
+- include bounded Markdown, annotations, categories, verification steps, and the local CLI reproduction command
+- keep PR comments disabled for the MVP
+
+Privacy boundaries:
+
+- plan a Check Run from compact report fields only
+- do not include raw source, raw diffs, secret values, untrusted PR text, webhook payload bodies, customer payloads, private URLs, or worker checkout paths
+- do not create issue comments, review comments, or PR comments
+
+The exported helper is `planHostedCheckRunPublication`. It is intended to be the GitHub-API-independent contract for the first real Check Run writer. PR comments remain an explicit later workflow or paid hosted feature, not part of this MVP contract.
 
 ## Queue Cleanup Planner
 
@@ -223,7 +245,11 @@ Automated tests must cover:
 - untrusted PR text cannot override trusted identity
 - check-run summary renderer conclusions stay success, neutral, or failure based on explicit compact-report rules
 - bounded Markdown truncates large check-run text and points readers to the local CLI
+- rendered summaries include categories, files to review first, and verification steps
 - rendered summaries do not expose raw source, raw diffs, secret values, or customer payloads
+- check-run publication planning requires repository `checks: write` permissions
+- check-run publication planning creates bounded Check Run payloads from compact reports only
+- check-run publication planning keeps PR comments disabled
 - queue cleanup planner cancels only matching repository-scoped queued work
 - queue cleanup planner handles installation-scoped cleanup without touching other installations
 - idempotent repeated cleanup preserves terminal jobs and does not create duplicate cancellation work

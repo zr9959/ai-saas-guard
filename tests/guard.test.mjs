@@ -946,7 +946,12 @@ test("public docs define hosted pre-implementation contracts", async () => {
   assert.match(contracts, /bounded Markdown/i);
   assert.match(contracts, /conservative check conclusions/i);
   assert.match(contracts, /review-first language/i);
+  assert.match(contracts, /review categories, files to review first, and verification steps/i);
   assert.match(contracts, /local CLI link/i);
+  assert.match(contracts, /check-run publication planner/i);
+  assert.match(contracts, /planHostedCheckRunPublication/);
+  assert.match(contracts, /repository `checks: write`/i);
+  assert.match(contracts, /PR comments remain an explicit later workflow or paid hosted feature/i);
   assert.match(contracts, /queue cleanup planner/i);
   assert.match(contracts, /repository-scoped cleanup/i);
   assert.match(contracts, /installation-scoped cleanup/i);

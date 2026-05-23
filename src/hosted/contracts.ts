@@ -468,6 +468,77 @@ export interface HostedCheckRunSummary {
   };
 }
 
+export type HostedCheckRunPublicationRejectReason =
+  | InstallationScopeRejectReason
+  | "checks_write_permission_required";
+
+export interface HostedCheckRunPublicationInput {
+  identity: HostedScanIdentity;
+  report: CompactHostedReport;
+  jobKey: string;
+  requestedAt: string;
+  installationId: number;
+  selectedRepositoryIds: number[];
+  removedRepositoryIds?: number[];
+  installationTokenPermissions: {
+    checks?: string;
+  };
+  failOnSeverity?: HostedCheckRunSeverityThreshold;
+  maxMarkdownChars?: number;
+  rawSource?: string;
+  rawDiff?: string;
+  secretValues?: string[];
+  untrustedPrText?: string;
+  customerPayload?: unknown;
+}
+
+export interface HostedCheckRunApiPayload {
+  name: "AI SaaS Guard";
+  head_sha: string;
+  status: "completed";
+  conclusion: HostedCheckRunConclusion;
+  external_id: string;
+  output: {
+    title: string;
+    summary: string;
+    text: string;
+    annotations: HostedCheckRunAnnotation[];
+  };
+}
+
+export interface HostedCheckRunPublicationPlan {
+  accepted: boolean;
+  reason?: HostedCheckRunPublicationRejectReason;
+  jobKey: string;
+  requestedAt: string;
+  operation?: "create";
+  shouldWriteCheckRun: boolean;
+  shouldCreatePrComment: false;
+  shouldCallGitHubApi: false;
+  installationTokenScope?: {
+    installationId: number;
+    repositoryId: number;
+    permissions: {
+      checks: "write";
+    };
+    selectedRepositoryOnly: true;
+  };
+  request?: {
+    method: "POST";
+    endpoint: string;
+    payload: HostedCheckRunApiPayload;
+  };
+  privacy: {
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesSecrets: false;
+    includesCustomerPayloads: false;
+    includesUntrustedPrText: false;
+    createsPrComment: false;
+    modelTraining: "disabled";
+  };
+}
+
 export type HostedDeletionTrigger =
   | "repository_removed"
   | "installation_deleted"
@@ -1109,6 +1180,66 @@ export function createHostedCheckRunSummary(
   };
 }
 
+export function planHostedCheckRunPublication(
+  input: HostedCheckRunPublicationInput
+): HostedCheckRunPublicationPlan {
+  const scopeDecision = authorizeInstallationTokenScope({
+    identity: input.identity,
+    installationId: input.installationId,
+    selectedRepositoryIds: input.selectedRepositoryIds,
+    removedRepositoryIds: input.removedRepositoryIds
+  });
+
+  if (!scopeDecision.authorized) {
+    return rejectHostedCheckRunPublication(
+      input,
+      scopeDecision.reason ?? "repository_not_installed"
+    );
+  }
+
+  if (input.installationTokenPermissions.checks !== "write") {
+    return rejectHostedCheckRunPublication(input, "checks_write_permission_required");
+  }
+
+  const summary = createHostedCheckRunSummary({
+    report: input.report,
+    failOnSeverity: input.failOnSeverity,
+    maxMarkdownChars: input.maxMarkdownChars
+  });
+
+  return {
+    accepted: true,
+    jobKey: input.jobKey,
+    requestedAt: input.requestedAt,
+    operation: "create",
+    shouldWriteCheckRun: true,
+    shouldCreatePrComment: false,
+    shouldCallGitHubApi: false,
+    installationTokenScope: {
+      installationId: input.identity.installationId,
+      repositoryId: input.identity.repositoryId,
+      permissions: { checks: "write" },
+      selectedRepositoryOnly: true
+    },
+    request: {
+      method: "POST",
+      endpoint: `/repos/${input.identity.repositoryFullName}/check-runs`,
+      payload: {
+        name: summary.name,
+        head_sha: input.identity.headSha,
+        status: "completed",
+        conclusion: summary.conclusion,
+        external_id: input.jobKey,
+        output: {
+          ...summary.output,
+          annotations: summary.annotations
+        }
+      }
+    },
+    privacy: hostedCheckRunPublicationPrivacy()
+  };
+}
+
 export function getHostedDeletionIdempotencyKey(input: {
   trigger: HostedDeletionTrigger;
   installationId: number;
@@ -1277,6 +1408,34 @@ function hostedWorkerReadOnlyScanPrivacy(): HostedWorkerReadOnlyScanPlan["privac
   };
 }
 
+function rejectHostedCheckRunPublication(
+  input: HostedCheckRunPublicationInput,
+  reason: HostedCheckRunPublicationRejectReason
+): HostedCheckRunPublicationPlan {
+  return {
+    accepted: false,
+    reason,
+    jobKey: input.jobKey,
+    requestedAt: input.requestedAt,
+    shouldWriteCheckRun: false,
+    shouldCreatePrComment: false,
+    shouldCallGitHubApi: false,
+    privacy: hostedCheckRunPublicationPrivacy()
+  };
+}
+
+function hostedCheckRunPublicationPrivacy(): HostedCheckRunPublicationPlan["privacy"] {
+  return {
+    includesRawSource: false,
+    includesRawDiffs: false,
+    includesSecrets: false,
+    includesCustomerPayloads: false,
+    includesUntrustedPrText: false,
+    createsPrComment: false,
+    modelTraining: HOSTED_PRIVACY_DEFAULTS.modelTraining
+  };
+}
+
 function parseJsonPayload(payload: string | Buffer): unknown | undefined {
   try {
     return JSON.parse(Buffer.isBuffer(payload) ? payload.toString("utf8") : payload);
@@ -1370,6 +1529,8 @@ function formatCheckRunMarkdown(
   conclusion: HostedCheckRunConclusion,
   localCliCommand: string
 ): string {
+  const categories = getHostedCheckRunCategories(report);
+  const filesToReview = getHostedCheckRunFiles(report);
   const findingLines =
     report.evidence.length === 0
       ? ["No findings in the compact hosted report."]
@@ -1397,6 +1558,17 @@ function formatCheckRunMarkdown(
     ...severityOrder.map(
       (severity) => `- ${capitalize(severity)}: ${report.summaryCounts[severity] ?? 0}`
     ),
+    "",
+    "Review categories:",
+    ...(categories.length === 0 ? ["- None"] : categories.map((category) => `- ${category}`)),
+    "",
+    "Files to review first:",
+    ...(filesToReview.length === 0 ? ["- None"] : filesToReview.map((file) => `- ${file}`)),
+    "",
+    "Verification steps:",
+    "- Review each listed file before release or merge.",
+    "- Reproduce locally with the CLI command above.",
+    "- Treat findings as review prompts; confirm behavior with app-specific tests.",
     "",
     "Findings:",
     ...findingLines
@@ -1444,6 +1616,31 @@ function annotationLevelForSeverity(severity: string): HostedCheckRunAnnotationL
 
 function formatFindingLocation(finding: CompactHostedFinding): string {
   return `${finding.file}${finding.line === undefined ? "" : `:${finding.line}`}`;
+}
+
+function getHostedCheckRunCategories(report: CompactHostedReport): string[] {
+  const categories = report.evidence.map((finding) => categoryForRuleId(finding.ruleId));
+  return [...new Set(categories)];
+}
+
+function categoryForRuleId(ruleId: string): string {
+  const prefix = ruleId.split(".")[0] ?? "review";
+  const categoryNames: Record<string, string> = {
+    api: "API routes",
+    deploy: "Deploy config",
+    mcp: "MCP tools",
+    pr: "Pull request risk",
+    "pr-risk": "Pull request risk",
+    secrets: "Secrets and env",
+    stripe: "Stripe billing",
+    supabase: "Supabase data access"
+  };
+
+  return categoryNames[prefix] ?? capitalize(prefix);
+}
+
+function getHostedCheckRunFiles(report: CompactHostedReport): string[] {
+  return [...new Set(report.evidence.map((finding) => finding.file))].slice(0, 10);
 }
 
 function escapeMarkdownTableCell(value: string): string {

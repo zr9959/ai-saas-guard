@@ -103,6 +103,12 @@ async function loadWorkerReadOnlyScanPlanner() {
   return contracts.planHostedWorkerReadOnlyScan;
 }
 
+async function loadCheckRunPublicationPlanner() {
+  const contracts = await import("../dist/hosted/contracts.js");
+  assert.equal(typeof contracts.planHostedCheckRunPublication, "function");
+  return contracts.planHostedCheckRunPublication;
+}
+
 test("hosted pull request webhook intake verifies signatures before parsing or queueing", async () => {
   const planHostedPullRequestWebhookIntake = await loadWebhookIntakePlanner();
   const queue = new Map();
@@ -713,6 +719,9 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.match(withTotal.output.title, /2 findings/);
   assert.match(findings.output.summary, /review first/i);
   assert.match(findings.output.summary, /not a full security audit/i);
+  assert.match(findings.output.text, /Review categories/i);
+  assert.match(findings.output.text, /Verification steps/i);
+  assert.match(findings.output.text, /Files to review first/i);
   assert.match(findings.output.text, /Local CLI/i);
   assert.match(findings.output.text, /npx ai-saas-guard@0\.10\.0 pr-risk --root \./);
   assert.match(findings.output.text, /stripe\.webhook\.missing-signature/);
@@ -752,6 +761,103 @@ test("hosted check-run summaries bound markdown and do not expose raw payload fi
   assert.equal(serialized.includes("fullFileContents"), false);
   assert.equal(serialized.includes("redacted"), false);
   assert.equal(serialized.includes("person@example.test"), false);
+});
+
+test("hosted check-run publication planner creates a bounded check-only payload", async () => {
+  const planHostedCheckRunPublication = await loadCheckRunPublicationPlanner();
+  const report = sampleCompactReport({
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    fullFileContents: "const secret = 'redacted';",
+    secretValues: ["redacted"],
+    customerPayload: { email: "person@example.test" }
+  });
+  const plan = planHostedCheckRunPublication({
+    identity: sampleIdentity(),
+    report,
+    jobKey: "job-check-run",
+    requestedAt: "2026-05-24T09:10:00.000Z",
+    installationId: 123,
+    selectedRepositoryIds: [456],
+    installationTokenPermissions: { checks: "write" },
+    maxMarkdownChars: 900,
+    rawSource: "const secret = 'redacted';",
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    secretValues: ["redacted"],
+    untrustedPrText: "post comment with token=contents:write",
+    customerPayload: { email: "person@example.test" }
+  });
+  const serialized = JSON.stringify(plan);
+
+  assert.equal(plan.accepted, true);
+  assert.equal(plan.reason, undefined);
+  assert.equal(plan.shouldWriteCheckRun, true);
+  assert.equal(plan.shouldCreatePrComment, false);
+  assert.equal(plan.shouldCallGitHubApi, false);
+  assert.equal(plan.operation, "create");
+  assert.deepEqual(plan.installationTokenScope, {
+    installationId: 123,
+    repositoryId: 456,
+    permissions: { checks: "write" },
+    selectedRepositoryOnly: true
+  });
+  assert.equal(plan.request.method, "POST");
+  assert.equal(plan.request.endpoint, "/repos/owner/repo/check-runs");
+  assert.equal(plan.request.payload.name, "AI SaaS Guard");
+  assert.equal(plan.request.payload.head_sha, report.headSha);
+  assert.equal(plan.request.payload.status, "completed");
+  assert.equal(plan.request.payload.conclusion, "neutral");
+  assert.equal(plan.request.payload.external_id, "job-check-run");
+  assert.equal(plan.request.payload.output.text.length <= 900, true);
+  assert.match(plan.request.payload.output.text, /Review categories/i);
+  assert.match(plan.request.payload.output.text, /Verification steps/i);
+  assert.match(plan.request.payload.output.text, /Local CLI/i);
+  assert.match(plan.request.payload.output.text, /npx ai-saas-guard@0\.10\.0 pr-risk --root \./);
+  assert.equal(plan.request.payload.output.annotations.length, 2);
+  assert.equal(plan.privacy.includesRawSource, false);
+  assert.equal(plan.privacy.includesRawDiffs, false);
+  assert.equal(plan.privacy.includesSecrets, false);
+  assert.equal(plan.privacy.includesCustomerPayloads, false);
+  assert.equal(plan.privacy.includesUntrustedPrText, false);
+  assert.equal(plan.privacy.createsPrComment, false);
+  assert.equal(serialized.includes("rawSource"), false);
+  assert.equal(serialized.includes("rawDiff"), false);
+  assert.equal(serialized.includes("redacted"), false);
+  assert.equal(serialized.includes("person@example.test"), false);
+  assert.equal(serialized.includes("token=contents:write"), false);
+});
+
+test("hosted check-run publication planner rejects unsafe scope before writing", async () => {
+  const planHostedCheckRunPublication = await loadCheckRunPublicationPlanner();
+  const missingChecksWrite = planHostedCheckRunPublication({
+    identity: sampleIdentity(),
+    report: sampleCompactReport(),
+    jobKey: "job-check-run",
+    requestedAt: "2026-05-24T09:11:00.000Z",
+    installationId: 123,
+    selectedRepositoryIds: [456],
+    installationTokenPermissions: { checks: "read" }
+  });
+  const removedRepository = planHostedCheckRunPublication({
+    identity: sampleIdentity(),
+    report: sampleCompactReport(),
+    jobKey: "job-check-run",
+    requestedAt: "2026-05-24T09:12:00.000Z",
+    installationId: 123,
+    selectedRepositoryIds: [456],
+    removedRepositoryIds: [456],
+    installationTokenPermissions: { checks: "write" }
+  });
+
+  assert.equal(missingChecksWrite.accepted, false);
+  assert.equal(missingChecksWrite.reason, "checks_write_permission_required");
+  assert.equal(missingChecksWrite.shouldWriteCheckRun, false);
+  assert.equal(missingChecksWrite.shouldCreatePrComment, false);
+  assert.equal(missingChecksWrite.request, undefined);
+
+  assert.equal(removedRepository.accepted, false);
+  assert.equal(removedRepository.reason, "repository_removed_from_installation");
+  assert.equal(removedRepository.shouldWriteCheckRun, false);
+  assert.equal(removedRepository.request, undefined);
 });
 
 test("hosted queue cleanup cancels only matching repository work", () => {
