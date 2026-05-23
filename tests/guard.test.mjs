@@ -852,6 +852,29 @@ test("public docs define hosted uninstall and data deletion behavior", async () 
   assert.doesNotMatch(deletion, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs define hosted pricing and packaging boundaries", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+  const pricing = await readFile(resolve(packageRoot, "docs", "hosted-pricing-packaging.md"), "utf8");
+
+  assert.match(readme, /docs\/hosted-pricing-packaging\.md/);
+  assert.match(design, /docs\/hosted-pricing-packaging\.md/);
+  assert.match(pricing, /Hosted Pricing And Packaging/i);
+  assert.match(pricing, /core local scanning stays useful without an account/i);
+  assert.match(pricing, /Hosted plans do not gate local CLI scanning/i);
+  assert.match(pricing, /Free\/public repo/i);
+  assert.match(pricing, /private repo hosted behavior/i);
+  assert.match(pricing, /PR comments/i);
+  assert.match(pricing, /saved reports/i);
+  assert.match(pricing, /team policy/i);
+  assert.match(pricing, /optional human review/i);
+  assert.match(pricing, /Launch Review/i);
+  assert.match(pricing, /not a pentest/i);
+  assert.match(pricing, /not a certification/i);
+  assert.match(pricing, /not a full security audit/i);
+  assert.doesNotMatch(pricing, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
 test("hosted GitHub App docs define an implementation-ready permission contract", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");

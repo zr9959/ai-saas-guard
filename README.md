@@ -190,6 +190,8 @@ The hosted operational release gate is documented in [docs/hosted-operational-re
 
 Hosted uninstall and data deletion behavior is documented in [docs/hosted-uninstall-data-deletion.md](docs/hosted-uninstall-data-deletion.md). It defines repository removal, full app uninstall, compact report deletion, queue cancellation, audit record retention, repeated cleanup, and user-facing deletion wording.
 
+Hosted pricing and packaging boundaries are documented in [docs/hosted-pricing-packaging.md](docs/hosted-pricing-packaging.md). Core local scanning stays useful without an account; hosted plans may add workflow convenience, saved reports, team policy, and optional human review, but they do not gate local CLI scanning.
+
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
 The repository also includes pure pre-implementation hosted contract helpers and tests for webhook verification, installation token scoping, queue idempotency, compact reports, and retention limits. These helpers do not implement or deploy a hosted service.

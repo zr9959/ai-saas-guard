@@ -56,6 +56,7 @@ Implemented surfaces:
 - hosted deployment model document choosing containerized Node.js ingress and worker roles, a managed durable queue, managed compact report storage, platform secret manager usage, structured redacted logs, installation/repository rate limits, rollback, and incident response paths
 - hosted operational release gate document requiring hosted CI, webhook replay, dependency and container scanning, privacy and retention verification, worker cleanup, monitoring and alerting, manual rollback, and incident response evidence before exposure
 - hosted uninstall and data deletion document defining repository removal, full app uninstall, compact report deletion, queue cancellation, audit record retention, repeated cleanup idempotency, and user-facing deletion wording
+- hosted pricing and packaging document defining open-source CLI boundaries, free/public repo hosted behavior, private repo hosted behavior, PR comments, saved reports, team policy, optional Launch Review, and no pentest/certification/full-audit claims
 - implementation-ready hosted GitHub App permission contract for required permissions, optional PR comment permissions, selected repository installation, and out-of-scope broad permissions
 - pure hosted GitHub App contract helpers and tests for webhook verification, installation token scoping, scan queue idempotency, compact reports, and retention limits
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
@@ -111,7 +112,7 @@ GitHub Project:
 
 Current issue set:
 
-- #18 `Roadmap: define hosted pricing and packaging boundaries`
+- No open roadmap issues after the hosted boundary documents.
 
 CI:
 
@@ -150,7 +151,8 @@ Not allowed:
 
 Recommended order:
 
-1. Work #18 before paid hosted features.
+1. Open implementation issues only after choosing the next hosted build target.
+2. Do not build paid hosted features without following `docs/hosted-pricing-packaging.md`.
 
 For every feature, keep the scanner evidence-first:
 

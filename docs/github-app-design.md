@@ -54,6 +54,8 @@ The hosted operational release gate is scoped in [docs/hosted-operational-releas
 
 Hosted uninstall and data deletion behavior is scoped in [docs/hosted-uninstall-data-deletion.md](hosted-uninstall-data-deletion.md). It defines repository removal, full app uninstall, compact report deletion, queue cancellation, limited audit record retention, repeated cleanup idempotency, and user-facing deletion wording.
 
+Hosted pricing and packaging boundaries are scoped in [docs/hosted-pricing-packaging.md](hosted-pricing-packaging.md). Core local scanning stays useful without an account; future hosted plans may charge for workflow convenience, saved reports, team policy, private repo hosted behavior, and optional human review, but not for access to useful local scanning.
+
 ## Least-Privilege Permissions
 
 Use least-privilege permissions and install on selected repositories only. This section is the Implementation-ready permission contract for the first hosted GitHub App version.
