@@ -135,20 +135,41 @@ function parseDiffFiles(diffText: string): PrRiskFile[] {
 }
 
 function finalizeDiffFile(file: PrRiskFile & { lines: string[] }): PrRiskFile {
-  const text = `${file.path}\n${file.lines.join("\n")}`;
+  const changedLines = file.lines
+    .filter((line) => (line.startsWith("+") && !line.startsWith("+++")) || (line.startsWith("-") && !line.startsWith("---")))
+    .map((line) => line.slice(1));
+  const changedText = changedLines.join("\n");
+  const searchableText = `${file.path}\n${changedText}`;
   const categories = new Set<PrRiskCategory>();
 
-  if (/(auth|session|jwt|cookie|middleware|login|user_id|owner_id|tenant_id)/i.test(text)) categories.add("auth/session");
-  if (/(stripe|checkout|subscription|invoice|payment|webhook|entitlement)/i.test(text)) categories.add("billing/subscription");
-  if (/(migration|schema\.prisma|create table|alter table|\.sql$|db\/schema)/i.test(text)) categories.add("database schema/migration");
-  if (/(row level security|create policy|using\s*\(\s*true\s*\)|rls|policy)/i.test(text)) categories.add("RLS/policy");
-  if (/(app\/api|pages\/api|route\.(ts|js)|openapi|request|response)/i.test(text)) categories.add("API contract");
-  if (/(\.env|NEXT_PUBLIC|secret|token|vercel|docker|deploy|runtime|edge)/i.test(text)) categories.add("env/secrets/deploy");
-  if (/(storage|bucket|permission|role|grant|revoke|admin)/i.test(text)) categories.add("permissions/storage");
-  if (/deleted file mode|^-[^-].*(test\(|expect\(|assert|describe\()|\/tests?\/|\.test\./im.test(text) && /deleted file mode|^-[^-]/m.test(text)) {
+  if (isGitHubAutomationFile(file.path)) {
+    categories.add("env/secrets/deploy");
+    if (/\b(permissions?|storage|contents|actions|security-events|id-token)\b/i.test(searchableText)) {
+      categories.add("permissions/storage");
+    }
+  } else if (!isTestFile(file.path)) {
+    if (isAuthSurface(file.path) || (isAppSurface(file.path) && /\b(auth|session|jwt|cookie|middleware|login|user_id|owner_id|tenant_id)\b/i.test(changedText))) {
+      categories.add("auth/session");
+    }
+    if (
+      isBillingSurface(file.path) ||
+      (isAppSurface(file.path) && /\b(stripe|billing|subscription|invoice|payment|webhook|entitlement)\b|checkout\.session/i.test(changedText))
+    ) {
+      categories.add("billing/subscription");
+    }
+    if (isDatabaseSurface(file.path) || /^\s*(create|alter)\s+table\b/im.test(changedText)) categories.add("database schema/migration");
+    if (isRlsSurface(file.path) && /(row level security|create policy|using\s*\(\s*true\s*\)|\brls\b|policy)/i.test(changedText)) {
+      categories.add("RLS/policy");
+    }
+    if (isApiSurface(file.path) || (isAppSurface(file.path) && /\b(Request|Response|Response\.json|NextRequest|NextResponse)\b/.test(changedText))) categories.add("API contract");
+    if (isEnvDeploySurface(file.path) || /\b(process\.env|import\.meta\.env)\b/.test(changedText)) categories.add("env/secrets/deploy");
+    if (isPermissionSurface(file.path) || /^\s*(grant|revoke)\b/im.test(changedText)) categories.add("permissions/storage");
+  }
+
+  if (isRemovedOrWeakenedTest(file.path, file.lines)) {
     categories.add("tests removed or weakened");
   }
-  if (file.added + file.removed > 400 || /(generated|refactor|rename|format)/i.test(text)) {
+  if (file.added + file.removed > 400 || /(^|\/)(__generated__|generated)(\/|\.|-|$)/i.test(file.path)) {
     categories.add("large AI-generated/refactor-like diff");
   }
 
@@ -159,6 +180,56 @@ function finalizeDiffFile(file: PrRiskFile & { lines: string[] }): PrRiskFile {
     added: file.added,
     removed: file.removed
   };
+}
+
+function isGitHubAutomationFile(filePath: string): boolean {
+  return filePath === "action.yml" || filePath === "action.yaml" || filePath.startsWith(".github/workflows/") || filePath.startsWith(".github/actions/");
+}
+
+function isTestFile(filePath: string): boolean {
+  return /(^|\/)(__tests__|tests?|specs?)\//i.test(filePath) || /\.(test|spec)\.[cm]?[jt]sx?$/i.test(filePath);
+}
+
+function isAppSurface(filePath: string): boolean {
+  return /^(app|pages|src\/app|src\/pages)\//.test(filePath) || /(^|\/)(api|server|routes?)\//i.test(filePath) || /(^|\/)(route|middleware)\.[cm]?[jt]sx?$/i.test(filePath);
+}
+
+function isApiSurface(filePath: string): boolean {
+  return /^(app|pages|src\/app|src\/pages)\/api\//.test(filePath) || /(^|\/)(api|routes?)\//i.test(filePath) || /(^|\/)route\.[cm]?[jt]sx?$/i.test(filePath);
+}
+
+function isAuthSurface(filePath: string): boolean {
+  return /(^|\/)(auth|session|middleware)(\/|\.|-|$)/i.test(filePath);
+}
+
+function isBillingSurface(filePath: string): boolean {
+  return /(^|\/)(stripe|billing|subscription|invoice|payment|webhook|entitlement)(\/|\.|-|$)/i.test(filePath);
+}
+
+function isDatabaseSurface(filePath: string): boolean {
+  return /(^|\/)(migrations?|schema\.prisma|db\/schema)|\.sql$/i.test(filePath);
+}
+
+function isRlsSurface(filePath: string): boolean {
+  return /(^|\/)(supabase|migrations?|policies?)\//i.test(filePath) || /\.sql$/i.test(filePath);
+}
+
+function isEnvDeploySurface(filePath: string): boolean {
+  return /(^|\/)(\.env|\.env\.[^/]+|vercel\.json|netlify\.toml|Dockerfile|docker-compose|wrangler\.(toml|jsonc?)|next\.config\.[cm]?[jt]s)$/i.test(filePath);
+}
+
+function isPermissionSurface(filePath: string): boolean {
+  return /(^|\/)(storage|roles?|permissions?)\//i.test(filePath);
+}
+
+function isRemovedOrWeakenedTest(filePath: string, lines: string[]): boolean {
+  const hasRemovedLine = lines.some((line) => line.startsWith("-") && !line.startsWith("---"));
+  if (!hasRemovedLine) return false;
+  return (
+    lines.some((line) => /^deleted file mode\b/.test(line)) ||
+    isTestFile(filePath) ||
+    lines.some((line) => /^-\s*(test|describe)\s*\(/i.test(line) || /^-\s*(expect|assert)\b/i.test(line))
+  );
 }
 
 function buildReviewChecklist(categories: PrRiskCategory[]): string[] {

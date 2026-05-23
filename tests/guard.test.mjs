@@ -182,6 +182,75 @@ test("risky PR diff prioritizes auth, billing, RLS, env, and weakened tests", as
   assert.ok(report.requiredTests.some((item) => item.includes("two-account")));
 });
 
+test("pr-risk avoids auth and billing false positives in workflow hardening diffs", async () => {
+  const diffText = `diff --git a/action.yml b/action.yml
+index 1111111..2222222 100644
+--- a/action.yml
++++ b/action.yml
+@@ -1,8 +1,13 @@
+ name: AI SaaS Guard
+ author: ai-saas-guard
+ inputs:
+   command:
+-    description: Command to run: scan.
++    description: "Command to run: scan, check-stripe, check-mcp, or pr-risk."
++      run: |
++        case "\${INPUT_COMMAND}" in
++          scan|check-stripe|check-mcp|pr-risk) ;;
++        esac
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 3333333..4444444 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -1,6 +1,12 @@
+ jobs:
+   test:
+     steps:
++      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
++      - run: actionlint
++    permissions:
++      contents: read
+diff --git a/tests/guard.test.mjs b/tests/guard.test.mjs
+index 5555555..6666666 100644
+--- a/tests/guard.test.mjs
++++ b/tests/guard.test.mjs
+@@ -1,3 +1,7 @@
++test("documents billing/subscription wording", () => {
++  assert.equal("billing/subscription", "billing/subscription");
++});
+`;
+
+  const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
+
+  assert.ok(report.categories.includes("env/secrets/deploy"));
+  assert.ok(report.categories.includes("permissions/storage"));
+  assert.ok(!report.categories.includes("auth/session"));
+  assert.ok(!report.categories.includes("billing/subscription"));
+  assert.ok(!report.topRiskyFiles.some((file) => file.path === "tests/guard.test.mjs"));
+});
+
+test("pr-risk ignores domain vocabulary in ordinary tooling strings", async () => {
+  const diffText = `diff --git a/src/lib/messages.ts b/src/lib/messages.ts
+index 1111111..2222222 100644
+--- a/src/lib/messages.ts
++++ b/src/lib/messages.ts
+@@ -1,3 +1,8 @@
+-const oldLabel = "deleted file mode test(";
++export const labels = [
++  "auth/session",
++  "billing/subscription",
++  "row level security",
++  "large AI-generated/refactor-like diff",
++  "NEXT_PUBLIC_STRIPE_SECRET_KEY"
++];
+`;
+
+  const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
+
+  assert.deepEqual(report.categories, []);
+  assert.deepEqual(report.topRiskyFiles, []);
+});
+
 test(".ai-saas-guardignore excludes matching files from scans", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-ignore-"));
   await mkdir(resolve(rootDir, "ignored"));
