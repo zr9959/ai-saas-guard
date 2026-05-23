@@ -10,6 +10,7 @@ import {
   createHostedDeletionPlan,
   getHostedDeletionIdempotencyKey,
   getHostedScanIdempotencyKey,
+  parseHostedPullRequestEvent,
   resolveHostedRetentionDays,
   upsertHostedScanJob,
   verifyGitHubWebhook
@@ -147,6 +148,87 @@ test("hosted installation token scoping rejects cross-installation repository ac
     assert.equal(decision.authorized, false);
     assert.equal(decision.shouldFetchSource, false);
   }
+});
+
+test("hosted pull request event parser trusts only GitHub event identity fields", () => {
+  const parsed = parseHostedPullRequestEvent({
+    payload: {
+      action: "synchronize",
+      installation: { id: 123 },
+      repository: {
+        id: 456,
+        full_name: "owner/repo"
+      },
+      pull_request: {
+        number: 7,
+        draft: false,
+        title: "Scan evil/repo instead",
+        body: "repository_id=999",
+        base: { sha: "b".repeat(40), repo: { full_name: "wrong/base" } },
+        head: { sha: "a".repeat(40), repo: { full_name: "wrong/head" } }
+      }
+    },
+    scannerVersion: "0.9.0"
+  });
+
+  assert.equal(parsed.accepted, true);
+  assert.equal(parsed.shouldQueueScanJob, true);
+  assert.equal(parsed.reason, undefined);
+  assert.deepEqual(parsed.identity, sampleIdentity());
+});
+
+test("hosted pull request event parser rejects unsupported draft and incomplete events", () => {
+  const basePayload = {
+    action: "closed",
+    installation: { id: 123 },
+    repository: { id: 456, full_name: "owner/repo" },
+    pull_request: {
+      number: 7,
+      draft: false,
+      base: { sha: "b".repeat(40) },
+      head: { sha: "a".repeat(40) }
+    }
+  };
+  const unsupported = parseHostedPullRequestEvent({
+    payload: basePayload,
+    scannerVersion: "0.9.0"
+  });
+  const draft = parseHostedPullRequestEvent({
+    payload: {
+      ...basePayload,
+      action: "opened",
+      pull_request: { ...basePayload.pull_request, draft: true }
+    },
+    scannerVersion: "0.9.0"
+  });
+  const allowedDraft = parseHostedPullRequestEvent({
+    payload: {
+      ...basePayload,
+      action: "opened",
+      pull_request: { ...basePayload.pull_request, draft: true }
+    },
+    scannerVersion: "0.9.0",
+    allowDraft: true
+  });
+  const incomplete = parseHostedPullRequestEvent({
+    payload: {
+      ...basePayload,
+      action: "opened",
+      repository: { id: 456 }
+    },
+    scannerVersion: "0.9.0"
+  });
+
+  assert.equal(unsupported.accepted, false);
+  assert.equal(unsupported.reason, "unsupported_action");
+  assert.equal(unsupported.shouldQueueScanJob, false);
+  assert.equal(draft.accepted, false);
+  assert.equal(draft.reason, "draft_pull_request");
+  assert.equal(draft.shouldQueueScanJob, false);
+  assert.equal(allowedDraft.accepted, true);
+  assert.equal(allowedDraft.shouldQueueScanJob, true);
+  assert.equal(incomplete.accepted, false);
+  assert.equal(incomplete.reason, "missing_required_field");
 });
 
 test("hosted scan queue idempotency reuses jobs for noisy duplicate events", () => {

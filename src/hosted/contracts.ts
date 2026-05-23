@@ -43,6 +43,26 @@ export interface HostedScanIdentity {
   scannerVersion: string;
 }
 
+export type PullRequestEventRejectReason =
+  | "unsupported_action"
+  | "draft_pull_request"
+  | "missing_required_field";
+
+export interface HostedPullRequestEventInput {
+  payload: unknown;
+  scannerVersion: string;
+  allowDraft?: boolean;
+  supportedActions?: string[];
+}
+
+export interface HostedPullRequestEventDecision {
+  accepted: boolean;
+  shouldQueueScanJob: boolean;
+  reason?: PullRequestEventRejectReason;
+  action?: string;
+  identity?: HostedScanIdentity;
+}
+
 export type InstallationScopeRejectReason =
   | "installation_mismatch"
   | "repository_not_installed"
@@ -207,6 +227,71 @@ export function buildHostedScanIdentity(input: HostedScanIdentityInput): HostedS
   };
 }
 
+export function parseHostedPullRequestEvent(
+  input: HostedPullRequestEventInput
+): HostedPullRequestEventDecision {
+  const supportedActions = input.supportedActions ?? [
+    "opened",
+    "reopened",
+    "synchronize",
+    "ready_for_review"
+  ];
+  const payload = input.payload;
+
+  if (!isRecord(payload)) {
+    return rejectPullRequestEvent("missing_required_field");
+  }
+
+  const action = valueAsString(payload.action);
+  if (!action || !supportedActions.includes(action)) {
+    return rejectPullRequestEvent("unsupported_action", action);
+  }
+
+  const installation = valueAsRecord(payload.installation);
+  const repository = valueAsRecord(payload.repository);
+  const pullRequest = valueAsRecord(payload.pull_request);
+  const base = valueAsRecord(pullRequest?.base);
+  const head = valueAsRecord(pullRequest?.head);
+
+  const installationId = valueAsNumber(installation?.id);
+  const repositoryId = valueAsNumber(repository?.id);
+  const repositoryFullName = valueAsString(repository?.full_name);
+  const pullRequestNumber = valueAsNumber(pullRequest?.number);
+  const baseSha = valueAsString(base?.sha);
+  const headSha = valueAsString(head?.sha);
+  const draft = pullRequest?.draft === true;
+
+  if (
+    installationId === undefined ||
+    repositoryId === undefined ||
+    !repositoryFullName ||
+    pullRequestNumber === undefined ||
+    !baseSha ||
+    !headSha
+  ) {
+    return rejectPullRequestEvent("missing_required_field", action);
+  }
+
+  if (draft && !input.allowDraft) {
+    return rejectPullRequestEvent("draft_pull_request", action);
+  }
+
+  return {
+    accepted: true,
+    shouldQueueScanJob: true,
+    action,
+    identity: buildHostedScanIdentity({
+      installationId,
+      repositoryId,
+      repositoryFullName,
+      pullRequestNumber,
+      baseSha,
+      headSha,
+      scannerVersion: input.scannerVersion
+    })
+  };
+}
+
 export function authorizeInstallationTokenScope(
   input: InstallationScopeInput
 ): InstallationScopeDecision {
@@ -365,12 +450,42 @@ function rejectWebhook(reason: WebhookRejectReason, deliveryId?: string): GitHub
   };
 }
 
+function rejectPullRequestEvent(
+  reason: PullRequestEventRejectReason,
+  action?: string
+): HostedPullRequestEventDecision {
+  return {
+    accepted: false,
+    shouldQueueScanJob: false,
+    reason,
+    ...(action === undefined ? {} : { action })
+  };
+}
+
 function rejectInstallationScope(reason: InstallationScopeRejectReason): InstallationScopeDecision {
   return {
     authorized: false,
     shouldFetchSource: false,
     reason
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function valueAsRecord(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
+function valueAsString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function valueAsNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0
+    ? value
+    : undefined;
 }
 
 function parseSha256Signature(signatureHeader: string): Buffer | undefined {
