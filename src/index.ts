@@ -3,6 +3,8 @@ export { checkStripe } from "./commands/checkStripe.js";
 export { checkSupabase } from "./commands/checkSupabase.js";
 export { checkMcp } from "./commands/checkMcp.js";
 export { classifyPrRisk } from "./commands/prRisk.js";
+export { createScanContext } from "./context.js";
+export { getRuleMetadata, RULE_CATALOG } from "./rules/catalog.js";
 export type {
   BaseReport,
   CommandName,
@@ -16,3 +18,5 @@ export type {
   StripeReport,
   SupabaseReport
 } from "./types.js";
+export type { ScanContext, ScanInput } from "./context.js";
+export type { RuleMetadata, RuleStability } from "./rules/catalog.js";

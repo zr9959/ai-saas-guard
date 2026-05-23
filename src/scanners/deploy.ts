@@ -1,9 +1,11 @@
 import type { Finding } from "../types.js";
+import type { ScanInput } from "../context.js";
+import { resolveScanContext } from "../context.js";
 import { finding, uniqueFindings } from "../report/findings.js";
-import { collectTextFiles, lineAt, lineNumberForIndex } from "../utils/files.js";
+import { lineAt, lineNumberForIndex } from "../utils/files.js";
 
-export async function scanDeployConfig(rootDir: string): Promise<Finding[]> {
-  const files = await collectTextFiles(rootDir);
+export async function scanDeployConfig(input: ScanInput): Promise<Finding[]> {
+  const files = (await resolveScanContext(input)).files;
   const findings: Finding[] = [];
   const envExample = files.find((file) => /(^|\/)\.env\.example$/.test(file.path));
   const referencedEnv = new Set<string>();

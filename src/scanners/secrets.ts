@@ -1,6 +1,8 @@
 import type { Finding } from "../types.js";
+import type { ScanInput } from "../context.js";
+import { resolveScanContext } from "../context.js";
 import { finding } from "../report/findings.js";
-import { collectTextFiles, lineAt, lineNumberForIndex, redactSecret } from "../utils/files.js";
+import { lineAt, lineNumberForIndex, redactSecret } from "../utils/files.js";
 
 interface SecretPattern {
   id: string;
@@ -67,8 +69,8 @@ export function hasSecretLikeValue(value: string): boolean {
   });
 }
 
-export async function scanSecrets(rootDir: string): Promise<Finding[]> {
-  const files = await collectTextFiles(rootDir);
+export async function scanSecrets(input: ScanInput): Promise<Finding[]> {
+  const files = (await resolveScanContext(input)).files;
   const findings: Finding[] = [];
 
   for (const file of files) {
@@ -104,8 +106,8 @@ export async function scanSecrets(rootDir: string): Promise<Finding[]> {
   return findings;
 }
 
-export async function scanNextPublicEnv(rootDir: string): Promise<Finding[]> {
-  const files = await collectTextFiles(rootDir);
+export async function scanNextPublicEnv(input: ScanInput): Promise<Finding[]> {
+  const files = (await resolveScanContext(input)).files;
   const findings: Finding[] = [];
   const publicEnvPattern = /\bNEXT_PUBLIC_[A-Z0-9_]+\b(?:\s*=\s*([^\s"'`]+))?/g;
   const riskyNamePattern = /(SECRET|TOKEN|PRIVATE|SERVICE_ROLE|PASSWORD|STRIPE_SECRET|DATABASE)/i;

@@ -1,4 +1,5 @@
 import type { BaseReport, ScanOptions } from "../types.js";
+import { createScanContext } from "../context.js";
 import { createReport, uniqueFindings } from "../report/findings.js";
 import { scanApiRoutes } from "../scanners/apiRoutes.js";
 import { scanDeployConfig } from "../scanners/deploy.js";
@@ -8,15 +9,16 @@ import { checkStripe } from "../scanners/stripe.js";
 import { checkSupabase } from "../scanners/supabase.js";
 
 export async function scanRepository(options: ScanOptions): Promise<BaseReport> {
+  const context = await createScanContext(options.rootDir);
   const [secretFindings, nextPublicFindings, stripeReport, supabaseReport, mcpReport, apiFindings, deployFindings] =
     await Promise.all([
-      scanSecrets(options.rootDir),
-      scanNextPublicEnv(options.rootDir),
-      checkStripe(options.rootDir),
-      checkSupabase(options.rootDir),
-      checkMcp(options.rootDir),
-      scanApiRoutes(options.rootDir),
-      scanDeployConfig(options.rootDir)
+      scanSecrets(context),
+      scanNextPublicEnv(context),
+      checkStripe(context),
+      checkSupabase(context),
+      checkMcp(context),
+      scanApiRoutes(context),
+      scanDeployConfig(context)
     ]);
 
   return createReport<BaseReport>(

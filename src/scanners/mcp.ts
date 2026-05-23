@@ -1,11 +1,14 @@
 import { stat } from "node:fs/promises";
 import type { Finding, McpReport, McpServerInventory, McpSideEffect } from "../types.js";
+import type { ScanInput } from "../context.js";
+import { resolveScanContext } from "../context.js";
 import { createReport, finding, uniqueFindings } from "../report/findings.js";
-import { collectTextFiles, lineAt, redactSecret } from "../utils/files.js";
+import { lineAt, redactSecret } from "../utils/files.js";
 import { hasSecretLikeValue } from "./secrets.js";
 
-export async function checkMcp(rootDir: string): Promise<McpReport> {
-  const files = (await collectTextFiles(rootDir)).filter((file) => isMcpConfigPath(file.path));
+export async function checkMcp(input: ScanInput): Promise<McpReport> {
+  const context = await resolveScanContext(input);
+  const files = context.getFiles((file) => isMcpConfigPath(file.path));
   const findings: Finding[] = [];
   const servers: McpServerInventory[] = [];
 
@@ -148,7 +151,7 @@ export async function checkMcp(rootDir: string): Promise<McpReport> {
     }
   }
 
-  return createReport<McpReport>("check-mcp", rootDir, uniqueFindings(findings), {
+  return createReport<McpReport>("check-mcp", context.rootDir, uniqueFindings(findings), {
     servers,
     tools: [...new Set(servers.flatMap((server) => server.tools))].sort()
   });

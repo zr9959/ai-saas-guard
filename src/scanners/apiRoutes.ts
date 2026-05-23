@@ -1,14 +1,16 @@
 import type { Finding } from "../types.js";
+import type { ScanInput } from "../context.js";
+import { resolveScanContext } from "../context.js";
 import { finding, uniqueFindings } from "../report/findings.js";
-import { collectTextFiles, lineAt, lineNumberForIndex } from "../utils/files.js";
+import { lineAt, lineNumberForIndex } from "../utils/files.js";
 
 const sensitiveRoutePattern = /(login|register|auth|checkout|stripe|webhook|upload|ai|generate|admin|password|reset|token)/i;
 const rateLimitPattern = /(rateLimit|ratelimit|rate-limit|throttle|limiter|upstash|slowDown)/i;
 const authPattern = /(auth|session|currentUser|getUser|jwt|cookies|authorization)/i;
 const ownershipPattern = /(user_id|owner_id|tenant_id|organization_id|workspace_id|resource\.user|resource\.owner|where\s*:\s*{[\s\S]{0,100}(user|owner|tenant))/i;
 
-export async function scanApiRoutes(rootDir: string): Promise<Finding[]> {
-  const files = (await collectTextFiles(rootDir)).filter((file) => isApiRoute(file.path));
+export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
+  const files = (await resolveScanContext(input)).getFiles((file) => isApiRoute(file.path));
   const findings: Finding[] = [];
 
   for (const file of files) {

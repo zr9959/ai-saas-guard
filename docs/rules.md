@@ -2,6 +2,8 @@
 
 `ai-saas-guard` rules are deterministic heuristics. They are designed to produce a focused verification queue, not a complete vulnerability list.
 
+Rule metadata is centralized in `src/rules/catalog.ts` and covered by tests so SARIF output, public docs, and future config work can share stable rule IDs. Current published rules use the `default` stability level.
+
 ## Secrets And Public Env
 
 | Rule ID | Severity | Why it exists |

@@ -12,6 +12,9 @@ import {
   checkStripe,
   checkSupabase,
   classifyPrRisk,
+  createScanContext,
+  getRuleMetadata,
+  RULE_CATALOG,
   scanRepository
 } from "../dist/index.js";
 
@@ -27,6 +30,62 @@ function findingTitles(report) {
 function findingRuleIds(report) {
   return report.findings.map((finding) => finding.ruleId);
 }
+
+const expectedRuleIds = [
+  "api.route.auth-without-ownership",
+  "api.route.missing-rate-limit",
+  "deploy.edge-runtime-node-api",
+  "deploy.env.example-missing",
+  "deploy.next.static-export-api-risk",
+  "mcp.config.broad-filesystem",
+  "mcp.config.insecure-http",
+  "mcp.config.invalid-json",
+  "mcp.config.loose-permissions",
+  "mcp.config.non-local-bind",
+  "mcp.config.plaintext-secret",
+  "mcp.tool.raw-sql",
+  "mcp.tool.shell",
+  "next.env.public-secret",
+  "pr-risk.no-diff",
+  "pr-risk.sensitive-surface",
+  "secrets.detected",
+  "stripe.webhook.missing-critical-event",
+  "stripe.webhook.missing-idempotency",
+  "stripe.webhook.missing-route",
+  "stripe.webhook.missing-signature",
+  "stripe.webhook.no-entitlement-path",
+  "stripe.webhook.public-secret",
+  "stripe.webhook.raw-body-risk",
+  "supabase.rls.broad-policy",
+  "supabase.rls.missing-ownership-filter",
+  "supabase.rls.not-enabled",
+  "supabase.storage.public-bucket",
+  "supabase.table.missing-owner-column"
+];
+
+test("scan context exposes one shared text file inventory", async () => {
+  const rootDir = resolve(fixtureRoot, "leaked-env");
+  const context = await createScanContext(rootDir);
+
+  assert.equal(context.rootDir, rootDir);
+  assert.equal(context.filesByPath.get(".env.example")?.path, ".env.example");
+  assert.deepEqual(
+    context.getFiles((file) => file.path.endsWith(".ts")).map((file) => file.path),
+    ["src/client.ts"]
+  );
+});
+
+test("rule catalog contains metadata for every published rule", () => {
+  assert.deepEqual(Object.keys(RULE_CATALOG).sort(), expectedRuleIds);
+
+  for (const ruleId of expectedRuleIds) {
+    const metadata = getRuleMetadata(ruleId);
+    assert.equal(metadata?.ruleId, ruleId);
+    assert.ok(metadata?.title);
+    assert.ok(metadata?.why);
+    assert.match(metadata?.stability ?? "", /^(default|experimental|strict)$/);
+  }
+});
 
 test("vulnerable Stripe webhook reports missing signature, idempotency, and critical events", async () => {
   const report = await checkStripe({

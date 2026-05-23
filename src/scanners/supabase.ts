@@ -1,6 +1,8 @@
 import type { Finding, SupabasePolicyRisk, SupabaseReport } from "../types.js";
+import type { ScanInput } from "../context.js";
+import { resolveScanContext } from "../context.js";
 import { createReport, finding, uniqueFindings } from "../report/findings.js";
-import { collectTextFiles, lineAt, lineNumberForIndex } from "../utils/files.js";
+import { lineAt, lineNumberForIndex } from "../utils/files.js";
 
 const sensitiveTablePattern =
   /\b(user|account|profile|team|tenant|project|order|subscription|invoice|customer|organization|member|message|document|file|workspace)s?\b/i;
@@ -14,8 +16,9 @@ interface TableInfo {
   sensitive: boolean;
 }
 
-export async function checkSupabase(rootDir: string): Promise<SupabaseReport> {
-  const files = (await collectTextFiles(rootDir)).filter((file) => {
+export async function checkSupabase(input: ScanInput): Promise<SupabaseReport> {
+  const context = await resolveScanContext(input);
+  const files = context.getFiles((file) => {
     const path = file.path.toLowerCase();
     return path.includes("supabase") || path.includes("migration") || path.endsWith(".sql") || path.endsWith(".prisma");
   });
@@ -148,7 +151,7 @@ export async function checkSupabase(rootDir: string): Promise<SupabaseReport> {
     }
   }
 
-  return createReport<SupabaseReport>("check-supabase", rootDir, uniqueFindings(findings), {
+  return createReport<SupabaseReport>("check-supabase", context.rootDir, uniqueFindings(findings), {
     riskyTables: [...new Set(tables.filter((table) => table.sensitive && !rlsEnabledTables.has(table.name)).map((table) => table.name))],
     riskyPolicies,
     manualAuthorizationTest: [

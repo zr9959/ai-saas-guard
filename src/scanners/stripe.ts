@@ -1,6 +1,8 @@
 import type { Finding, StripeReport } from "../types.js";
+import type { ScanInput } from "../context.js";
+import { resolveScanContext } from "../context.js";
 import { createReport, finding, uniqueFindings } from "../report/findings.js";
-import { collectTextFiles, lineAt, lineNumberForIndex } from "../utils/files.js";
+import { lineAt, lineNumberForIndex } from "../utils/files.js";
 
 const criticalEvents = [
   "invoice.payment_failed",
@@ -12,8 +14,9 @@ const criticalEvents = [
 const eventPattern =
   /["']((?:checkout\.session\.completed|invoice\.payment_failed|customer\.subscription\.(?:deleted|updated|created)|charge\.(?:refunded|dispute\.created)|refund\.(?:created|updated)))["']/g;
 
-export async function checkStripe(rootDir: string): Promise<StripeReport> {
-  const files = await collectTextFiles(rootDir);
+export async function checkStripe(input: ScanInput): Promise<StripeReport> {
+  const context = await resolveScanContext(input);
+  const files = context.files;
   const webhookFiles = files.filter((file) => {
     const path = file.path.toLowerCase();
     const content = file.content.toLowerCase();
@@ -37,7 +40,7 @@ export async function checkStripe(rootDir: string): Promise<StripeReport> {
   const handledEvents = new Set<string>();
 
   if (webhookFiles.length === 0 && !usesStripe) {
-    return createReport<StripeReport>("check-stripe", rootDir, [], {
+    return createReport<StripeReport>("check-stripe", context.rootDir, [], {
       webhookFiles: [],
       handledEvents: [],
       missingCriticalEvents: [],
@@ -185,7 +188,7 @@ export async function checkStripe(rootDir: string): Promise<StripeReport> {
     );
   }
 
-  return createReport<StripeReport>("check-stripe", rootDir, uniqueFindings(findings), {
+  return createReport<StripeReport>("check-stripe", context.rootDir, uniqueFindings(findings), {
     webhookFiles: webhookFiles.map((file) => file.path),
     handledEvents: [...handledEvents].sort(),
     missingCriticalEvents,
