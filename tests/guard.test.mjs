@@ -342,6 +342,28 @@ test("CI runs GitHub Actions static analysis", async () => {
   assert.match(workflow, /advanced-security: false/);
 });
 
+test("npm publish workflow uses provenance-capable GitHub Actions publishing", async () => {
+  const workflow = await readFile(resolve(packageRoot, ".github/workflows/npm-publish.yml"), "utf8");
+
+  assert.match(workflow, /release:\s*\n\s+types:\s*\[published\]/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /id-token:\s*write/);
+  assert.match(workflow, /node-version:\s*24/);
+  assert.match(workflow, /registry-url:\s*https:\/\/registry\.npmjs\.org/);
+  assert.match(workflow, /package-manager-cache:\s*false/);
+  assert.match(workflow, /npm publish --provenance --access public/);
+  assert.match(workflow, /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/);
+});
+
+test("package bin entries are publish-safe npm paths", async () => {
+  const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+
+  assert.deepEqual(packageJson.bin, {
+    "ai-saas-guard": "dist/cli.js",
+    "launch-guard": "dist/cli.js"
+  });
+});
+
 async function runCli(args) {
   try {
     const result = await execFileAsync("node", [resolve(packageRoot, "dist/cli.js"), ...args]);

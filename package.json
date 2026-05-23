@@ -32,8 +32,8 @@
     }
   },
   "bin": {
-    "ai-saas-guard": "./dist/cli.js",
-    "launch-guard": "./dist/cli.js"
+    "ai-saas-guard": "dist/cli.js",
+    "launch-guard": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -279,3 +279,7 @@ The open-source CLI should remain useful on its own. Paid features should save t
 ## Security
 
 Please read [SECURITY.md](SECURITY.md) before reporting vulnerabilities. Do not post real API keys, customer data, private source code, or production URLs in public issues.
+
+## npm Publishing
+
+The package name is prepared but not published yet. See [docs/npm-publishing.md](docs/npm-publishing.md) for the GitHub Actions provenance workflow and the required `NPM_TOKEN` or trusted-publisher setup.
