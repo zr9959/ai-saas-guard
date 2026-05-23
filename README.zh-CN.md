@@ -55,7 +55,7 @@ AI 能很快把一个 SaaS 从想法做成可运行的产品。真正难的是�
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.16.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.16.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.17.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.17.0`。
 
 | 模块 | 状态 |
 | --- | --- |
@@ -66,8 +66,8 @@ CLI 已发布到 npm：`ai-saas-guard@0.16.0`。GitHub Action 支持 `v0` 浮动
 | Markdown PR summary | 已可用 |
 | GitHub Action | 已可用 |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖和 fail threshold |
-| 当前版本 | `0.16.0` |
-| Action 标签 | `v0.16.0`、`v0` |
+| 当前版本 | `0.17.0` |
+| Action 标签 | `v0.17.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 
 ## 快速开始
@@ -245,6 +245,7 @@ jobs:
 - [docs/github-app-design.md](docs/github-app-design.md)
 - [docs/hosted-first-service-slice.md](docs/hosted-first-service-slice.md)
 - [docs/hosted-deployment-model.md](docs/hosted-deployment-model.md)
+- [docs/hosted-service-runtime.md](docs/hosted-service-runtime.md)
 - [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md)
 - [docs/hosted-uninstall-data-deletion.md](docs/hosted-uninstall-data-deletion.md)
 - [docs/hosted-pricing-packaging.md](docs/hosted-pricing-packaging.md)
@@ -255,6 +256,7 @@ jobs:
 - pull request webhook intake planner：先验签，再解析 payload、生成可信 identity、校验 selected-repository scope，并默认只走 check-run-only 输出
 - durable scan queue planner：同一个 trusted scan key 的 queued/running/completed job 会复用，不重复排 worker，也不会把源码、diff、secret 或 PR 正文放进队列 payload
 - worker read-only scan planner：只用 trusted identity 规划临时 worker checkout，要求 repository `contents: read`，固定运行 `ai-saas-guard pr-risk --json`，并忽略 PR 正文里的 repo 名、token scope 或命令
+- hosted service runtime：`ai-saas-guard/hosted/service` 导出 `createHostedServiceRuntime`，把签名 webhook intake、幂等 queue upsert、read-only worker 编排、compact report 存储、Check Run 发布 adapter 和 worker cleanup 串成可测试的服务核心；它本身不部署公开 hosted 环境
 - webhook event parser
 - check-run summary renderer
 - Check Run publication planner：要求 repository `checks: write`，只从 compact report 生成有长度上限的 Check Run payload，包含 review categories、优先 review 文件、verification steps 和本地 CLI 复现命令；MVP 不发 PR comment

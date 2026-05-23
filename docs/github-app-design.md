@@ -50,13 +50,15 @@ The first hosted service slice is scoped in [docs/hosted-first-service-slice.md]
 
 The hosted deployment model is scoped in [docs/hosted-deployment-model.md](hosted-deployment-model.md). It chooses containerized Node.js ingress and worker roles connected by a managed durable queue, with platform-managed secrets, structured redacted logs, installation/repository rate limits, rollback, and incident response paths.
 
+The hosted service runtime is scoped in [docs/hosted-service-runtime.md](hosted-service-runtime.md). It implements the provider-independent core for signed webhook intake, idempotent queue upsert, read-only worker orchestration, compact report storage, Check Run publication adapters, and worker cleanup planning. It does not deploy a public hosted environment by itself.
+
 The hosted operational release gate is scoped in [docs/hosted-operational-release-gate.md](hosted-operational-release-gate.md). It blocks hosted exposure unless CI, webhook replay, signature verification, token scoping, idempotency, privacy and retention, worker cleanup, monitoring, alerting, rollback, and incident response evidence are fresh for the release candidate.
 
 Hosted uninstall and data deletion behavior is scoped in [docs/hosted-uninstall-data-deletion.md](hosted-uninstall-data-deletion.md). It defines repository removal, full app uninstall, compact report deletion, queue cancellation, limited audit record retention, repeated cleanup idempotency, and user-facing deletion wording.
 
 Hosted pricing and packaging boundaries are scoped in [docs/hosted-pricing-packaging.md](hosted-pricing-packaging.md). Core local scanning stays useful without an account; future hosted plans may charge for workflow convenience, saved reports, team policy, private repo hosted behavior, and optional human review, but not for access to useful local scanning.
 
-Hosted pre-implementation pure contracts are scoped in [docs/hosted-preimplementation-contracts.md](hosted-preimplementation-contracts.md). They define service-free helpers such as queue-safe pull request event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, and worker checkout cleanup planning before any hosted ingress, queue, worker, or GitHub API integration is added.
+Hosted pre-implementation pure contracts are scoped in [docs/hosted-preimplementation-contracts.md](hosted-preimplementation-contracts.md). They define service-free helpers such as queue-safe pull request event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, and operational release gate evaluation. The hosted service runtime composes those helpers behind replaceable adapters.
 
 The hosted compact report schema fixture is published at [examples/hosted-compact-report.json](../examples/hosted-compact-report.json). It is synthetic and public-safe, and it documents the compact evidence shape without raw source, raw diffs, secrets, customer payloads, or worker checkout paths.
 

@@ -838,6 +838,26 @@ test("public docs choose the hosted deployment model", async () => {
   assert.doesNotMatch(model, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs define the hosted service runtime", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const runtime = await readFile(resolve(packageRoot, "docs", "hosted-service-runtime.md"), "utf8");
+
+  assert.match(readme, /docs\/hosted-service-runtime\.md/);
+  assert.match(runtime, /Hosted Service Runtime/i);
+  assert.match(runtime, /createHostedServiceRuntime/);
+  assert.match(runtime, /ai-saas-guard\/hosted\/service/);
+  assert.match(runtime, /signed GitHub App pull request webhook intake/i);
+  assert.match(runtime, /idempotent durable queue upsert/i);
+  assert.match(runtime, /read-only worker planning/i);
+  assert.match(runtime, /compact report storage adapter/i);
+  assert.match(runtime, /Check Run publication adapter/i);
+  assert.match(runtime, /createInMemoryHostedServiceAdapters/);
+  assert.match(runtime, /not a production queue or production data store/i);
+  assert.match(runtime, /does not deploy a public hosted environment/i);
+  assert.match(runtime, /real GitHub App credentials/i);
+  assert.doesNotMatch(runtime, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
 test("public docs define the hosted operational release gate", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
@@ -1246,6 +1266,10 @@ test("hosted contract helpers have an explicit npm subpath export", async () => 
   assert.deepEqual(packageJson.exports["./hosted/contracts"], {
     types: "./dist/hosted/contracts.d.ts",
     default: "./dist/hosted/contracts.js"
+  });
+  assert.deepEqual(packageJson.exports["./hosted/service"], {
+    types: "./dist/hosted/service.d.ts",
+    default: "./dist/hosted/service.js"
   });
 });
 

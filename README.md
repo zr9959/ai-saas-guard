@@ -73,8 +73,8 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.16.0`, `v0` |
-| npm package | `ai-saas-guard@0.16.0` |
+| Versioned Action tags | `v0.17.0`, `v0` |
+| npm package | `ai-saas-guard@0.17.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
@@ -208,19 +208,21 @@ The first hosted service slice is defined in [docs/hosted-first-service-slice.md
 
 The hosted deployment model is documented in [docs/hosted-deployment-model.md](docs/hosted-deployment-model.md). It chooses a containerized Node.js ingress and worker model with a managed durable queue, platform secret manager, structured redacted logs, installation/repository rate limits, and rollback/incident response paths.
 
+The hosted service runtime is documented in [docs/hosted-service-runtime.md](docs/hosted-service-runtime.md). It exports `createHostedServiceRuntime` from `ai-saas-guard/hosted/service` and implements the provider-independent service core for signed webhook intake, idempotent queue upsert, read-only worker orchestration, compact report storage, Check Run publication adapters, and worker cleanup planning. It does not deploy a public hosted environment by itself.
+
 The hosted operational release gate is documented in [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md). It defines the hosted-specific CI, replay, queue, worker cleanup, privacy, monitoring, rollback, and incident-response evidence required before any hosted environment is exposed to users. The pure gate evaluator exported from `ai-saas-guard/hosted/contracts` blocks hosted exposure unless every P0 evidence item is fresh, a container digest is recorded, and release notes avoid pentest, certification, and full-audit claims.
 
 Hosted uninstall and data deletion behavior is documented in [docs/hosted-uninstall-data-deletion.md](docs/hosted-uninstall-data-deletion.md). It defines repository removal, full app uninstall, compact report deletion, queue cancellation, audit record retention, repeated cleanup, and user-facing deletion wording.
 
 Hosted pricing and packaging boundaries are documented in [docs/hosted-pricing-packaging.md](docs/hosted-pricing-packaging.md). Core local scanning stays useful without an account; hosted plans may add workflow convenience, saved reports, team policy, and optional human review, but they do not gate local CLI scanning.
 
-Hosted pre-implementation pure contracts are documented in [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md). They now include a pull request webhook intake planner that verifies signatures before parsing or queueing, a durable scan queue planner that reuses queued, running, and completed jobs for the same trusted scan key, a worker read-only scan planner that fixes the CLI command and requires repository `contents: read`, and a Check Run publication planner that requires repository `checks: write` and builds bounded check-only payloads from compact reports. They also cover queue-safe webhook event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, a retention/deletion cleanup planner, and an operational release gate evaluator that requires fresh CI, replay, static-check, dependency, container, cleanup, privacy, monitoring, rollback, incident-response, and release-cleanup evidence before hosted exposure. PR comments remain a later workflow or paid hosted feature, not part of the hosted MVP contract.
+Hosted pre-implementation pure contracts are documented in [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md). They now include a pull request webhook intake planner that verifies signatures before parsing or queueing, a durable scan queue planner that reuses queued, running, and completed jobs for the same trusted scan key, a worker read-only scan planner that fixes the CLI command and requires repository `contents: read`, and a Check Run publication planner that requires repository `checks: write` and builds bounded check-only payloads from compact reports. They also cover queue-safe webhook event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, a retention/deletion cleanup planner, and an operational release gate evaluator that requires fresh CI, replay, static-check, dependency, container, cleanup, privacy, monitoring, rollback, incident-response, and release-cleanup evidence before hosted exposure. The service runtime composes these contracts behind replaceable adapters. PR comments remain a later workflow or paid hosted feature, not part of the hosted MVP contract.
 
 A public hosted compact report schema fixture is available at [examples/hosted-compact-report.json](examples/hosted-compact-report.json). It is synthetic and public-safe: compact evidence only, no raw source, raw diffs, secrets, webhook payload bodies, customer payloads, private URLs, or worker checkout paths.
 
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
-The repository also includes pure pre-implementation hosted contract helpers and tests for webhook intake order, webhook verification, installation token scoping, durable queue idempotency, compact reports, retention limits, uninstall cleanup, repeated cleanup idempotency, scoped deletion planning, and operational release gate blocking. These helpers do not implement or deploy a hosted service.
+The repository also includes hosted contract helpers and runtime tests for webhook intake order, webhook verification, installation token scoping, durable queue idempotency, compact reports, retention limits, uninstall cleanup, repeated cleanup idempotency, scoped deletion planning, operational release gate blocking, and provider-independent hosted service orchestration. These helpers do not deploy a public hosted service.
 
 Users should prefer the local CLI for private repositories, offline review, or no-account workflows where hosted code processing is not acceptable.
 
@@ -254,7 +256,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.16.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.17.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
