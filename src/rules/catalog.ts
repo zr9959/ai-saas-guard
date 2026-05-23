@@ -78,7 +78,7 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     ruleId: "supabase.rls.broad-policy",
     severity: "critical",
     title: "Broad Supabase RLS policy",
-    why: "`USING (true)` often turns login into public data access.",
+    why: "`USING (true)` or `WITH CHECK (true)` can turn login into broad data access or writes.",
     stability: "default"
   },
   "supabase.rls.missing-ownership-filter": {
@@ -86,6 +86,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "high",
     title: "Supabase policy lacks an ownership filter",
     why: "Policies need resource ownership or tenant membership checks.",
+    stability: "default"
+  },
+  "supabase.rls.weak-with-check": {
+    ruleId: "supabase.rls.weak-with-check",
+    severity: "high",
+    title: "Supabase write policy has a weak WITH CHECK predicate",
+    why: "Insert and update policies need WITH CHECK predicates tied to the current user or tenant membership.",
     stability: "default"
   },
   "supabase.table.missing-owner-column": {

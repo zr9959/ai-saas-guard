@@ -27,11 +27,12 @@ Rule metadata is centralized in `src/rules/catalog.ts` and covered by tests so S
 
 | Rule ID | Severity | Why it exists |
 | --- | --- | --- |
-| `supabase.rls.broad-policy` | critical | `USING (true)` often turns login into public data access. |
+| `supabase.rls.broad-policy` | critical | `USING (true)` or `WITH CHECK (true)` can turn login into broad data access or writes. |
 | `supabase.rls.missing-ownership-filter` | high | Policies need resource ownership or tenant membership checks. |
+| `supabase.rls.weak-with-check` | high | Write policies need `WITH CHECK` predicates tied to the current user or tenant membership. |
 | `supabase.table.missing-owner-column` | medium | Sensitive tables are hard to protect without owner/tenant keys. |
 | `supabase.rls.not-enabled` | critical | User-data tables should enable row level security. |
-| `supabase.storage.public-bucket` | high | Storage buckets can leak files even when database rows are protected. |
+| `supabase.storage.public-bucket` | high | Storage buckets or unscoped storage object policies can leak files even when database rows are protected. |
 
 ## API Routes And Deploy
 

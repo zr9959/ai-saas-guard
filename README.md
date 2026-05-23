@@ -51,8 +51,8 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.3.0`, `v0` |
-| npm package | `ai-saas-guard@0.3.0` |
+| Versioned Action tags | `v0.4.0`, `v0` |
+| npm package | `ai-saas-guard@0.4.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
@@ -121,7 +121,7 @@ Evidence:
 | --- | --- |
 | Secrets and env | Secret-like values, risky `NEXT_PUBLIC_*` exposure |
 | Stripe | Missing webhook route, unsigned webhook handling, parsed-body signature risk, missing idempotency, missing failure/cancel/update/refund paths |
-| Supabase | RLS disabled on sensitive tables, `USING (true)`, missing ownership filters, public storage hints |
+| Supabase | RLS disabled on sensitive tables, broad `USING`/`WITH CHECK`, tenant membership patterns, weak write checks, storage object policy scope |
 | API routes | Auth checks without obvious ownership guards, missing rate-limit hints on sensitive mutation routes |
 | MCP | Plaintext secrets, non-localhost binds, broad filesystem/write access, shell tools, raw SQL tools |
 | Deploy config | Next static export/runtime mismatches, Edge runtime with Node-only APIs, missing important env documentation |
@@ -191,7 +191,7 @@ Add `.ai-saas-guard.json` at the repository root to tune findings without changi
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.3.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.4.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
@@ -320,10 +320,10 @@ Open-source core:
 
 Near-term priorities:
 
-- expanded Supabase RLS fixtures
 - Stripe webhook replay cookbook
 - launch-readiness checklist content
 - false-positive suppression and rule stability labels
+- GitHub App design note for the potential hosted layer
 
 Potential paid layer later:
 

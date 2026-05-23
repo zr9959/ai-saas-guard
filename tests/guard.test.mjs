@@ -60,6 +60,7 @@ const expectedRuleIds = [
   "supabase.rls.broad-policy",
   "supabase.rls.missing-ownership-filter",
   "supabase.rls.not-enabled",
+  "supabase.rls.weak-with-check",
   "supabase.storage.public-bucket",
   "supabase.table.missing-owner-column"
 ];
@@ -143,6 +144,52 @@ test("safe Supabase policy avoids broad policy and missing ownership findings", 
   assert.equal(report.riskyPolicies.length, 0);
   assert.ok(!findingRuleIds(report).includes("supabase.rls.broad-policy"));
   assert.ok(!findingRuleIds(report).includes("supabase.rls.missing-ownership-filter"));
+});
+
+test("Supabase tenant membership policies are treated as ownership filters", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "tenant-membership-supabase")
+  });
+
+  assert.deepEqual(report.findings, []);
+  assert.deepEqual(report.riskyPolicies, []);
+});
+
+test("Supabase scanner flags weak WITH CHECK ownership mistakes", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "weak-with-check-supabase")
+  });
+  const weakWithCheckFindings = report.findings.filter(
+    (finding) => finding.ruleId === "supabase.rls.weak-with-check"
+  );
+
+  assert.ok(weakWithCheckFindings.length >= 2);
+  assert.ok(weakWithCheckFindings.some((finding) => finding.title.includes("members update projects")));
+  assert.ok(weakWithCheckFindings.some((finding) => finding.title.includes("members insert documents")));
+  assert.ok(weakWithCheckFindings.every((finding) => finding.evidence[0]?.file.endsWith("001_policies.sql")));
+  assert.ok(report.riskyPolicies.some((policy) => policy.reason.includes("WITH CHECK")));
+});
+
+test("Supabase scanner flags public storage object write policies", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "public-storage-supabase")
+  });
+  const storageFindings = report.findings.filter(
+    (finding) => finding.ruleId === "supabase.storage.public-bucket"
+  );
+
+  assert.ok(storageFindings.length >= 2);
+  assert.ok(storageFindings.some((finding) => finding.title.includes("storage.objects")));
+  assert.ok(storageFindings.some((finding) => finding.why.includes("Storage object policies")));
+  assert.ok(!findingRuleIds(report).includes("supabase.rls.broad-policy"));
+});
+
+test("Supabase scanner accepts scoped storage object policies", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "safe-storage-supabase")
+  });
+
+  assert.deepEqual(report.findings, []);
 });
 
 test("repo scan reports leaked env secrets and risky NEXT_PUBLIC secret exposure", async () => {

@@ -40,7 +40,7 @@ Implemented surfaces:
 
 - secret-like values and risky public env exposure
 - Stripe webhook signature, raw body, idempotency, and lifecycle handler heuristics
-- Supabase RLS, broad policy, ownership filter, and public storage heuristics
+- Supabase RLS, tenant membership, ownership filter, weak `WITH CHECK`, and storage object policy heuristics
 - sensitive API route heuristics
 - MCP config side-effect and secret-bearing risk inventory
 - Next/Vercel deploy and runtime footguns
@@ -101,7 +101,6 @@ Current issue set:
 
 - #1 Add launch-readiness checklist content
 - #5 Write Stripe webhook replay cookbook
-- #7 Expand Supabase RLS fixtures and ownership patterns
 
 CI:
 
@@ -113,7 +112,7 @@ CI:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.3.0`
+- Current release line: `v0.4.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.
@@ -140,11 +139,10 @@ Not allowed:
 
 Recommended order:
 
-1. Expand Supabase RLS fixtures and ownership patterns.
-2. Write Stripe webhook replay cookbook.
-3. Add launch-readiness checklist content.
-4. Improve false-positive suppression and rule stability labels.
-5. Add a GitHub App design note for the potential hosted layer.
+1. Write Stripe webhook replay cookbook.
+2. Add launch-readiness checklist content.
+3. Improve false-positive suppression and rule stability labels.
+4. Add a GitHub App design note for the potential hosted layer.
 
 For every feature, keep the scanner evidence-first:
 
