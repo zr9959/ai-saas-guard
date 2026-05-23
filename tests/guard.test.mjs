@@ -739,6 +739,32 @@ test("public docs include a GitHub App hosted-layer design note", async () => {
   assert.doesNotMatch(design, /client_secret|private key|webhook secret/i);
 });
 
+test("hosted GitHub App docs define an implementation-ready permission contract", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+
+  assert.match(design, /Implementation-ready permission contract/i);
+  assert.match(design, /Required first-version permissions/i);
+  assert.match(design, /Only these permissions are required/i);
+  assert.match(design, /No required permission may be added without a new public issue/i);
+  assert.match(design, /repository contents: read/i);
+  assert.match(design, /pull requests: read/i);
+  assert.match(design, /checks: write/i);
+  assert.match(design, /metadata: read/i);
+  assert.match(design, /Optional permissions are disabled by default/i);
+  assert.match(design, /pull requests: write/i);
+  assert.match(design, /repository policy opt-in/i);
+  assert.match(design, /Pull request comments require repository policy/i);
+  assert.match(design, /Selected repositories only/i);
+  assert.match(design, /No organization-wide installation requirement/i);
+  assert.match(design, /administration/i);
+  assert.match(design, /deployments/i);
+  assert.match(design, /actions: write/i);
+  assert.match(design, /repository secrets/i);
+  assert.match(readme, /selected repositories/i);
+  assert.match(readme, /optional PR comments require repository policy opt-in/i);
+});
+
 test("repository exposes security-safe GitHub issue templates", async () => {
   const templateDir = resolve(packageRoot, ".github", "ISSUE_TEMPLATE");
   const expectedTemplates = [

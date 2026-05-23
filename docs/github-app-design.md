@@ -48,31 +48,48 @@ The first version should prefer check runs over noisy PR comments. PR comments s
 
 ## Least-Privilege Permissions
 
-Use least-privilege permissions and install on selected repositories only.
+Use least-privilege permissions and install on selected repositories only. This section is the Implementation-ready permission contract for the first hosted GitHub App version.
 
-Recommended initial permission set:
+### Required First-Version Permissions
 
-| Permission | Access | Why |
-| --- | --- | --- |
-| repository contents: read | Read | Fetch files or diffs needed for deterministic scans. |
-| pull requests: read | Read | Read PR metadata, changed files, and base/head refs. |
-| checks: write | Write | Publish a check run with summary, findings count, and report link. |
-| metadata: read | Read | Required by GitHub Apps for repository identity. |
+Only these permissions are required for the first hosted version. No required permission may be added without a new public issue that explains the product need, user impact, security tradeoff, and rollback path.
 
-Optional permissions, disabled by default:
+| Status | Permission | Access | Default | Why |
+| --- | --- | --- | --- | --- |
+| Required | repository contents: read | Read | Enabled | Fetch files or diffs needed for deterministic scans. |
+| Required | pull requests: read | Read | Enabled | Read PR metadata, changed files, and base/head refs. |
+| Required | checks: write | Write | Enabled | Publish a check run with summary, findings count, and report link. |
+| Required | metadata: read | Read | Enabled | Required by GitHub Apps for repository identity. |
 
-| Permission | Access | Why |
-| --- | --- | --- |
-| pull requests: write | Write | Post PR comments when a team explicitly enables comments. |
-| issues: write | Write | Only if GitHub represents PR comments through issue comment APIs for a chosen workflow. |
+### Optional Permissions
+
+Optional permissions are disabled by default and must be enabled through repository policy opt-in. Pull request comments require repository policy before the app can post or update any comment.
+
+| Status | Permission | Access | Default | Why |
+| --- | --- | --- | --- | --- |
+| Optional | pull requests: write | Write | Disabled | Post one upserted PR comment only when repository policy opt-in enables comments. |
+| Optional | issues: write | Write | Disabled | Only if GitHub represents PR comments through issue comment APIs for the chosen comment workflow. |
+
+### Install Boundary
+
+Selected repositories only:
+
+- The app should default to selected repository installation, not all repositories.
+- Repository admins should be able to remove a repository from the installation without affecting local CLI use.
+- No organization-wide installation requirement.
+- The hosted app does not replace the local CLI for repositories that do not install it.
+
+### Out-Of-Scope Permissions
 
 Avoid broad permissions:
 
 - No administration permission for the first version.
-- No secrets permission.
 - No deployments permission.
-- No actions write permission.
-- No organization-wide install requirement.
+- No actions: write permission.
+- No repository secrets permission.
+- No organization secrets permission.
+- No repository security-events write permission unless a later public issue scopes SARIF upload behavior.
+- No organization-wide installation requirement.
 
 ## Event Model
 

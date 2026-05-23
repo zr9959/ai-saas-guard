@@ -180,7 +180,9 @@ Use [docs/stripe-webhook-replay.md](docs/stripe-webhook-replay.md) after `check-
 
 ## Hosted GitHub App Design
 
-See [docs/github-app-design.md](docs/github-app-design.md) for the proposed hosted GitHub App layer. The note covers least-privilege permissions, webhook verification, PR comments, check runs, privacy, data retention, prompt injection handling, and why the hosted app should not replace the local CLI.
+See [docs/github-app-design.md](docs/github-app-design.md) for the proposed hosted GitHub App layer. The note covers least-privilege permissions, selected repositories, webhook verification, PR comments, check runs, privacy, data retention, prompt injection handling, and why the hosted app should not replace the local CLI.
+
+The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
 ## Project Configuration
 
