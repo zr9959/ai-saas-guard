@@ -162,7 +162,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
-      - uses: zr9959/ai-saas-guard@<reviewed-commit-sha>
+      - uses: zr9959/ai-saas-guard@REVIEWED_COMMIT_SHA
         with:
           command: pr-risk
           root: ${{ github.workspace }}
@@ -173,7 +173,7 @@ jobs:
 For SARIF upload:
 
 ```yaml
-      - uses: zr9959/ai-saas-guard@<reviewed-commit-sha>
+      - uses: zr9959/ai-saas-guard@REVIEWED_COMMIT_SHA
         with:
           command: scan
           format: sarif
