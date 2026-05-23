@@ -115,14 +115,15 @@ Current issue set:
 
 - Closed hosted MVP issue: #24 webhook intake.
 - Closed hosted MVP issue: #25 idempotent queue contract.
-- Open hosted MVP roadmap issues: #26 read-only worker checkout, #27 Check summaries, #28 retention/uninstall cleanup, and #29 hosted operational release gate.
+- Closed hosted MVP issue: #26 read-only worker checkout.
+- Open hosted MVP roadmap issues: #27 Check summaries, #28 retention/uninstall cleanup, and #29 hosted operational release gate.
 
 CI:
 
 - Workflow: `.github/workflows/ci.yml`
 - Runs on pull requests and pushes to `main`
 - Uses `permissions: contents: read`
-- Latest verified run for the hosted durable queue contract release succeeded
+- Latest verified run for the hosted read-only worker plan release succeeded
 
 Publishing:
 
