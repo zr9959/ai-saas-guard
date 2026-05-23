@@ -624,6 +624,23 @@ test("public docs include a Stripe webhook replay cookbook", async () => {
   assert.doesNotMatch(cookbook, /sk_(?:live|test)_[A-Za-z0-9]+/);
 });
 
+test("public docs include a founder launch-readiness checklist", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const checklist = await readFile(resolve(packageRoot, "docs", "launch-readiness-checklist.md"), "utf8");
+
+  assert.match(readme, /docs\/launch-readiness-checklist\.md/);
+  assert.match(checklist, /two-account authorization testing/i);
+  assert.match(checklist, /Stripe webhook verification/i);
+  assert.match(checklist, /MCP config review/i);
+  assert.match(checklist, /not a full security audit/i);
+  assert.match(checklist, /launch blocker/i);
+  assert.match(checklist, /supabase/i);
+  assert.match(checklist, /rollback/i);
+  assert.match(checklist, /npx ai-saas-guard@latest scan --root \./);
+  assert.doesNotMatch(checklist, /sk_(?:live|test)_[A-Za-z0-9]+/);
+  assert.doesNotMatch(checklist, /whsec_[A-Za-z0-9]+/);
+});
+
 test("GitHub Action keeps colon-bearing descriptions YAML-safe", async () => {
   const action = await readFile(resolve(packageRoot, "action.yml"), "utf8");
 
