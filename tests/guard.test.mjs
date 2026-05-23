@@ -344,10 +344,12 @@ test("CI runs GitHub Actions static analysis", async () => {
 
 test("npm publish workflow uses provenance-capable GitHub Actions publishing", async () => {
   const workflow = await readFile(resolve(packageRoot, ".github/workflows/npm-publish.yml"), "utf8");
+  const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+  const expectedRefPattern = `v${packageJson.version}`.replaceAll(".", "\\.");
 
   assert.match(workflow, /release:\s*\n\s+types:\s*\[published\]/);
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /default:\s*v0\.1\.1/);
+  assert.match(workflow, new RegExp(`default:\\s*${expectedRefPattern}`));
   assert.match(workflow, /id-token:\s*write/);
   assert.match(workflow, /node-version:\s*24/);
   assert.match(workflow, /registry-url:\s*https:\/\/registry\.npmjs\.org/);

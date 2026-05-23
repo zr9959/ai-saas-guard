@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/zr9959/ai-saas-guard/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zr9959/ai-saas-guard/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://www.npmjs.com/package/ai-saas-guard"><img alt="npm" src="https://img.shields.io/npm/v/ai-saas-guard.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <a href="package.json"><img alt="Node.js >=20" src="https://img.shields.io/badge/node-%3E%3D20-339933.svg"></a>
   <a href="docs/release-quality-knowledge-base.md"><img alt="Release gate documented" src="https://img.shields.io/badge/release%20gate-documented-0f766e.svg"></a>
@@ -40,18 +41,44 @@ It is intentionally evidence-first. Findings include a rule ID, severity, file e
 
 This repository is public on GitHub.
 
-The first GitHub release and Action tag are `v0.1.0`; the npm-ready patch release is `v0.1.1`. The npm package is not published yet, so run the CLI from source for now. If you need stricter supply-chain pinning in CI, pin the GitHub Action to a reviewed commit SHA instead of a mutable tag.
+The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is available through versioned release tags. If you need stricter supply-chain pinning in CI, pin the GitHub Action to a reviewed commit SHA instead of a mutable tag.
 
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| Local CLI from source | Available |
+| npm CLI | Published as `ai-saas-guard` |
+| Local CLI from source | Available for development |
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
-| Versioned Action tags | `v0.1.1` |
-| npm package | Not published yet |
+| Versioned Action tags | `v0.1.2` |
+| npm package | `ai-saas-guard@0.1.2` |
 
-## Quick Start From Source
+## Quick Start
+
+Run the published CLI without installing it globally:
+
+```bash
+npx ai-saas-guard@latest scan --root /path/to/your-saas
+```
+
+Run focused checks:
+
+```bash
+npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main
+npx ai-saas-guard@latest check-supabase --root /path/to/your-saas
+npx ai-saas-guard@latest check-stripe --root /path/to/your-saas
+npx ai-saas-guard@latest check-mcp --root /path/to/your-saas
+```
+
+Machine-readable output:
+
+```bash
+npx ai-saas-guard@latest scan --root /path/to/your-saas --json
+npx ai-saas-guard@latest scan --root /path/to/your-saas --sarif > ai-saas-guard.sarif
+npx ai-saas-guard@latest scan --root /path/to/your-saas --fail-on high
+```
+
+For local development:
 
 ```bash
 git clone https://github.com/zr9959/ai-saas-guard.git
@@ -68,14 +95,6 @@ node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main
 node dist/cli.js check-supabase --root /path/to/your-saas
 node dist/cli.js check-stripe --root /path/to/your-saas
 node dist/cli.js check-mcp --root /path/to/your-saas
-```
-
-Machine-readable output:
-
-```bash
-node dist/cli.js scan --root /path/to/your-saas --json
-node dist/cli.js scan --root /path/to/your-saas --sarif > ai-saas-guard.sarif
-node dist/cli.js scan --root /path/to/your-saas --fail-on high
 ```
 
 ## Example Finding
@@ -162,7 +181,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
-      - uses: zr9959/ai-saas-guard@v0.1.1
+      - uses: zr9959/ai-saas-guard@v0.1.2
         with:
           command: pr-risk
           root: ${{ github.workspace }}
@@ -173,7 +192,7 @@ jobs:
 For SARIF upload:
 
 ```yaml
-      - uses: zr9959/ai-saas-guard@v0.1.1
+      - uses: zr9959/ai-saas-guard@v0.1.2
         with:
           command: scan
           format: sarif
@@ -183,7 +202,7 @@ For SARIF upload:
           sarif_file: ai-saas-guard.sarif
 ```
 
-For maximum reproducibility, replace `v0.1.1` with the full commit SHA from the release notes.
+For maximum reproducibility, replace `v0.1.2` with the full commit SHA from the release notes.
 
 ## Ignore File
 
@@ -282,4 +301,4 @@ Please read [SECURITY.md](SECURITY.md) before reporting vulnerabilities. Do not 
 
 ## npm Publishing
 
-The package name is prepared but not published yet. See [docs/npm-publishing.md](docs/npm-publishing.md) for the GitHub Actions provenance workflow, granular-token first publish, and trusted-publisher follow-up.
+The package is published as [`ai-saas-guard`](https://www.npmjs.com/package/ai-saas-guard). See [docs/npm-publishing.md](docs/npm-publishing.md) for the GitHub Actions provenance workflow, the first-publish token history, and the trusted-publisher follow-up.

@@ -1,31 +1,31 @@
 # npm Publishing
 
-`ai-saas-guard` is prepared for npm publication, but the package is not published yet.
+`ai-saas-guard` is published on npm and should be released only from reviewed GitHub tags.
 
 ## Current State
 
 - Package name: `ai-saas-guard`
-- Current version: `0.1.1`
-- npm registry state: not published at the time of this document update
-- GitHub Release: `v0.1.1`
+- Current version: `0.1.2`
+- npm registry state: published at <https://www.npmjs.com/package/ai-saas-guard>
+- First npm-published version: `0.1.1`
+- GitHub Release: `v0.1.2`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 
 ## Preferred Path
 
 Use GitHub Actions with npm provenance:
 
-1. Create an npm granular access token with read/write publish rights for this package name or account.
-2. Add it to this GitHub repository as `NPM_TOKEN`.
-3. Run the `Publish npm` workflow manually with `ref` set to `v0.1.1`.
-4. After the first publish succeeds, configure npm Trusted Publisher for future releases:
+1. Create and review a release tag such as `v0.1.2`.
+2. Run the `Publish npm` workflow manually with `ref` set to that tag.
+3. Configure npm Trusted Publisher for future releases:
    - Provider: GitHub Actions
    - Organization or user: `zr9959`
    - Repository: `ai-saas-guard`
    - Workflow filename: `npm-publish.yml`
    - Allowed action: `npm publish`
-5. Once trusted publishing is verified, remove or rotate any long-lived npm publish token.
+4. Once trusted publishing is verified, remove or rotate any long-lived npm publish token.
 
-The workflow sets `id-token: write`, uses Node 24, and runs `npm publish --provenance --access public`. This supports a token-based first publish with provenance and keeps the workflow ready for npm Trusted Publisher OIDC publishing.
+The first npm publish used a temporary granular access token because npm requires a 2FA-bypass token until trusted publishing is configured. The workflow sets `id-token: write`, uses Node 24, and runs `npm publish --provenance --access public`, so it is ready for npm Trusted Publisher OIDC publishing.
 
 ## Release Gate
 
