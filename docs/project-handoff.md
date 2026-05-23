@@ -40,8 +40,8 @@ Implemented surfaces:
 
 - secret-like values and risky public env exposure
 - founder-readable launch-readiness checklist for two-account authorization, Stripe webhook verification, MCP config review, Supabase, deploy, CI, and rollback checks
-- Stripe webhook signature, raw body, idempotency, and lifecycle handler heuristics
-- Stripe webhook replay cookbook for checkout, renewal failure, updates, cancellation, refunds, duplicate delivery, and out-of-order review
+- Stripe webhook signature, raw body, idempotency, and lifecycle handler heuristics, including payment-action-required invoice recovery
+- Stripe webhook replay cookbook for checkout, renewal failure, payment action required, updates, cancellation, refunds, duplicate delivery, and out-of-order review
 - Supabase RLS, tenant membership, ownership filter, weak `WITH CHECK`, and storage object policy heuristics
 - sensitive API route heuristics
 - MCP config side-effect and secret-bearing risk inventory
@@ -55,6 +55,7 @@ Implemented surfaces:
 - implementation-ready hosted GitHub App permission contract for required permissions, optional PR comment permissions, selected repository installation, and out-of-scope broad permissions
 - pure hosted GitHub App contract helpers and tests for webhook verification, installation token scoping, scan queue idempotency, compact reports, and retention limits
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
+- CODEOWNERS for source, tests, docs, workflows, Action, and package metadata
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper
@@ -106,7 +107,11 @@ GitHub Project:
 
 Current issue set:
 
-- No open roadmap issues after the hosted GitHub App contract gate work.
+- #14 `Roadmap: define first hosted service slice`
+- #15 `Roadmap: choose hosted app deployment model`
+- #16 `Roadmap: define hosted operational release gate`
+- #17 `Roadmap: define hosted uninstall and data deletion`
+- #18 `Roadmap: define hosted pricing and packaging boundaries`
 
 CI:
 
@@ -118,7 +123,7 @@ CI:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.8.0`
+- Current release line: `v0.9.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.
@@ -145,8 +150,9 @@ Not allowed:
 
 Recommended order:
 
-1. Add CODEOWNERS once there are multiple maintainers.
-2. Before any hosted service implementation, create new public issues for the first service slice, deployment model, and operational release gate.
+1. Work #14 before writing hosted service code.
+2. Work #15 and #16 before any hosted deployment.
+3. Work #17 and #18 before private repo onboarding or paid hosted features.
 
 For every feature, keep the scanner evidence-first:
 

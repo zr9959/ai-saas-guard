@@ -6,13 +6,14 @@ import { lineAt, lineNumberForIndex } from "../utils/files.js";
 
 const criticalEvents = [
   "invoice.payment_failed",
+  "invoice.payment_action_required",
   "customer.subscription.deleted",
   "customer.subscription.updated",
   "charge.refunded"
 ];
 
 const eventPattern =
-  /["']((?:checkout\.session\.completed|invoice\.payment_failed|customer\.subscription\.(?:deleted|updated|created)|charge\.(?:refunded|dispute\.created)|refund\.(?:created|updated)))["']/g;
+  /["']((?:checkout\.session\.completed|invoice\.(?:payment_failed|payment_action_required)|customer\.subscription\.(?:deleted|updated|created)|charge\.(?:refunded|dispute\.created)|refund\.(?:created|updated)))["']/g;
 
 export async function checkStripe(input: ScanInput): Promise<StripeReport> {
   const context = await resolveScanContext(input);
@@ -47,6 +48,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
       testCommands: [
         "stripe trigger checkout.session.completed",
         "stripe trigger invoice.payment_failed",
+        "stripe trigger invoice.payment_action_required",
         "stripe trigger customer.subscription.updated",
         "stripe trigger customer.subscription.deleted",
         "stripe trigger charge.refunded"
@@ -195,6 +197,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
     testCommands: [
       "stripe trigger checkout.session.completed",
       "stripe trigger invoice.payment_failed",
+      "stripe trigger invoice.payment_action_required",
       "stripe trigger customer.subscription.updated",
       "stripe trigger customer.subscription.deleted",
       "stripe trigger charge.refunded"

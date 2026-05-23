@@ -22,6 +22,9 @@ export async function POST(req: Request) {
     case "invoice.payment_failed":
       await markPastDue(event.data.object.customer);
       break;
+    case "invoice.payment_action_required":
+      await requestPaymentAction(event.data.object.customer);
+      break;
     case "customer.subscription.updated":
       await syncSubscription(event.data.object);
       break;
@@ -52,6 +55,10 @@ async function syncEntitlement(customerId: string) {
 }
 
 async function markPastDue(customerId: string) {
+  console.log(customerId);
+}
+
+async function requestPaymentAction(customerId: string) {
   console.log(customerId);
 }
 

@@ -51,8 +51,8 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.8.0`, `v0` |
-| npm package | `ai-saas-guard@0.8.0` |
+| Versioned Action tags | `v0.9.0`, `v0` |
+| npm package | `ai-saas-guard@0.9.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 
 ## Quick Start
@@ -184,6 +184,8 @@ See [docs/github-app-design.md](docs/github-app-design.md) for the proposed host
 
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
+The repository also includes pure pre-implementation hosted contract helpers and tests for webhook verification, installation token scoping, queue idempotency, compact reports, and retention limits. These helpers do not implement or deploy a hosted service.
+
 Users should prefer the local CLI for private repositories, offline review, or no-account workflows where hosted code processing is not acceptable.
 
 ## Project Configuration
@@ -216,7 +218,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.8.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.9.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard

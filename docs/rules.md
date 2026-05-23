@@ -51,7 +51,7 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 | `stripe.webhook.public-secret` | critical | Stripe secrets must not use `NEXT_PUBLIC_*`. |
 | `stripe.webhook.missing-idempotency` | high | Stripe retries and duplicate events can drift billing state. |
 | `stripe.webhook.no-entitlement-path` | medium | Returning HTTP 200 is not the same as changing app access state. |
-| `stripe.webhook.missing-critical-event` | high/medium | Failure, cancellation, update, and refund paths need explicit handling. |
+| `stripe.webhook.missing-critical-event` | high/medium | Failure, payment-action, cancellation, update, and refund paths need explicit handling. |
 
 ## Supabase
 

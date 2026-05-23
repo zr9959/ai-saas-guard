@@ -103,9 +103,11 @@ test("vulnerable Stripe webhook reports missing signature, idempotency, and crit
   assert.ok(findingRuleIds(report).includes("stripe.webhook.missing-signature"));
   assert.ok(findingRuleIds(report).includes("stripe.webhook.missing-idempotency"));
   assert.ok(report.missingCriticalEvents.includes("invoice.payment_failed"));
+  assert.ok(report.missingCriticalEvents.includes("invoice.payment_action_required"));
   assert.ok(report.missingCriticalEvents.includes("customer.subscription.deleted"));
   assert.ok(report.handledEvents.includes("checkout.session.completed"));
   assert.ok(report.testCommands.some((command) => command.includes("stripe trigger invoice.payment_failed")));
+  assert.ok(report.testCommands.some((command) => command.includes("stripe trigger invoice.payment_action_required")));
 });
 
 test("safe Stripe webhook recognizes signature verification and billing failure handlers", async () => {
@@ -115,6 +117,7 @@ test("safe Stripe webhook recognizes signature verification and billing failure 
 
   assert.equal(report.missingCriticalEvents.length, 0);
   assert.ok(report.handledEvents.includes("invoice.payment_failed"));
+  assert.ok(report.handledEvents.includes("invoice.payment_action_required"));
   assert.ok(report.handledEvents.includes("customer.subscription.deleted"));
   assert.ok(!findingRuleIds(report).includes("stripe.webhook.missing-signature"));
   assert.ok(!findingRuleIds(report).includes("stripe.webhook.missing-idempotency"));
@@ -140,6 +143,7 @@ test("Stripe scanner ignores webhook replay documentation files", async () => {
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 stripe trigger checkout.session.completed
 stripe trigger invoice.payment_failed
+stripe trigger invoice.payment_action_required
 stripe trigger customer.subscription.updated
 stripe trigger customer.subscription.deleted
 stripe trigger charge.refunded
@@ -690,6 +694,7 @@ test("public docs include a Stripe webhook replay cookbook", async () => {
   assert.match(readme, /docs\/stripe-webhook-replay\.md/);
   assert.match(cookbook, /checkout\.session\.completed/);
   assert.match(cookbook, /invoice\.payment_failed/);
+  assert.match(cookbook, /invoice\.payment_action_required/);
   assert.match(cookbook, /customer\.subscription\.updated/);
   assert.match(cookbook, /customer\.subscription\.deleted/);
   assert.match(cookbook, /charge\.refunded/);
@@ -697,6 +702,7 @@ test("public docs include a Stripe webhook replay cookbook", async () => {
   assert.match(cookbook, /Out-of-order/i);
   assert.match(cookbook, /entitlement reconciliation/i);
   assert.match(cookbook, /stripe trigger invoice\.payment_failed/);
+  assert.match(cookbook, /stripe trigger invoice\.payment_action_required/);
   assert.match(cookbook, /stripe listen --forward-to/);
   assert.doesNotMatch(cookbook, /whsec_[A-Za-z0-9]+/);
   assert.doesNotMatch(cookbook, /sk_(?:live|test)_[A-Za-z0-9]+/);
@@ -892,6 +898,18 @@ test("repository exposes security-safe GitHub issue templates", async () => {
   assert.match(config, /docs\/launch-readiness-checklist\.md/);
 });
 
+test("repository exposes CODEOWNERS for public maintenance boundaries", async () => {
+  const codeowners = await readFile(resolve(packageRoot, ".github", "CODEOWNERS"), "utf8");
+
+  assert.match(codeowners, /^\*\s+@zr9959/m);
+  assert.match(codeowners, /^\/src\/\s+@zr9959/m);
+  assert.match(codeowners, /^\/tests\/\s+@zr9959/m);
+  assert.match(codeowners, /^\/docs\/\s+@zr9959/m);
+  assert.match(codeowners, /^\/\.github\/workflows\/\s+@zr9959/m);
+  assert.match(codeowners, /^\/action\.yml\s+@zr9959/m);
+  assert.doesNotMatch(codeowners, /@[^z\s][^\s]*/);
+});
+
 test("GitHub Action keeps colon-bearing descriptions YAML-safe", async () => {
   const action = await readFile(resolve(packageRoot, "action.yml"), "utf8");
 
@@ -933,6 +951,15 @@ test("package bin entries are publish-safe npm paths", async () => {
   assert.deepEqual(packageJson.bin, {
     "ai-saas-guard": "dist/cli.js",
     "launch-guard": "dist/cli.js"
+  });
+});
+
+test("hosted contract helpers have an explicit npm subpath export", async () => {
+  const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+
+  assert.deepEqual(packageJson.exports["./hosted/contracts"], {
+    types: "./dist/hosted/contracts.d.ts",
+    default: "./dist/hosted/contracts.js"
   });
 });
 

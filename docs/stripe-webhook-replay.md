@@ -49,6 +49,7 @@ Run the commands one at a time. Watch both the `stripe listen` terminal and your
 | --- | --- | --- |
 | Checkout success | `stripe trigger checkout.session.completed` | The app maps the Checkout Session to the correct user or tenant and grants access only after signature verification. |
 | Failed renewal | `stripe trigger invoice.payment_failed` | The app marks the subscription past-due, starts a grace path if intended, and does not leave unrestricted paid access forever. |
+| Payment action required | `stripe trigger invoice.payment_action_required` | The app prompts recovery, records limited or pending access state, and does not leave paid access unrestricted without a policy. |
 | Subscription update | `stripe trigger customer.subscription.updated` | Plan, quantity, cancel-at-period-end, period end, and status changes reconcile into local entitlement state. |
 | Cancellation | `stripe trigger customer.subscription.deleted` | Access is revoked or downgraded deterministically for the correct customer or tenant. |
 | Refund | `stripe trigger charge.refunded` | Refund handling does not accidentally grant access, double-credit an account, or ignore a required downgrade workflow. |
@@ -87,6 +88,24 @@ Review checklist:
 - The app records failure state in the same entitlement system used by normal access checks.
 - Customer notification or billing portal recovery is queued if that is part of the product flow.
 - A later recovery event can move the account back to the intended state without manual database edits.
+
+`ai-saas-guard` findings this can validate:
+
+- `stripe.webhook.missing-critical-event`
+- `stripe.webhook.no-entitlement-path`
+
+## Payment Action Required
+
+```bash
+stripe trigger invoice.payment_action_required
+```
+
+Review checklist:
+
+- The app records a pending, past-due, or limited-access state instead of leaving unrestricted paid access indefinitely.
+- Customer recovery messaging or billing portal access is queued if that is part of the product policy.
+- The handler can later reconcile a successful payment or subscription update without duplicate access grants.
+- Access checks use local entitlement state, not only the last successful checkout redirect.
 
 `ai-saas-guard` findings this can validate:
 
@@ -178,6 +197,7 @@ Use these questions during review:
 
 - What happens if `customer.subscription.updated` arrives before the app processed `checkout.session.completed`?
 - What happens if `invoice.payment_failed` arrives after a manual admin upgrade?
+- What happens if `invoice.payment_action_required` arrives after the user has already recovered payment?
 - What happens if `customer.subscription.deleted` arrives after a refund workflow already changed local access?
 - Does the handler fetch or derive current subscription/customer state before writing final entitlement state?
 - Is the local write guarded by Stripe customer, subscription, and tenant ownership, not just by event type?
@@ -193,6 +213,7 @@ Before launch or merge, a reviewer should be able to answer yes to each item:
 - Every handled event stores or dedupes `event.id`.
 - `checkout.session.completed` grants access through webhook reconciliation, not only redirect success.
 - `invoice.payment_failed` has an explicit past-due or grace behavior.
+- `invoice.payment_action_required` has an explicit recovery or limited-access behavior.
 - `customer.subscription.updated` updates plan, quantity, period, cancellation, and status fields used by access checks.
 - `customer.subscription.deleted` revokes or downgrades access for the correct user or tenant.
 - `charge.refunded` has an explicit record, downgrade, or manual review path.

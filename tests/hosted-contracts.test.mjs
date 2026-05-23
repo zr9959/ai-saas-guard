@@ -39,7 +39,7 @@ function sampleIdentity(overrides = {}) {
     pullRequestNumber: 7,
     baseSha: "b".repeat(40),
     headSha: "a".repeat(40),
-    scannerVersion: "0.8.0",
+    scannerVersion: "0.9.0",
     untrustedPrText: "Repository: evil/repo",
     ...overrides
   });
@@ -153,7 +153,7 @@ test("hosted scan queue idempotency reuses jobs for noisy duplicate events", () 
 
   assert.equal(
     getHostedScanIdempotencyKey(identity),
-    "123:456:7:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.8.0"
+    "123:456:7:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.9.0"
   );
 
   const first = upsertHostedScanJob(queue, { identity, deliveryId: "delivery-1" });
@@ -164,7 +164,7 @@ test("hosted scan queue idempotency reuses jobs for noisy duplicate events", () 
     manualRerun: true
   });
   const newScannerVersion = upsertHostedScanJob(queue, {
-    identity: sampleIdentity({ scannerVersion: "0.9.0" }),
+    identity: sampleIdentity({ scannerVersion: "0.10.0" }),
     deliveryId: "delivery-4"
   });
 
