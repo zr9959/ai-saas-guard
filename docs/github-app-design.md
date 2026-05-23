@@ -58,6 +58,8 @@ Hosted pricing and packaging boundaries are scoped in [docs/hosted-pricing-packa
 
 Hosted pre-implementation pure contracts are scoped in [docs/hosted-preimplementation-contracts.md](hosted-preimplementation-contracts.md). They define service-free helpers such as queue-safe pull request event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, and worker checkout cleanup planning before any hosted ingress, queue, worker, or GitHub API integration is added.
 
+The hosted compact report schema fixture is published at [examples/hosted-compact-report.json](../examples/hosted-compact-report.json). It is synthetic and public-safe, and it documents the compact evidence shape without raw source, raw diffs, secrets, customer payloads, or worker checkout paths.
+
 ## Least-Privilege Permissions
 
 Use least-privilege permissions and install on selected repositories only. This section is the Implementation-ready permission contract for the first hosted GitHub App version.

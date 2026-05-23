@@ -808,12 +808,15 @@ function resolveCheckRunConclusion(
 }
 
 function getHostedReportFindingTotal(report: CompactHostedReport): number {
-  const countedFindings = Object.values(report.summaryCounts).reduce(
-    (total, count) => total + (typeof count === "number" ? count : 0),
+  const countedBySeverity = Object.entries(report.summaryCounts).reduce(
+    (total, [severity, count]) =>
+      severity === "total" ? total : total + (typeof count === "number" ? count : 0),
     0
   );
+  const explicitTotal =
+    typeof report.summaryCounts.total === "number" ? report.summaryCounts.total : 0;
 
-  return Math.max(countedFindings, report.evidence.length);
+  return Math.max(countedBySeverity, explicitTotal, report.evidence.length);
 }
 
 function formatCheckRunTitle(

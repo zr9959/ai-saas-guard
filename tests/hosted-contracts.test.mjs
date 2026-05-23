@@ -363,10 +363,16 @@ test("hosted check-run summaries use conservative conclusions and review-first l
     report: sampleCompactReport(),
     failOnSeverity: "high"
   });
+  const withTotal = createHostedCheckRunSummary({
+    report: sampleCompactReport({
+      summaryCounts: { critical: 0, high: 1, medium: 1, low: 0, info: 0, total: 2 }
+    })
+  });
 
   assert.equal(clean.conclusion, "success");
   assert.equal(findings.conclusion, "neutral");
   assert.equal(failing.conclusion, "failure");
+  assert.match(withTotal.output.title, /2 findings/);
   assert.match(findings.output.summary, /review first/i);
   assert.match(findings.output.summary, /not a full security audit/i);
   assert.match(findings.output.text, /Local CLI/i);

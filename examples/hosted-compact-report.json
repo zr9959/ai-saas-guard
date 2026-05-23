@@ -1,0 +1,38 @@
+{
+  "installationId": 123,
+  "repositoryId": 456,
+  "repositoryFullName": "example-org/example-saas",
+  "pullRequestNumber": 17,
+  "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "scannerVersion": "0.9.0",
+  "summaryCounts": {
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "info": 0,
+    "total": 2
+  },
+  "ruleIds": [
+    "stripe.webhook.missing-signature",
+    "supabase.rls.missing-ownership"
+  ],
+  "evidence": [
+    {
+      "ruleId": "stripe.webhook.missing-signature",
+      "severity": "high",
+      "file": "app/api/stripe/webhook/route.ts",
+      "line": 12
+    },
+    {
+      "ruleId": "supabase.rls.missing-ownership",
+      "severity": "medium",
+      "file": "supabase/migrations/001_policy.sql",
+      "line": 34
+    }
+  ],
+  "retentionDays": 30,
+  "modelTraining": "disabled",
+  "workerCheckoutDeletion": "after_scan_completion"
+}

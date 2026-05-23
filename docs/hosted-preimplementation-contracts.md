@@ -107,6 +107,20 @@ Cleanup failure behavior:
 - require manual cleanup review
 - preserve an audit record without exposing checkout contents
 
+## Hosted Compact Report Fixture
+
+A public hosted compact report fixture is available at [examples/hosted-compact-report.json](../examples/hosted-compact-report.json). It is intentionally synthetic and shows the report shape future hosted components can pass between the worker, check-run summary renderer, and retention cleanup logic.
+
+The fixture includes:
+
+- trusted scan identity fields
+- summary counts, including an explicit `total`
+- rule IDs
+- compact evidence with rule ID, severity, file path, and line number
+- retention and privacy defaults
+
+The fixture does not include raw source, raw diffs, secret values, webhook payload bodies, customer payloads, private URLs, installation tokens, or worker checkout paths.
+
 ## Non-Goals
 
 These contracts do not:
@@ -140,5 +154,7 @@ Automated tests must cover:
 - worker checkout cleanup planner covers success, failure, timeout, cancellation, and cleanup_failure terminal states
 - worker checkout cleanup planner returns safe metadata only and never returns checkout paths
 - cleanup_failure requires manual cleanup review without exposing low-level cleanup errors
+- hosted compact report fixture remains schema-compatible and public-safe
+- summary counts with an explicit `total` are not double-counted by check-run summaries
 
 Fixtures must be synthetic and public-safe. They must not include real credentials, customer payloads, private URLs, raw source, or raw diffs.

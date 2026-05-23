@@ -911,6 +911,49 @@ test("public docs define hosted pre-implementation contracts", async () => {
   assert.doesNotMatch(contracts, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public examples include a hosted compact report fixture", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const contracts = await readFile(
+    resolve(packageRoot, "docs", "hosted-preimplementation-contracts.md"),
+    "utf8"
+  );
+  const fixtureText = await readFile(
+    resolve(packageRoot, "examples", "hosted-compact-report.json"),
+    "utf8"
+  );
+  const fixture = JSON.parse(fixtureText);
+
+  assert.match(readme, /examples\/hosted-compact-report\.json/);
+  assert.match(contracts, /Hosted Compact Report Fixture/i);
+  assert.deepEqual(Object.keys(fixture).sort(), [
+    "baseSha",
+    "evidence",
+    "headSha",
+    "installationId",
+    "modelTraining",
+    "pullRequestNumber",
+    "repositoryFullName",
+    "repositoryId",
+    "retentionDays",
+    "ruleIds",
+    "scannerVersion",
+    "summaryCounts",
+    "workerCheckoutDeletion"
+  ]);
+  assert.equal(fixture.modelTraining, "disabled");
+  assert.equal(fixture.workerCheckoutDeletion, "after_scan_completion");
+  assert.deepEqual(Object.keys(fixture.evidence[0]).sort(), [
+    "file",
+    "line",
+    "ruleId",
+    "severity"
+  ]);
+  assert.doesNotMatch(
+    fixtureText,
+    /rawDiff|fullFileContents|secretValues|customerPayload|client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i
+  );
+});
+
 test("hosted GitHub App docs define an implementation-ready permission contract", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
