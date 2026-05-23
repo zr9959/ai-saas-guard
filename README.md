@@ -177,6 +177,12 @@ The first rule set includes checks for:
 
 See [docs/rules.md](docs/rules.md) for the current rule map.
 
+## Release Quality Gate
+
+Before publishing a CLI update, GitHub Action update, plugin, npm package, or public repository change, follow [docs/release-quality-knowledge-base.md](docs/release-quality-knowledge-base.md).
+
+That knowledge base is the required release checklist for code correctness, security review, GitHub repository settings, workflow hardening, dependency review, package publishing, plugin/agent risks, and release evidence.
+
 ## Privacy Model
 
 - Runs locally.
