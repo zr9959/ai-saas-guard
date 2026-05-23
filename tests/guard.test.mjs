@@ -175,6 +175,17 @@ test("repository exposes a GitHub Action wrapper", async () => {
   assert.match(action, /src\/cli.ts|dist\/cli\.js/);
 });
 
+test("GitHub Action does not interpolate action inputs directly inside bash", async () => {
+  const action = await readFile(resolve(packageRoot, "action.yml"), "utf8");
+  const runStep = action.match(/- name: Run ai-saas-guard[\s\S]*?run:\s*\|([\s\S]*)/);
+
+  assert.ok(runStep, "expected action.yml to contain the Run ai-saas-guard step");
+  assert.doesNotMatch(runStep[1], /\$\{\{\s*inputs\./);
+  assert.match(action, /INPUT_COMMAND:\s*\$\{\{\s*inputs\.command\s*\}\}/);
+  assert.match(action, /INPUT_OUTPUT:\s*\$\{\{\s*inputs\.output\s*\}\}/);
+  assert.match(action, /run:\s+npm ci/);
+});
+
 async function runCli(args) {
   try {
     const result = await execFileAsync("node", [resolve(packageRoot, "dist/cli.js"), ...args]);

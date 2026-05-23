@@ -33,7 +33,7 @@ runs:
   steps:
     - name: Install ai-saas-guard action dependencies
       shell: bash
-      run: npm install
+      run: npm ci
       working-directory: ${{ github.action_path }}
 
     - name: Build ai-saas-guard
@@ -43,27 +43,34 @@ runs:
 
     - name: Run ai-saas-guard
       shell: bash
+      env:
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_ROOT: ${{ inputs.root }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_BASE: ${{ inputs.base }}
+        INPUT_OUTPUT: ${{ inputs.output }}
       run: |
         set -o pipefail
 
-        args=("${{ inputs.command }}" "--root" "${{ inputs.root }}")
+        args=("${INPUT_COMMAND}" "--root" "${INPUT_ROOT}")
 
-        if [ "${{ inputs.format }}" = "json" ]; then
+        if [ "${INPUT_FORMAT}" = "json" ]; then
           args+=("--json")
-        elif [ "${{ inputs.format }}" = "sarif" ]; then
+        elif [ "${INPUT_FORMAT}" = "sarif" ]; then
           args+=("--sarif")
         fi
 
-        if [ "${{ inputs.fail-on }}" != "none" ]; then
-          args+=("--fail-on" "${{ inputs.fail-on }}")
+        if [ "${INPUT_FAIL_ON}" != "none" ]; then
+          args+=("--fail-on" "${INPUT_FAIL_ON}")
         fi
 
-        if [ -n "${{ inputs.base }}" ]; then
-          args+=("--base" "${{ inputs.base }}")
+        if [ -n "${INPUT_BASE}" ]; then
+          args+=("--base" "${INPUT_BASE}")
         fi
 
-        if [ -n "${{ inputs.output }}" ]; then
-          node "${GITHUB_ACTION_PATH}/dist/cli.js" "${args[@]}" | tee "${{ inputs.output }}"
+        if [ -n "${INPUT_OUTPUT}" ]; then
+          node "${GITHUB_ACTION_PATH}/dist/cli.js" "${args[@]}" | tee -- "${INPUT_OUTPUT}"
         else
           node "${GITHUB_ACTION_PATH}/dist/cli.js" "${args[@]}"
         fi
