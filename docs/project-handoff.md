@@ -113,7 +113,8 @@ GitHub Project:
 
 Current issue set:
 
-- Open hosted MVP roadmap issues: #24 webhook intake, #25 idempotent queue contract, #26 read-only worker checkout, #27 Check summaries, #28 retention/uninstall cleanup, and #29 hosted operational release gate.
+- Closed hosted MVP issue: #24 webhook intake.
+- Open hosted MVP roadmap issues: #25 idempotent queue contract, #26 read-only worker checkout, #27 Check summaries, #28 retention/uninstall cleanup, and #29 hosted operational release gate.
 
 CI:
 
