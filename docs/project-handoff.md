@@ -51,6 +51,7 @@ Implemented surfaces:
 - PR-focused markdown summary output for GitHub step summaries or PR comments
 - project-local `.ai-saas-guard.json` config for rule toggles, severity overrides, path-specific suppressions, and default fail thresholds
 - rule stability labels in catalog metadata, public rule docs, and SARIF rule properties
+- hosted GitHub App design note covering least-privilege permissions, webhook verification, privacy, data retention, prompt-injection handling, and implementation gates
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper
@@ -102,7 +103,7 @@ GitHub Project:
 
 Current issue set:
 
-- No open roadmap issues after the `v0.7.0` suppression and stability release.
+- No open roadmap issues after the `v0.8.0` GitHub App design note release.
 
 CI:
 
@@ -114,7 +115,7 @@ CI:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.7.0`
+- Current release line: `v0.8.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.
@@ -141,7 +142,9 @@ Not allowed:
 
 Recommended order:
 
-1. Add a GitHub App design note for the potential hosted layer.
+1. Open new roadmap issues for the hosted GitHub App implementation gates in `docs/github-app-design.md`.
+2. Add issue templates for bug reports, false positives, false negatives, rule requests, and security-safe reports.
+3. Add CODEOWNERS once there are multiple maintainers.
 
 For every feature, keep the scanner evidence-first:
 

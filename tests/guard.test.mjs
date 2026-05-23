@@ -719,6 +719,26 @@ test("public docs include a founder launch-readiness checklist", async () => {
   assert.doesNotMatch(checklist, /whsec_[A-Za-z0-9]+/);
 });
 
+test("public docs include a GitHub App hosted-layer design note", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
+
+  assert.match(readme, /docs\/github-app-design\.md/);
+  assert.match(design, /hosted GitHub App/i);
+  assert.match(design, /least-privilege permissions/i);
+  assert.match(design, /repository contents: read/i);
+  assert.match(design, /pull requests: read/i);
+  assert.match(design, /checks: write/i);
+  assert.match(design, /webhook signature verification/i);
+  assert.match(design, /PR comments/i);
+  assert.match(design, /data retention/i);
+  assert.match(design, /privacy/i);
+  assert.match(design, /prompt injection/i);
+  assert.match(design, /human approval/i);
+  assert.match(design, /does not replace the local CLI/i);
+  assert.doesNotMatch(design, /client_secret|private key|webhook secret/i);
+});
+
 test("GitHub Action keeps colon-bearing descriptions YAML-safe", async () => {
   const action = await readFile(resolve(packageRoot, "action.yml"), "utf8");
 
