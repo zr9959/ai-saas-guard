@@ -123,6 +123,8 @@ Next steps
 | 工具和 CI 权限是不是过大？ | MCP side-effect 分类、本地 policy/receipt 模板、GitHub Actions 权限、concurrency、checkout depth、Action pinning |
 | reviewer 能不能看懂 AI PR？ | `pr-risk` 对 auth、billing、RLS、deploy、API、storage、测试、silent-success、缺 spec context 和大型 diff 排序 |
 
+如果想看它和 Semgrep、zizmor、OpenSSF Scorecard、Snyk、GitHub code scanning 的边界区别，见 [launch-gate-positioning.md](launch-gate-positioning.md)。
+
 ## 快速开始
 
 无需全局安装，直接运行：
@@ -167,18 +169,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.30.1`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.30.1`。
+CLI 已发布到 npm：`ai-saas-guard@0.30.2`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.30.2`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.30.1` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.30.1` |
+| npm CLI | `ai-saas-guard@0.30.2` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.30.2` |
 | 输出格式 | 短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.30.1` 增加首次使用的 `--summary` 输出，并强化 Stripe、Supabase、silent-success、Next/Vercel finding 的具体修复方向 |
-| Action 标签 | `v0.30.1`、`v0` |
+| 当前版本 | `0.30.2` 做发布后质量优化：降低 Vercel/Actions 误报、增加 launch-gate 定位文档，并补 hosted worker 证据边界 |
+| Action 标签 | `v0.30.2`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |

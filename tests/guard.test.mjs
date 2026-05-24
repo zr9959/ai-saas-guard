@@ -481,6 +481,14 @@ test("Next and Vercel launch preflight accepts documented env, scoped images, he
   );
 });
 
+test("Next and Vercel launch preflight accepts security headers from vercel.json", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "next-vercel-vercel-json-headers-safe")
+  });
+
+  assert.ok(!findingRuleIds(report).includes("deploy.next.missing-security-headers"));
+});
+
 test("launch-specific SaaS rules flag Clerk unsafe metadata, Prisma tenant gaps, and unguarded Vercel cron", async () => {
   const report = await scanRepository({
     rootDir: resolve(fixtureRoot, "launch-rules-risk")
@@ -593,6 +601,14 @@ test("GitHub Actions hygiene check accepts bounded PR workflows", async () => {
   });
 
   assert.deepEqual(report.findings, []);
+});
+
+test("GitHub Actions hygiene accepts expression-based PR concurrency cancellation", async () => {
+  const report = await checkActions({
+    rootDir: resolve(fixtureRoot, "actions-hygiene-expression-safe")
+  });
+
+  assert.ok(!findingRuleIds(report).includes("actions.pr-missing-concurrency"));
 });
 
 test("risky PR diff prioritizes auth, billing, RLS, env, and weakened tests", async () => {
@@ -1223,6 +1239,23 @@ test("public docs include a copy-paste sample launch report", async () => {
   assert.doesNotMatch(sampleReport, /full audit|certification|pentest/i);
 });
 
+test("public docs explain focused launch-gate positioning without competitor overclaiming", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
+  const comparison = await readFile(resolve(packageRoot, "docs", "launch-gate-positioning.md"), "utf8");
+
+  assert.match(readme, /docs\/launch-gate-positioning\.md/);
+  assert.match(zhReadme, /launch-gate-positioning\.md/);
+  assert.match(comparison, /local-first launch gate/i);
+  assert.match(comparison, /Semgrep/i);
+  assert.match(comparison, /zizmor/i);
+  assert.match(comparison, /OpenSSF Scorecard/i);
+  assert.match(comparison, /Snyk/i);
+  assert.match(comparison, /GitHub code scanning/i);
+  assert.match(comparison, /AI-built SaaS launch/i);
+  assert.doesNotMatch(comparison, /better than|replaces|replacement for|full audit|certification|pentest/i);
+});
+
 test("public docs record the GitHub Marketplace wrapper decision", async () => {
   const decision = await readFile(
     resolve(packageRoot, "docs", "github-marketplace-wrapper-decision.md"),
@@ -1577,6 +1610,14 @@ test("public docs record hosted operations evidence without overclaiming deliver
 
   assert.match(evidence, /531d2286-86c6-4327-bfd0-67cad8693c10/);
   assert.match(evidence, /Remaining Release Gate Gaps/);
+  assert.match(evidence, /Read-Only Checkout Worker Evidence Checklist/i);
+  assert.match(evidence, /failure cleanup/i);
+  assert.match(evidence, /log boundary/i);
+  assert.match(evidence, /askpass/i);
+  assert.match(evidence, /no raw source/i);
+  assert.match(evidence, /no raw diffs/i);
+  assert.match(evidence, /no installation tokens/i);
+  assert.match(evidence, /checkout paths/i);
   assert.match(evidence, /not production hosted exposure/i);
   assert.doesNotMatch(evidence, /guaranteed secure|fully secure/i);
 });
@@ -1912,7 +1953,7 @@ test("repository exposes security-safe GitHub issue templates", async () => {
   assert.match(quickstart, /Was the finding useful/i);
   assert.match(quickstart, /Confusing output/i);
   assert.match(quickstart, /Version or Action tag/i);
-  assert.match(quickstart, /ai-saas-guard@0\.30\.1 or zr9959\/ai-saas-guard@v0/i);
+  assert.match(quickstart, /ai-saas-guard@0\.30\.2 or zr9959\/ai-saas-guard@v0/i);
 });
 
 test("repository exposes CODEOWNERS for public maintenance boundaries", async () => {

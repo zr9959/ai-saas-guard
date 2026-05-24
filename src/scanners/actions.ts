@@ -136,7 +136,13 @@ function runsOnPullRequestOrPush(content: string): boolean {
 }
 
 function hasCancelInProgressConcurrency(content: string): boolean {
-  return /^\s*concurrency:/im.test(content) && /^\s*cancel-in-progress:\s*true\b/im.test(content);
+  if (!/^\s*concurrency:/im.test(content)) return false;
+  const match = /^\s*cancel-in-progress:\s*(.+?)\s*$/im.exec(content);
+  if (!match) return false;
+  const value = match[1]?.trim() ?? "";
+  if (/^true\b/i.test(value)) return true;
+  if (/^\$\{\{[\s\S]*\}\}$/.test(value) && !/\bfalse\b/i.test(value)) return true;
+  return false;
 }
 
 function hasPathFilters(content: string): boolean {

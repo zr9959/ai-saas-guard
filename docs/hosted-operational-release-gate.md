@@ -137,6 +137,27 @@ Required evidence:
 
 The worker must not persist repository files across jobs.
 
+### Read-Only Checkout Worker Evidence
+
+For the first source checkout worker, the release blocks unless the deployed artifact records fresh evidence for both success and failure cleanup.
+
+Required proof:
+
+- checkout identity comes only from signed GitHub event fields and selected-repository installation scope.
+- repository token permissions are limited to `contents: read` for checkout.
+- runtime credentials reach git through temporary askpass material only.
+- the CLI phase runs after credential material is removed from the environment.
+- the worker command is fixed to the deterministic read-only `pr-risk --json` shape.
+- success deletes the worker checkout, askpass material, generated JSON/SARIF scratch files, and local package tarballs.
+- failure cleanup covers clone failure, timeout, CLI failure, malformed JSON output, Check Run write failure, cancellation, and process interruption.
+- cleanup failures create an operator-review event without returning raw source, raw diffs, installation tokens, checkout paths, private URLs, or low-level filesystem errors to users.
+
+### Log Boundary Evidence
+
+Before exposure, sample ingress, queue, worker, report, and Check Run logs for the release candidate. The sample may contain scan key, installation ID, repository ID, PR number, head SHA, scanner version, duration, summary counts, error class, and cleanup status.
+
+The sample must show no raw source, no raw diffs, no secrets, no installation tokens, no customer payloads, no private URLs, no checkout paths, and no untrusted PR prose.
+
 ## Dependency And Container Scanning
 
 Hosted releases must include dependency and container scanning for the deployed artifact.
