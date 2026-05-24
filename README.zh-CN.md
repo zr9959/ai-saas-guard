@@ -1,15 +1,15 @@
 <h1 align="center">ai-saas-guard</h1>
 
 <p align="center">
-  <strong>你用 AI 把 SaaS 做出来了。现在要知道上线前哪里最容易出事。</strong>
+  <strong>你用 AI 把 SaaS 做出来了。现在要在用户发现之前，先找到上线风险。</strong>
 </p>
 
 <p align="center">
-  ai-saas-guard 会优先指出 auth、billing、data access、secrets、MCP 和 deploy 里最值得人工 review 的改动。它本地运行、只读仓库、不上传代码。
+  ai-saas-guard 是面向 AI 构建的 SaaS 的本地优先上线 gate。它会优先指出 auth、billing、data access、secrets、MCP、deploy、CI 和“假成功”路径里最值得人工 review 的改动，让你在上线前知道该先看哪里。它本地运行、只读仓库、不上传代码。
 </p>
 
 <p align="center">
-  它不是渗透测试，而是一份面向上线风险点的实用 review 清单。
+  它不是渗透测试，而是一份证据优先的 review 队列，帮你先看最容易出事的代码。
 </p>
 
 <p align="center">
@@ -28,38 +28,39 @@
 
 ## 它解决什么问题
 
-AI 能很快把一个 SaaS 从想法做成可运行的产品。真正难的是：它能不能放心给真实用户用。
+AI 能很快把一个 SaaS 做到“看起来能用”。真正危险的是上线后才暴露的信任边界问题：
 
-上线前最危险的通常不是界面小 bug，而是那些会影响用户数据、付费权限、密钥暴露和 AI 工具权限的小改动：
-
-- 一个用户会不会看到另一个客户的数据？
-- Stripe webhook 会不会重复开通权限、漏处理付款失败，或者信任未签名请求？
-- `NEXT_PUBLIC_*` 里是不是不小心暴露了 secret？
-- MCP 工具是不是拿到了 shell、数据库或过宽的文件系统权限？
-- AI 生成的错误处理会不会在真实服务失败后仍然返回“成功”或 demo 数据？
-- Next/Vercel 上线前是不是缺 security headers、env 文档、请求日志或高请求量风险提示？
-- AI 生成的大 PR 里，是不是把 auth、billing 或 deploy 改动藏在 UI 调整中？
+- 一个用户能看到或修改另一个客户的数据
+- Stripe webhook 因为未签名、重复、漏处理失败事件而错误开通权限
+- 真实服务失败后，AI 生成的代码仍然返回“成功”或 demo 数据
+- secret 被 env 配置或 `NEXT_PUBLIC_*` 暴露出去
+- MCP 工具、GitHub workflow 或 deploy job 拿到了过大的权限
+- Next/Vercel 生产环境缺 env 文档、security headers、request ID 或成本风险提示
+- AI 生成的大 PR 把 auth、billing、data、deploy 或测试改动藏在“普通改动”里
 
 `ai-saas-guard` 是面向这个时刻的本地优先、review-first 上线预检工具。它不会证明你的应用绝对安全，也不是渗透测试、认证或完整安全审计。它的目标是给 founder、独立开发者、小团队和 reviewer 一份短而有证据的清单，告诉你上线或合并 PR 前最该先看哪里。
 
 ## 你会得到什么
 
-对仓库或 PR 运行后，它会给出：
+一个命令会返回一份上线前 review 队列：
 
-- 命中的 rule
-- severity 和文件证据
-- 为什么这个问题会影响 SaaS 上线
-- 如何人工验证
-- 实际修复方向
+- 先看高风险文件，再看 UI 或普通重构
+- 每个 finding 都有 rule ID、severity 和文件证据
+- 说明它为什么会影响 AI 构建的 SaaS 上线
+- 给出可以人工复现的验证步骤
+- 给出实际修复方向，不只是一句泛泛建议
+- 支持 terminal、JSON、SARIF 和 PR markdown，方便本地或 CI 使用
 
-它适合常见 AI 构建的 SaaS 技术栈：
+## 它能帮你抓住哪些问题
 
-- Next.js 和 Vercel
-- Supabase RLS、storage policy、SQL migration
-- Stripe checkout、subscription、webhook
-- Prisma 或 SQL migration
-- MCP server 配置
-- AI 生成的大型混合 PR
+| 上线问题 | ai-saas-guard 会检查什么 |
+| --- | --- |
+| 用户是否只能访问自己的数据？ | Supabase RLS、tenant/owner predicate、storage policy、API ownership 提示、双账号验证建议 |
+| 付费权限是否会正确开通和撤销？ | Stripe webhook 签名、raw body、幂等、entitlement 路径、失败/取消/更新/退款覆盖 |
+| 集成失败时会不会明显失败？ | silent-success fallback、吞错、hardcoded success、production mock/demo data、跳过或占位测试 |
+| 生产环境是否真的等于本地成功？ | Next/Vercel headers、env 文档、public env 盘点、image/request 放大风险、request ID logging |
+| 工具和 CI 权限是不是过大？ | MCP side-effect 分类、本地 policy/receipt 模板、GitHub Actions 权限、concurrency、checkout depth、Action pinning |
+| reviewer 能不能看懂 AI PR？ | `pr-risk` 对 auth、billing、RLS、deploy、API、storage、测试、silent-success、缺 spec context 和大型 diff 排序 |
 
 ## 当前状态
 
@@ -70,24 +71,17 @@ CLI 已发布到 npm：`ai-saas-guard@0.26.1`。GitHub Action 支持 `v0` 浮动
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | 已发布为 `ai-saas-guard` |
-| 本地源码运行 | 已可用 |
-| JSON 和 SARIF 输出 | 已可用 |
-| Markdown PR summary | 已可用 |
-| GitHub Action | 已可用 |
-| 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖和 fail threshold |
+| npm CLI | `ai-saas-guard@0.26.1` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.26.1` |
+| 输出格式 | Terminal、JSON、SARIF 和 PR markdown |
+| 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
+| 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
 | 当前版本 | `0.26.1` launch-risk expansion |
 | Action 标签 | `v0.26.1`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
-| 运行时加固 | 单文件和总扫描文本预算、markdown evidence 转义、1 MiB hosted webhook payload 上限、更严格的 hosted deployment 阻断 |
-| Hosted production adapters | GitHub App JWT 签名、installation-token 请求规划、有边界的 worker 执行和终态 cleanup 规划 |
-| Hosted app skeleton | Node/container HTTP ingress、health route、worker tick、in-memory provider adapters 和 deployment plan 校验 |
-| Hosted staging deployment planner | provider binding、staging release-gate evidence、Node/container deployment 组合和 GitHub App promotion gating |
-| Hosted staging harness | 本地 file-backed webhook replay、queue/report/Check Run artifact、worker cleanup 校验和 release-gate evidence fixture |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；Worker health 和 Check Run publisher 配置已在线，但端到端 GitHub App webhook delivery 仍需要验证私有 App 设置 |
-| Hosted operations evidence | 已记录在 [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
-| Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`，权限为 contents read、pull requests read、metadata read、checks write |
+| Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`；hosted operations evidence 见 [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
 | OpenSSF Best Practices | 已获得 passing badge，项目 `12955`；`.bestpractices.json` 继续作为保守证据记录 |
 
 ## 快速开始
