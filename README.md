@@ -76,9 +76,9 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.25.0`, `v0` |
-| npm package | `ai-saas-guard@0.25.0` |
-| Next source candidate | `0.26.0` with launch-risk expansion; not published until the release gate and GitHub release complete |
+| Versioned Action tags | `v0.26.0`, `v0` |
+| npm package | `ai-saas-guard@0.26.0` |
+| Current release | `0.26.0` launch-risk expansion |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Runtime hardening | Per-file and total text scan caps, escaped markdown evidence, 1 MiB hosted webhook payload cap, stricter hosted deployment blockers |
@@ -299,7 +299,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.25.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.26.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
