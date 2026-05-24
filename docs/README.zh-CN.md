@@ -66,13 +66,11 @@ npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --
 ```bash
 git clone https://github.com/zr9959/ai-saas-guard.git
 cd ai-saas-guard
-npm ci
-npm run build
-node dist/cli.js scan --root examples/demo-risky-saas
-node dist/cli.js scan --root examples/demo-safe-saas
+npx ai-saas-guard@latest scan --root examples/demo-risky-saas
+npx ai-saas-guard@latest scan --root examples/demo-safe-saas
 ```
 
-risky demo 会故意触发 Stripe、Supabase、silent-success 和 GitHub Actions 相关上线 finding。safe demo 展示同类风险面的更安全静态写法。说明见 [docs/demo-quickstart.md](demo-quickstart.md)。
+risky demo 当前会故意触发 19 个 finding，覆盖 Stripe、Supabase、silent-success、Next/Vercel deploy 提示和 GitHub Actions。safe demo 在同类风险面上使用更安全的静态写法，当前返回 0 个 finding。说明见 [demo-quickstart.md](demo-quickstart.md)。
 
 ## 输出长什么样
 
@@ -80,17 +78,21 @@ risky demo 会故意触发 Stripe、Supabase、silent-success 和 GitHub Actions
 
 ```text
 Launch Gate: review before launch
-4 findings: 1 high, 3 medium
+19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info
 
-HIGH stripe.webhook.missing-signature
+CRITICAL stripe.webhook.missing-signature
 File: app/api/stripe/webhook/route.ts
 Why: billing access can be granted from a webhook path that does not verify Stripe signatures.
 Verify: replay a webhook with an invalid signature and confirm the route rejects it.
 Fix: read the raw body, call stripe.webhooks.constructEvent, and make event handling idempotent.
 
-MEDIUM supabase.rls.tenant-predicate-missing
-File: supabase/migrations/20260524_accounts.sql
-Verify: sign in as user A and user B; confirm neither can SELECT or UPDATE the other's rows.
+HIGH silent-success.swallowed-error
+File: app/api/billing/checkout/route.ts
+Verify: force the upstream billing call to fail and confirm the route returns an error, not fake success.
+
+MEDIUM deploy.next.missing-security-headers
+File: app/api/billing/checkout/route.ts
+Verify: inspect production response headers for auth, billing, and API pages.
 ```
 
 ## 你会得到什么
@@ -159,18 +161,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.29.1`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.29.1`。
+CLI 已发布到 npm：`ai-saas-guard@0.29.2`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.29.2`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.29.1` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.29.1` |
+| npm CLI | `ai-saas-guard@0.29.2` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.29.2` |
 | 输出格式 | Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.29.1` 发布后入口优化：README 首屏更清晰、中文 README 同步、GitHub Action UX 校验和 Action 文档更新 |
-| Action 标签 | `v0.29.1`、`v0` |
+| 当前版本 | `0.29.2` 发布公开 risky/safe demo fixtures、demo quickstart、quickstart 反馈模板，并刷新首次试用 README 指引 |
+| Action 标签 | `v0.29.2`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
