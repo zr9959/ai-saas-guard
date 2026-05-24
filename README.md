@@ -45,6 +45,7 @@ AI can make a SaaS look finished while the real launch blockers sit in trust-bou
 
 One command returns a launch-readiness report with:
 
+- a plain launch-gate verdict at the top of terminal and Markdown output
 - risky files sorted before cosmetic files
 - rule ID, severity, and file evidence
 - why the finding matters for an AI-built SaaS launch

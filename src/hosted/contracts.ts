@@ -1309,16 +1309,16 @@ export function createHostedCheckRunSummary(
   const totalFindings = getHostedReportFindingTotal(report);
   const localCliCommand = `npx ai-saas-guard@${report.scannerVersion} pr-risk --root .`;
   const conclusion = resolveCheckRunConclusion(report, input.failOnSeverity);
+  const launchGate = hostedLaunchGateVerdict(report);
 
   return {
     name: CHECK_RUN_NAME,
     conclusion,
     output: {
       title: formatCheckRunTitle(totalFindings, conclusion, input.failOnSeverity),
-      summary:
-        "Review first: verify this launch-readiness signal before release; it is not a full security audit, pentest, or certification.",
+      summary: `Launch gate: ${launchGate}. Review first: verify this signal before release; it is not a full security audit, pentest, or certification.`,
       text: truncateMarkdown(
-        formatCheckRunMarkdown(report, conclusion, localCliCommand),
+        formatCheckRunMarkdown(report, conclusion, localCliCommand, launchGate),
         input.maxMarkdownChars
       )
     },
@@ -2089,6 +2089,23 @@ function getHostedReportFindingTotal(report: CompactHostedReport): number {
   return Math.max(countedBySeverity, explicitTotal, report.evidence.length);
 }
 
+function hostedLaunchGateVerdict(report: CompactHostedReport): string {
+  const summary = report.summaryCounts;
+  if ((summary.critical ?? 0) > 0) {
+    return "blocked";
+  }
+  if ((summary.high ?? 0) > 0) {
+    return "review required";
+  }
+  if ((summary.medium ?? 0) > 0) {
+    return "check before launch";
+  }
+  if ((summary.low ?? 0) > 0 || (summary.info ?? 0) > 0) {
+    return "low-noise review";
+  }
+  return "clear from current heuristics";
+}
+
 function formatCheckRunTitle(
   totalFindings: number,
   conclusion: HostedCheckRunConclusion,
@@ -2108,7 +2125,8 @@ function formatCheckRunTitle(
 function formatCheckRunMarkdown(
   report: CompactHostedReport,
   conclusion: HostedCheckRunConclusion,
-  localCliCommand: string
+  localCliCommand: string,
+  launchGate: string
 ): string {
   const categories = getHostedCheckRunCategories(report);
   const filesToReview = getHostedCheckRunFiles(report);
@@ -2131,6 +2149,7 @@ function formatCheckRunMarkdown(
     "",
     "Review first: verify findings locally before launch. This hosted check is not a full security audit, pentest, or certification.",
     "",
+    `Launch gate: ${launchGate}`,
     `Conclusion: ${conclusion}`,
     `Local CLI: \`${localCliCommand}\``,
     `Retention: compact report ${report.retentionDays} days; raw source, raw diffs, secrets, and customer payloads are not retained.`,

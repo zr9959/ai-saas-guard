@@ -1,4 +1,5 @@
 import type { ActionsReport, BaseReport, Finding, McpReport, SupabaseReport } from "../types.js";
+import { launchGateVerdict, manualProofSteps, reviewFirst } from "./launchGate.js";
 
 export function formatTerminalReport(report: BaseReport): string {
   const lines: string[] = [];
@@ -7,12 +8,25 @@ export function formatTerminalReport(report: BaseReport): string {
   lines.push(
     `Findings: ${report.summary.total} total | critical ${report.summary.critical} | high ${report.summary.high} | medium ${report.summary.medium} | low ${report.summary.low} | info ${report.summary.info}`
   );
+  lines.push(`Launch gate: ${launchGateVerdict(report)}`);
 
   if (report.findings.length === 0) {
     lines.push("");
     lines.push("No heuristic launch-readiness risks found by this command.");
     appendCommandExtras(lines, report);
     return lines.join("\n");
+  }
+
+  lines.push("");
+  lines.push("Review first:");
+  for (const item of reviewFirst(report.findings)) {
+    lines.push(`- ${item}`);
+  }
+
+  lines.push("");
+  lines.push("Manual proof to run next:");
+  for (const step of manualProofSteps(report.findings)) {
+    lines.push(`- ${step}`);
   }
 
   for (const [index, item] of report.findings.entries()) {

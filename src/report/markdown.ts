@@ -1,4 +1,5 @@
 import type { ActionsReport, BaseReport, Evidence, Finding, McpReport, PrRiskReport, SupabaseReport } from "../types.js";
+import { launchGateVerdict, manualProofSteps, reviewFirst } from "./launchGate.js";
 
 export function formatMarkdownReport(report: BaseReport): string {
   if (report.command === "pr-risk") return `${formatPrRiskMarkdown(report as PrRiskReport)}\n`;
@@ -10,6 +11,7 @@ function formatPrRiskMarkdown(report: PrRiskReport): string {
   lines.push("## ai-saas-guard PR risk summary");
   lines.push("");
   lines.push(summaryLine(report));
+  lines.push(`**Launch gate:** ${escapeMarkdownInline(launchGateVerdict(report))}`);
 
   if (report.categories.length > 0) {
     lines.push("");
@@ -52,6 +54,8 @@ function formatGenericMarkdown(report: BaseReport): string {
   lines.push(`## ai-saas-guard ${report.command}`);
   lines.push("");
   lines.push(summaryLine(report));
+  lines.push(`**Launch gate:** ${escapeMarkdownInline(launchGateVerdict(report))}`);
+  appendLaunchQueue(lines, report.findings);
   lines.push("");
   lines.push("### Findings");
   appendFindings(lines, report.findings);
@@ -67,6 +71,17 @@ function appendList(lines: string[], items: string[]): void {
   for (const item of items) {
     lines.push(`- ${item}`);
   }
+}
+
+function appendLaunchQueue(lines: string[], findings: Finding[]): void {
+  if (findings.length === 0) return;
+
+  lines.push("");
+  lines.push("### Review First");
+  appendList(lines, reviewFirst(findings).map(escapeMarkdownInline));
+  lines.push("");
+  lines.push("### Manual Proof To Run Next");
+  appendList(lines, manualProofSteps(findings).map(escapeMarkdownInline));
 }
 
 function appendFindings(lines: string[], findings: Finding[]): void {

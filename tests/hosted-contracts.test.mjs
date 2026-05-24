@@ -746,8 +746,11 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.equal(findings.conclusion, "neutral");
   assert.equal(failing.conclusion, "failure");
   assert.match(withTotal.output.title, /2 findings/);
+  assert.match(findings.output.summary, /Launch gate: review required/i);
   assert.match(findings.output.summary, /review first/i);
   assert.match(findings.output.summary, /not a full security audit/i);
+  assert.match(clean.output.summary, /Launch gate: clear from current heuristics/i);
+  assert.match(findings.output.text, /Launch gate: review required/i);
   assert.match(findings.output.text, /Review categories/i);
   assert.match(findings.output.text, /Verification steps/i);
   assert.match(findings.output.text, /Files to review first/i);
