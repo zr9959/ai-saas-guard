@@ -70,11 +70,11 @@ test("Cloudflare hosted worker health reports configured Check Run publisher wit
     GITHUB_APP_ID: "3834787",
     GITHUB_APP_PRIVATE_KEY: "secret-private-key",
     GITHUB_APP_INSTALLATION_ID: "135085075",
-    SCANNER_VERSION: "0.25.0"
+    SCANNER_VERSION: "0.28.0"
   });
 
   assert.equal(health.checkRunPublisher, "configured");
-  assert.equal(health.scannerVersion, "0.25.0");
+  assert.equal(health.scannerVersion, "0.28.0");
   assert.doesNotMatch(JSON.stringify(health), /secret-private-key|installation token|raw source|raw diff/i);
 });
 
@@ -145,7 +145,7 @@ test("Cloudflare hosted worker queues a signed pull request webhook idempotently
   const env = {
     WEBHOOK_SECRET: secret,
     HOSTED_EVENTS: createKv(),
-    SCANNER_VERSION: "0.25.0"
+    SCANNER_VERSION: "0.28.0"
   };
   const request = new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
     method: "POST",
@@ -186,7 +186,7 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
   const env = {
     WEBHOOK_SECRET: secret,
     HOSTED_EVENTS: createKv(),
-    SCANNER_VERSION: "0.25.0",
+    SCANNER_VERSION: "0.28.0",
     GITHUB_APP_ID: "3834787",
     GITHUB_APP_PRIVATE_KEY: createGitHubAppPrivateKey(),
     GITHUB_APP_INSTALLATION_ID: "12345",
@@ -275,7 +275,7 @@ test("Cloudflare hosted worker blocks unexpected GitHub App installation before 
   const env = {
     WEBHOOK_SECRET: secret,
     HOSTED_EVENTS: createKv(),
-    SCANNER_VERSION: "0.25.0",
+    SCANNER_VERSION: "0.28.0",
     GITHUB_APP_ID: "3834787",
     GITHUB_APP_PRIVATE_KEY: createGitHubAppPrivateKey(),
     GITHUB_APP_INSTALLATION_ID: "999",
@@ -311,7 +311,7 @@ test("Cloudflare hosted worker rejects invalid signatures before storage", async
   const env = {
     WEBHOOK_SECRET: "local-test-webhook-secret",
     HOSTED_EVENTS: createKv(),
-    SCANNER_VERSION: "0.25.0"
+    SCANNER_VERSION: "0.28.0"
   };
   const response = await worker.fetch(
     new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
@@ -337,7 +337,7 @@ test("Cloudflare hosted worker rejects oversized payloads before storage", async
   const env = {
     WEBHOOK_SECRET: "local-test-webhook-secret",
     HOSTED_EVENTS: createKv(),
-    SCANNER_VERSION: "0.25.0"
+    SCANNER_VERSION: "0.28.0"
   };
   const response = await worker.fetch(
     new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {

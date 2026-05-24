@@ -2,7 +2,7 @@
 
 This document collects pure hosted contracts that can be tested before any hosted GitHub App service is deployed. These contracts keep the hosted design inspectable, local-first, and implementation-ready without adding network calls, credentials, queues, workers, or GitHub API writes. They are no network calls contracts by design.
 
-The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`. The production adapter plans live in `src/hosted/production-adapters.ts` and are exported from `ai-saas-guard/hosted/production-adapters`. The Node/container app skeleton lives in `src/hosted/app.ts` and is exported from `ai-saas-guard/hosted/app`. The staging deployment planner lives in `src/hosted/staging.ts` and is exported from `ai-saas-guard/hosted/staging`. The local staging harness lives in `src/hosted/staging-harness.ts` and is exported from `ai-saas-guard/hosted/staging-harness`.
+The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`. The production adapter plans live in `src/hosted/production-adapters.ts` and are exported from `ai-saas-guard/hosted/production-adapters`. The Node/container app skeleton lives in `src/hosted/app.ts` and is exported from `ai-saas-guard/hosted/app`. The concrete read-only checkout worker runner lives in `src/hosted/worker.ts` and is exported from `ai-saas-guard/hosted/worker`. The staging deployment planner lives in `src/hosted/staging.ts` and is exported from `ai-saas-guard/hosted/staging`. The local staging harness lives in `src/hosted/staging-harness.ts` and is exported from `ai-saas-guard/hosted/staging-harness`.
 
 ## Pull Request Webhook Intake Planner
 
@@ -69,6 +69,29 @@ Trust boundaries:
 - do not return checkout paths, raw source, raw diffs, secret values, customer payloads, private URLs, or installation token values
 
 The exported helper is `planHostedWorkerReadOnlyScan`. It is intended to be the worker-provider-independent contract for the first real hosted worker implementation.
+
+## Read-Only Checkout Worker Runner
+
+The read-only checkout worker runner turns the worker plan into a concrete Node/container runner without changing the product boundary. It is still a hosted building block, not a public hosted service by itself.
+
+Default behavior:
+
+- derive the GitHub clone URL only from trusted repository identity
+- require a runtime installation token provider and keep the token out of command arguments, returned results, compact reports, and serialized plans
+- pass the installation token to git only through a temporary askpass helper inside the worker checkout
+- run `git init`, add the trusted remote, fetch the trusted head and base SHAs with bounded depth, and checkout the trusted head SHA
+- run the fixed `ai-saas-guard pr-risk --root <worker-checkout> --base <baseSha> --json` command without shell parsing
+- cap command timeout and output bytes
+- parse only compact JSON fields from CLI output: summary counts, rule IDs, severity, file, and line
+- delete the temporary checkout after success or failure
+
+Privacy boundaries:
+
+- do not return temporary checkout paths, raw source, raw diffs, evidence snippets, secrets, customer payloads, PR-authored commands, PR-authored repository names, or installation tokens
+- do not persist source checkout contents beyond the worker run
+- rely on the deployment sandbox for network egress restrictions around the CLI phase; the runner itself removes GitHub credentials before invoking the CLI
+
+The exported helper is `createHostedReadOnlyCheckoutScanRunner`.
 
 ## Production Adapter Plans
 
@@ -381,6 +404,8 @@ Automated tests must cover:
 - worker read-only scan planning requires repository `contents: read` permissions
 - worker read-only scan planning uses trusted identity for checkout target and fixed CLI command
 - worker read-only scan planning does not persist raw source, raw diffs, secrets, customer payloads, checkout paths, PR-authored commands, or PR-authored token scopes
+- read-only checkout worker runner uses trusted clone targets, bounded command execution, compact output parsing, and cleanup after success or failure
+- read-only checkout worker runner does not expose installation tokens, checkout paths, raw source, raw diffs, secret values, customer payloads, or PR-authored commands
 - accepted pull request events build the expected trusted scan identity
 - unsupported actions are rejected
 - draft pull requests are rejected by default

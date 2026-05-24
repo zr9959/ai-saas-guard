@@ -13,14 +13,14 @@ It is intentionally narrow:
 - Duplicate GitHub delivery IDs are accepted idempotently.
 - Responses and KV records do not include raw webhook payloads, PR title/body text, source code, diffs, secrets, customer payloads, checkout paths, or installation tokens.
 
-This Worker is a real hosted ingress with first-slice Check Run publishing code, not yet the complete scan worker. `shouldCreateCheckRun` is `true` only when the GitHub App bindings are present and the event passes installation scope checks. Current operations evidence is tracked in [docs/hosted-operations-evidence.md](../../docs/hosted-operations-evidence.md); the Worker health check passes, but end-to-end GitHub App webhook delivery still needs private App settings verification. Full source checkout scanning remains gated behind the hosted operational release gate.
+This Worker is a real hosted ingress with first-slice Check Run publishing code, not yet the complete scan worker. `shouldCreateCheckRun` is `true` only when the GitHub App bindings are present and the event passes installation scope checks. Current operations evidence is tracked in [docs/hosted-operations-evidence.md](../../docs/hosted-operations-evidence.md); the Worker health check, signed webhook delivery, KV cleanup, and compact Check Run smoke pass in staging. Full source checkout scanning remains gated behind the hosted operational release gate and the Node/container checkout worker deployment path.
 
 ## Required Cloudflare Bindings
 
 - `HOSTED_EVENTS`: Cloudflare KV namespace for compact delivery and queued scan records.
 - `WEBHOOK_SECRET`: Worker secret matching the GitHub App webhook secret.
 - `GITHUB_APP_PRIVATE_KEY`: Worker secret for the staging GitHub App private key, used only in memory to sign short-lived GitHub App JWTs.
-- `SCANNER_VERSION`: public version string, currently `0.25.0`.
+- `SCANNER_VERSION`: public version string, currently `0.28.0`.
 - `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_INSTALLATION_ID`: public staging identifiers for the private GitHub App installation.
 
 ## Deployment
@@ -45,7 +45,7 @@ Current public staging endpoint:
 - GitHub App ID: `3834787`
 - GitHub App installation ID: `135085075`
 - Installed repository: `zr9959/ai-saas-guard`
-- Mode: signed webhook ingress and compact queueing only
+- Mode: signed webhook ingress, compact queueing, PR file metadata classification, and bounded Check Run publishing
 
 ## Release Boundary
 

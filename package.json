@@ -1,6 +1,6 @@
 {
   "name": "ai-saas-guard",
-  "version": "0.27.2",
+  "version": "0.28.0",
   "description": "Repo-local launch-readiness scanner for AI-built SaaS apps.",
   "readmeFilename": "README.md",
   "type": "module",
@@ -58,6 +58,10 @@
     "./hosted/staging-harness": {
       "types": "./dist/hosted/staging-harness.d.ts",
       "default": "./dist/hosted/staging-harness.js"
+    },
+    "./hosted/worker": {
+      "types": "./dist/hosted/worker.d.ts",
+      "default": "./dist/hosted/worker.js"
     }
   },
   "bin": {
