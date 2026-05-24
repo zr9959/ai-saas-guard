@@ -83,7 +83,8 @@ CLI 已发布到 npm：`ai-saas-guard@0.25.0`。GitHub Action 支持 `v0` 浮动
 | Hosted app skeleton | Node/container HTTP ingress、health route、worker tick、in-memory provider adapters 和 deployment plan 校验 |
 | Hosted staging deployment planner | provider binding、staging release-gate evidence、Node/container deployment 组合和 GitHub App promotion gating |
 | Hosted staging harness | 本地 file-backed webhook replay、queue/report/Check Run artifact、worker cleanup 校验和 release-gate evidence fixture |
-| Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`，用于签名 GitHub webhook intake、KV 排队、installation-token exchange、PR file risk classification 和 compact Check Run publishing；完整 source scan worker 仍受 release gate 阻断 |
+| Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；Worker health 和 Check Run publisher 配置已在线，但端到端 GitHub App webhook delivery 仍需要验证私有 App 设置 |
+| Hosted operations evidence | 已记录在 [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
 | Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`，权限为 contents read、pull requests read、metadata read、checks write |
 | OpenSSF Best Practices | 已获得 passing badge，项目 `12955`；`.bestpractices.json` 继续作为保守证据记录 |
 
@@ -266,7 +267,7 @@ jobs:
 
 ## Hosted GitHub App 设计
 
-当前仓库已经包含未来 Hosted GitHub App 的设计文档、纯契约测试，以及第一个真实 Cloudflare hosted ingress。私有 staging GitHub App `ai-saas-guard-hosted` 已安装到 `zr9959/ai-saas-guard`，Cloudflare 已配置所需的云端凭据绑定。这个 ingress 已经能接收签名 webhook、写入 KV 队列、换取 scoped installation token、读取 GitHub PR file metadata、做 compact PR-risk classification，并发布有长度上限的 Check Run summary；但它还不是完整 source checkout scan worker。
+当前仓库已经包含未来 Hosted GitHub App 的设计文档、纯契约测试，以及第一个真实 Cloudflare hosted ingress。私有 staging GitHub App `ai-saas-guard-hosted` 已安装到 `zr9959/ai-saas-guard`，Cloudflare 已配置所需的云端凭据绑定。Worker 代码已经能接收签名 webhook、写入 KV 队列、换取 scoped installation token、读取 GitHub PR file metadata、做 compact PR-risk classification，并发布有长度上限的 Check Run summary；但当前端到端 GitHub App webhook delivery smoke 还被私有 App webhook 设置阻断，证据记录在 [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md)。它还不是完整 source checkout scan worker。
 
 相关文档：
 
@@ -295,7 +296,7 @@ jobs:
 - Hosted Node/container app skeleton：`ai-saas-guard/hosted/app` 导出 `createHostedHttpApp`、`createInMemoryHostedAppPlatform` 和 `planHostedNodeContainerDeployment`，提供安全 `/healthz`、签名 `/github/webhook` ingress、单 job worker tick、测试用 in-memory provider adapters，以及 secret manager、queue、compact report store、worker sandbox、GitHub Checks publisher 的部署引用校验；它本身仍然不部署或暴露公开 hosted 服务
 - Hosted staging deployment planner：`ai-saas-guard/hosted/staging` 导出 `planHostedProviderBinding`、`planHostedStagingDeployment` 和 `planHostedGitHubAppPromotion`，把真实 provider 引用、Node/container deployment plan、hosted operational release-gate evidence 和 GitHub App deployment planning 组合起来；缺少 queue、store、worker sandbox、Check Run publisher、logs、metrics、rollback 或 incident-response 引用时，会阻止 staging exposure 和 production promotion；它本身仍然不会调用云平台、创建 GitHub App 或暴露公开 hosted 服务
 - Hosted staging harness：`ai-saas-guard/hosted/staging-harness` 导出 `createFileBackedHostedStagingHarness` 和 `createHostedStagingHarnessEvidence`，可以在本地用 file-backed queue、compact report、Check Run request 和 worker sandbox 跑通签名 webhook replay、worker tick 和 cleanup 校验；它只是 staging 演练工具，不会调用云平台、创建 GitHub App、写真实 Check Run 或暴露公开 hosted 服务
-- Cloudflare hosted ingress：`hosted/cloudflare-worker` 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`，提供 `/healthz`、`/github/app/manifest-callback` 和签名 `/github/webhook` intake，只把 compact pull request identity、file/category risk signal 和 Check Run metadata 写入 Cloudflare KV；staging GitHub App ID 为 `3834787`，installation ID 为 `135085075`；完整 source checkout scan worker、monitoring、rollback 和 incident-response evidence 仍需要通过 hosted operational release gate
+- Cloudflare hosted ingress：`hosted/cloudflare-worker` 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`，提供 `/healthz`、`/github/app/manifest-callback` 和签名 `/github/webhook` intake；Worker 已具备 compact pull request identity、file/category risk signal 和 Check Run metadata 路径；staging GitHub App ID 为 `3834787`，installation ID 为 `135085075`；真实 GitHub App webhook delivery、完整 source checkout scan worker、monitoring、rollback 和 incident-response evidence 仍需要通过 hosted operational release gate
 - webhook event parser
 - check-run summary renderer
 - Check Run publication planner：要求 repository `checks: write`，只从 compact report 生成有长度上限的 Check Run payload，包含 review categories、优先 review 文件、verification steps 和本地 CLI 复现命令；MVP 不发 PR comment

@@ -13,7 +13,7 @@ It is intentionally narrow:
 - Duplicate GitHub delivery IDs are accepted idempotently.
 - Responses and KV records do not include raw webhook payloads, PR title/body text, source code, diffs, secrets, customer payloads, checkout paths, or installation tokens.
 
-This Worker is a real hosted ingress with first-slice Check Run publishing, not yet the complete scan worker. `shouldCreateCheckRun` is `true` only when the GitHub App bindings are present and the event passes installation scope checks. Full source checkout scanning remains gated behind the hosted operational release gate.
+This Worker is a real hosted ingress with first-slice Check Run publishing code, not yet the complete scan worker. `shouldCreateCheckRun` is `true` only when the GitHub App bindings are present and the event passes installation scope checks. Current operations evidence is tracked in [docs/hosted-operations-evidence.md](../../docs/hosted-operations-evidence.md); the Worker health check passes, but end-to-end GitHub App webhook delivery still needs private App settings verification. Full source checkout scanning remains gated behind the hosted operational release gate.
 
 ## Required Cloudflare Bindings
 

@@ -1117,6 +1117,22 @@ test("public docs define hosted uninstall and data deletion behavior", async () 
   assert.doesNotMatch(deletion, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs record hosted operations evidence without overclaiming delivery", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const evidence = await readFile(resolve(packageRoot, "docs", "hosted-operations-evidence.md"), "utf8");
+
+  for (const document of [readme, zhReadme, evidence]) {
+    assert.match(document, /hosted-operations-evidence\.md|Hosted Operations Evidence|Hosted operations evidence/i);
+    assert.match(document, /ai-saas-guard-hosted\.zr9959\.workers\.dev/);
+    assert.match(document, /webhook delivery|GitHub App webhook/i);
+  }
+
+  assert.match(evidence, /bc4b87d9-420a-48bb-a058-8066b08abe03/);
+  assert.match(evidence, /Blocked/);
+  assert.doesNotMatch(evidence, /guaranteed secure|fully secure/i);
+});
+
 test("public docs define hosted pricing and packaging boundaries", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
