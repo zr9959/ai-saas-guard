@@ -68,7 +68,7 @@ The fuzz tests cover:
 - SARIF serialization for arbitrary finding text
 - generated secret redaction paths
 
-The dedicated `fuzz` CI job runs `npm run test:fuzz`. The regular `test` job also includes `tests/fuzz.test.mjs` because it runs the full Node test suite.
+The dedicated `fuzz` CI job runs `npm run test:fuzz`. The regular `test` job also includes `tests/fuzz.test.js` because it runs the full Node test suite.
 
 ## Vulnerability Intake
 
