@@ -1,15 +1,15 @@
 <h1 align="center">ai-saas-guard</h1>
 
 <p align="center">
-  <strong>You used AI to build your SaaS. Now you need to know what is risky before launch.</strong>
+  <strong>You used AI to build your SaaS. Now find the launch risks before users do.</strong>
 </p>
 
 <p align="center">
-  ai-saas-guard points reviewers to the auth, billing, data access, secrets, MCP, and deploy changes that deserve human attention first. It runs locally, reads your repo only, and does not upload code.
+  ai-saas-guard is a local-first launch gate for AI-built SaaS apps. It focuses on auth, billing, data access, secrets, MCP, and deploy decisions, plus CI and fake-success paths, so you know what to review before launch or merge. It runs locally, reads your repo only, and does not upload code.
 </p>
 
 <p align="center">
-  It is not a pentest. It is a practical review checklist for launch-risk hotspots.
+  It is not a pentest. It is a practical, evidence-first review queue for the code that can break launch.
 </p>
 
 <p align="center">
@@ -27,40 +27,41 @@
 
 ---
 
-## The Problem It Solves
+## The Launch Problem
 
-AI can turn an idea into a working SaaS quickly. The harder question is whether the app is ready for real users.
+AI can make a SaaS look finished while the real launch blockers sit in trust-boundary code. These are the failures that hurt after real users arrive:
 
-The risky parts are often not the obvious UI bugs. They are the small changes that decide who can see data, who gets paid access, where secrets are exposed, and what an AI tool is allowed to do:
+- one customer can see or change another customer's data
+- Stripe grants access from an unsigned, duplicated, missing, or failed webhook path
+- provider errors get swallowed and the app returns fake success or demo data
+- a secret leaks through env config or `NEXT_PUBLIC_*`
+- an MCP tool, GitHub workflow, or deploy job has more power than the launch needs
+- a Next/Vercel deploy is missing production env docs, security headers, request IDs, or cost-risk hints
+- a large AI PR hides auth, billing, data, deploy, or test changes inside harmless-looking work
 
-- Can one customer read another customer's data?
-- Can a Stripe webhook grant access twice, miss a failed payment, or trust an unsigned request?
-- Did a public environment variable expose a secret?
-- Did an MCP tool get shell, database, or broad filesystem access?
-- Did AI-generated error handling return fake success or demo data after a real provider failed?
-- Will the Next/Vercel deploy have the headers, env docs, logging, and request behavior needed for launch?
-- Did a pull request hide auth, billing, or deploy changes inside a large AI-generated diff?
-
-`ai-saas-guard` is a local-first, review-first preflight for that moment. It does not try to prove your app is secure. It is not a pentest, certification, or full audit. It gives founders, solo builders, small teams, and reviewers a short, evidence-backed list of what to check before launch or merge.
+`ai-saas-guard` gives you a short local review queue for those risks. It does not prove the app is secure, certify a release, or replace human review. It tells founders, solo builders, small teams, and reviewers what deserves attention first.
 
 ## What You Get
 
-Run it against a repository or pull request and get findings with:
+One command returns a launch-readiness report with:
 
-- the rule that matched
-- severity and file evidence
-- why the issue matters in a SaaS launch
-- how to verify it manually
-- a practical fix direction
+- risky files sorted before cosmetic files
+- rule ID, severity, and file evidence
+- why the finding matters for an AI-built SaaS launch
+- manual verification steps you can actually run
+- practical fix direction, not generic advice
+- terminal, JSON, SARIF, and PR markdown output for local review or CI
 
-It is built for common AI-SaaS stacks:
+## Problems It Helps You Catch
 
-- Next.js and Vercel
-- Supabase row-level security and storage policies
-- Stripe checkout, subscriptions, and webhooks
-- Prisma or SQL migrations
-- MCP server configuration
-- AI-generated pull requests with large mixed diffs
+| Launch question | What ai-saas-guard checks |
+| --- | --- |
+| Can users only access their own data? | Supabase RLS, tenant/owner predicates, storage policies, API ownership hints, two-account verification guidance |
+| Will billing change access correctly? | Stripe webhook signature, raw body, idempotency, entitlement paths, failure/cancel/update/refund coverage |
+| Will broken integrations fail visibly? | Silent-success fallbacks, swallowed errors, hardcoded success responses, production mock/demo data, skipped or placeholder tests |
+| Will production behave like local? | Next/Vercel headers, env docs, public env inventory, image/request amplification hints, request ID logging |
+| Are tools and CI overpowered? | MCP side-effect classes, local policy/receipt templates, GitHub Actions permissions, concurrency, checkout depth, action pinning |
+| Can reviewers trust the PR? | `pr-risk` ranking for auth, billing, RLS, deploy, API, storage, tests, silent-success paths, missing spec context, and large AI diffs |
 
 ## Current Status
 
@@ -71,24 +72,17 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | Published as `ai-saas-guard` |
-| Local CLI from source | Available for development |
-| JSON and SARIF output | Available |
-| Composite GitHub Action | Available |
-| Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
+| npm CLI | `ai-saas-guard@0.26.1` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.26.1` |
+| Outputs | Terminal, JSON, SARIF, and PR-focused markdown |
+| Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
+| Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
 | Versioned Action tags | `v0.26.1`, `v0` |
-| npm package | `ai-saas-guard@0.26.1` |
-| Current release | `0.26.1` launch-risk expansion |
+| Current release | `0.26.1` launch-risk expansion and CodeQL cleanup |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
-| Runtime hardening | Per-file and total text scan caps, escaped markdown evidence, 1 MiB hosted webhook payload cap, stricter hosted deployment blockers |
-| Hosted production adapters | GitHub App JWT signing, installation-token request planning, bounded worker execution, and terminal-state cleanup planning |
-| Hosted app skeleton | Node/container HTTP ingress, health route, worker tick, in-memory provider adapters, and deployment plan validation |
-| Hosted staging deployment planner | Provider binding, staging release-gate evidence, Node/container deployment composition, and GitHub App promotion gating |
-| Hosted staging harness | File-backed webhook replay, queue/report/Check Run artifacts, worker cleanup verification, and local release-gate evidence fixtures |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; Worker health and Check Run publisher configuration are live, but end-to-end GitHub App webhook delivery is still blocked pending private App settings verification |
-| Hosted operations evidence | Recorded in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
-| Hosted GitHub App staging | Private App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard` with contents read, pull requests read, metadata read, and checks write |
+| Hosted GitHub App staging | Private App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard`; hosted operations evidence is in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
 | OpenSSF Best Practices | Passing badge, project `12955`; `.bestpractices.json` remains the conservative evidence record |
 
 ## Quick Start
