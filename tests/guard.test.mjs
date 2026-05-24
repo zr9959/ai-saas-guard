@@ -1027,6 +1027,7 @@ test("public docs describe repository trust hardening", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
   const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
+  const security = await readFile(resolve(packageRoot, "SECURITY.md"), "utf8");
 
   assert.match(readme, /docs\/repository-trust-hardening\.md/);
   assert.match(readme, /Dependabot/);
@@ -1045,6 +1046,7 @@ test("public docs describe repository trust hardening", async () => {
   assert.match(governance, /private vulnerability reporting/i);
   assert.match(governance, /secret scanning/i);
   assert.doesNotMatch(governance, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+  assert.match(security, /https:\/\/github\.com\/zr9959\/ai-saas-guard\/security\/advisories\/new/);
 });
 
 test("public docs define the hosted operational release gate", async () => {

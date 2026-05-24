@@ -4,7 +4,9 @@
 
 ## Reporting A Vulnerability
 
-Open a private security advisory on GitHub if the issue could help bypass scans, leak user data, or produce unsafe output.
+Open a private security advisory on GitHub if the issue could help bypass scans, leak user data, or produce unsafe output:
+
+https://github.com/zr9959/ai-saas-guard/security/advisories/new
 
 For ordinary false positives, false negatives, or rule tuning requests, open a public issue with:
 
