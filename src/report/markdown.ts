@@ -1,4 +1,4 @@
-import type { BaseReport, Evidence, Finding, PrRiskReport } from "../types.js";
+import type { ActionsReport, BaseReport, Evidence, Finding, McpReport, PrRiskReport, SupabaseReport } from "../types.js";
 
 export function formatMarkdownReport(report: BaseReport): string {
   if (report.command === "pr-risk") return `${formatPrRiskMarkdown(report as PrRiskReport)}\n`;
@@ -55,6 +55,7 @@ function formatGenericMarkdown(report: BaseReport): string {
   lines.push("");
   lines.push("### Findings");
   appendFindings(lines, report.findings);
+  appendGenericExtras(lines, report);
   return lines.join("\n");
 }
 
@@ -85,6 +86,40 @@ function appendFindings(lines: string[], findings: Finding[]): void {
     lines.push(`   - Why: ${escapeMarkdownInline(finding.why)}`);
     lines.push(`   - Verify: ${escapeMarkdownInline(finding.suggestedVerification)}`);
     lines.push(`   - Fix direction: ${escapeMarkdownInline(finding.suggestedFix)}`);
+  }
+}
+
+function appendGenericExtras(lines: string[], report: BaseReport): void {
+  if (report.command === "check-supabase") {
+    const supabase = report as SupabaseReport;
+    if (supabase.doctor.sqlCookbook.length === 0) return;
+    lines.push("");
+    lines.push("### Supabase RLS Doctor");
+    appendList(lines, supabase.doctor.twoAccountVerificationSteps);
+    lines.push("");
+    lines.push("```sql");
+    lines.push(...supabase.doctor.sqlCookbook);
+    lines.push("```");
+  }
+
+  if (report.command === "check-mcp") {
+    const mcp = report as McpReport;
+    if (!mcp.policyTemplate) return;
+    lines.push("");
+    lines.push("### MCP Policy Template");
+    lines.push("");
+    lines.push("```yaml");
+    lines.push(...mcp.policyTemplate.localPolicyTemplate);
+    lines.push("```");
+    lines.push("");
+    lines.push(`Receipt fields: ${mcp.policyTemplate.receiptFormat.map((field) => `\`${field}\``).join(", ")}`);
+  }
+
+  if (report.command === "check-actions") {
+    const actions = report as ActionsReport;
+    lines.push("");
+    lines.push("### GitHub Actions Hygiene Checklist");
+    appendList(lines, actions.hygieneChecklist);
   }
 }
 

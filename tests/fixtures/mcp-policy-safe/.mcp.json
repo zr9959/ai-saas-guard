@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "repo-reader": {
+      "command": "node",
+      "args": ["reader.js"],
+      "tools": {
+        "files.read": {
+          "sideEffectClass": "filesystem-read",
+          "allowPaths": ["./src", "./docs"]
+        },
+        "docs.search": {
+          "sideEffectClass": "read-only"
+        }
+      },
+      "policy": {
+        "default": "deny",
+        "allow": [
+          {
+            "tool": "files.read",
+            "paths": ["./src", "./docs"]
+          }
+        ]
+      }
+    }
+  }
+}

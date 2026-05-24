@@ -38,8 +38,9 @@ The wedge should be:
 1. `pr-risk` for AI-generated PRs.
 2. Founder-readable launch verification, not only findings.
 3. Stack-specific checks for Next.js + Supabase + Stripe + Vercel + MCP.
-4. Local-first trust model for private repos.
-5. Open-source CLI first, hosted GitHub App later.
+4. AI-specific silent-success checks: swallowed errors, fake fallback data, placeholder tests, and missing trust-boundary rationale.
+5. Local-first trust model for private repos.
+6. Open-source CLI first, hosted GitHub App later.
 
 ## Monetization Path
 

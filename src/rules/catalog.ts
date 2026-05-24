@@ -11,6 +11,48 @@ export interface RuleMetadata {
 }
 
 export const RULE_CATALOG: Record<string, RuleMetadata> = {
+  "actions.checkout.fetch-depth": {
+    ruleId: "actions.checkout.fetch-depth",
+    severity: "medium",
+    title: "GitHub Actions checkout may be too shallow for PR risk",
+    why: "`pr-risk --base` needs enough Git history to compare trust-boundary changes reliably.",
+    stability: "default"
+  },
+  "actions.docs-only-full-ci": {
+    ruleId: "actions.docs-only-full-ci",
+    severity: "low",
+    title: "Docs-only changes may trigger full CI",
+    why: "AI-assisted docs edits should not always spend the same launch-readiness CI budget as code changes.",
+    stability: "experimental"
+  },
+  "actions.permissions.too-broad": {
+    ruleId: "actions.permissions.too-broad",
+    severity: "medium",
+    title: "GitHub Actions workflow grants broad write permissions",
+    why: "Launch preflight workflows usually need read access, not broad repository mutation privileges.",
+    stability: "default"
+  },
+  "actions.pr-missing-concurrency": {
+    ruleId: "actions.pr-missing-concurrency",
+    severity: "low",
+    title: "Pull request workflow lacks concurrency cancellation",
+    why: "AI-assisted PRs can push many commits quickly, making stale CI runs wasteful and confusing.",
+    stability: "experimental"
+  },
+  "actions.secrets-missing-failfast": {
+    ruleId: "actions.secrets-missing-failfast",
+    severity: "medium",
+    title: "GitHub Actions secrets lack fail-fast checks",
+    why: "Deploy or integration workflows should fail clearly when required secrets or tools are missing.",
+    stability: "default"
+  },
+  "actions.unpinned-action": {
+    ruleId: "actions.unpinned-action",
+    severity: "info",
+    title: "GitHub Action is not pinned to a full commit SHA",
+    why: "Pinned actions make launch-preflight workflows more reproducible.",
+    stability: "experimental"
+  },
   "secrets.detected": {
     ruleId: "secrets.detected",
     severity: "high",
@@ -81,6 +123,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "`USING (true)` or `WITH CHECK (true)` can turn login into broad data access or writes.",
     stability: "strict"
   },
+  "supabase.rls.enabled-no-policy": {
+    ruleId: "supabase.rls.enabled-no-policy",
+    severity: "high",
+    title: "Supabase RLS is enabled without policies",
+    why: "RLS with no policies often looks like silent empty results instead of an explainable launch failure.",
+    stability: "default"
+  },
   "supabase.rls.missing-ownership-filter": {
     ruleId: "supabase.rls.missing-ownership-filter",
     severity: "high",
@@ -88,12 +137,40 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "Policies need resource ownership or tenant membership checks.",
     stability: "default"
   },
+  "supabase.rls.public-write-policy": {
+    ruleId: "supabase.rls.public-write-policy",
+    severity: "high",
+    title: "Supabase write policy grants public role",
+    why: "Public write policies can expose inserts or mutations when predicates are incomplete.",
+    stability: "default"
+  },
+  "supabase.rls.tenant-predicate-missing": {
+    ruleId: "supabase.rls.tenant-predicate-missing",
+    severity: "high",
+    title: "Supabase tenant-like table lacks tenant predicate",
+    why: "Multi-tenant SaaS tables need tenant, workspace, organization, owner, or membership predicates.",
+    stability: "experimental"
+  },
+  "supabase.rls.uid-column-mismatch": {
+    ruleId: "supabase.rls.uid-column-mismatch",
+    severity: "medium",
+    title: "Supabase policy compares auth.uid() to suspicious column",
+    why: "`auth.uid()` is a UUID; comparing it to text/email/name columns commonly causes silent policy failures.",
+    stability: "experimental"
+  },
   "supabase.rls.weak-with-check": {
     ruleId: "supabase.rls.weak-with-check",
     severity: "high",
     title: "Supabase write policy has a weak WITH CHECK predicate",
     why: "Insert and update policies need WITH CHECK predicates tied to the current user or tenant membership.",
     stability: "default"
+  },
+  "supabase.rls.write-policy-missing": {
+    ruleId: "supabase.rls.write-policy-missing",
+    severity: "medium",
+    title: "Supabase table has read policy but no common write policy",
+    why: "Reads can work while inserts, updates, or deletes silently fail when write policies are missing.",
+    stability: "experimental"
   },
   "supabase.table.missing-owner-column": {
     ruleId: "supabase.table.missing-owner-column",
@@ -130,12 +207,89 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "Login checks do not prove resource ownership checks.",
     stability: "experimental"
   },
+  "silent-success.swallowed-error": {
+    ruleId: "silent-success.swallowed-error",
+    severity: "high",
+    title: "Error handling may return fake success",
+    why: "Swallowed provider, auth, billing, or data errors can make a launch path look successful when it failed.",
+    stability: "default"
+  },
+  "silent-success.production-mock-data": {
+    ruleId: "silent-success.production-mock-data",
+    severity: "medium",
+    title: "Production path may use mock or demo data",
+    why: "Fixtures and demo responses in sensitive paths can make AI-built integrations look complete before they are real.",
+    stability: "default"
+  },
+  "silent-success.hardcoded-fallback": {
+    ruleId: "silent-success.hardcoded-fallback",
+    severity: "high",
+    title: "Sensitive path contains hardcoded fallback success",
+    why: "Hardcoded success fallbacks in auth, billing, AI, or data paths can grant access or hide broken integrations.",
+    stability: "default"
+  },
+  "silent-success.weakened-test": {
+    ruleId: "silent-success.weakened-test",
+    severity: "medium",
+    title: "Test may be skipped or placeholder-only",
+    why: "Skipped, TODO-only, empty, or truthy-only tests create fake confidence in AI-generated code.",
+    stability: "default"
+  },
+  "silent-success.temporary-bypass": {
+    ruleId: "silent-success.temporary-bypass",
+    severity: "high",
+    title: "Temporary trust-boundary bypass",
+    why: "Temporary bypasses around auth, validation, webhook verification, rate limits, or ownership are common launch blockers.",
+    stability: "default"
+  },
   "deploy.next.static-export-api-risk": {
     ruleId: "deploy.next.static-export-api-risk",
     severity: "medium",
     title: "Next static export may conflict with server routes",
     why: "Static export can conflict with runtime API assumptions.",
     stability: "default"
+  },
+  "deploy.next.missing-security-headers": {
+    ruleId: "deploy.next.missing-security-headers",
+    severity: "medium",
+    title: "Next/Vercel app lacks obvious security headers",
+    why: "Apps with auth, payment, and API routes should launch with explicit browser security headers.",
+    stability: "experimental"
+  },
+  "deploy.env.server-undocumented": {
+    ruleId: "deploy.env.server-undocumented",
+    severity: "low",
+    title: "Server route env var is not documented",
+    why: "Undocumented server env vars cause local-success, production-failure deploys.",
+    stability: "experimental"
+  },
+  "deploy.env.public-inventory": {
+    ruleId: "deploy.env.public-inventory",
+    severity: "info",
+    title: "Public Next.js env var inventory",
+    why: "`NEXT_PUBLIC_*` variables are browser-visible and should be reviewed as public config.",
+    stability: "experimental"
+  },
+  "deploy.next.image-cost-risk": {
+    ruleId: "deploy.next.image-cost-risk",
+    severity: "medium",
+    title: "Next image optimization may be unbounded",
+    why: "Broad remote image patterns or user-controlled image sources can amplify deploy cost and trust risk.",
+    stability: "experimental"
+  },
+  "deploy.next.request-amplification": {
+    ruleId: "deploy.next.request-amplification",
+    severity: "low",
+    title: "Dynamic route prefetch may amplify requests",
+    why: "High-cardinality dynamic route prefetching can create unexpected production request volume.",
+    stability: "experimental"
+  },
+  "deploy.observability.missing-request-id": {
+    ruleId: "deploy.observability.missing-request-id",
+    severity: "low",
+    title: "Sensitive route lacks request ID logging",
+    why: "Billing, webhook, and tenant incidents are hard to debug without traceable request IDs.",
+    stability: "experimental"
   },
   "deploy.edge-runtime-node-api": {
     ruleId: "deploy.edge-runtime-node-api",
@@ -200,6 +354,27 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "Raw SQL tools can read or mutate production data if over-scoped.",
     stability: "default"
   },
+  "mcp.tool.missing-side-effect-classification": {
+    ruleId: "mcp.tool.missing-side-effect-classification",
+    severity: "medium",
+    title: "MCP tool lacks side-effect classification",
+    why: "Tool policies need explicit read, write, shell, network, database, or unknown side-effect classes.",
+    stability: "experimental"
+  },
+  "mcp.tool.missing-policy-boundary": {
+    ruleId: "mcp.tool.missing-policy-boundary",
+    severity: "high",
+    title: "High-risk MCP tool lacks policy boundary",
+    why: "Shell, filesystem-write, database, network, and unknown tools need visible allow/deny boundaries.",
+    stability: "experimental"
+  },
+  "mcp.tool.missing-scope": {
+    ruleId: "mcp.tool.missing-scope",
+    severity: "high",
+    title: "High-risk MCP tool lacks allowlist or scope",
+    why: "Shell, filesystem, and database tools should be constrained to explicit commands, paths, queries, or credentials.",
+    stability: "experimental"
+  },
   "mcp.config.loose-permissions": {
     ruleId: "mcp.config.loose-permissions",
     severity: "low",
@@ -212,6 +387,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "medium",
     title: "Review first sensitive PR surface",
     why: "AI-generated PRs often bury trust-boundary changes inside larger diffs.",
+    stability: "experimental"
+  },
+  "pr-risk.trust-boundary-missing-spec": {
+    ruleId: "pr-risk.trust-boundary-missing-spec",
+    severity: "medium",
+    title: "Trust-boundary PR lacks nearby spec context",
+    why: "AI-generated PRs can change auth, billing, data access, deploy, or tool decisions without explaining the rationale.",
     stability: "experimental"
   },
   "pr-risk.diff-unavailable": {

@@ -5,6 +5,7 @@ export type CommandName =
   | "check-supabase"
   | "check-stripe"
   | "check-mcp"
+  | "check-actions"
   | "pr-risk";
 
 export interface Evidence {
@@ -38,6 +39,14 @@ export interface ScanOptions {
   rootDir: string;
 }
 
+export interface SupabaseOptions extends ScanOptions {
+  doctor?: boolean;
+}
+
+export interface McpOptions extends ScanOptions {
+  policyTemplate?: boolean;
+}
+
 export interface BaseReport {
   command: CommandName;
   rootDir: string;
@@ -68,15 +77,25 @@ export interface SupabaseReport extends BaseReport {
   riskyTables: string[];
   riskyPolicies: SupabasePolicyRisk[];
   manualAuthorizationTest: string[];
+  doctor: SupabaseDoctorReport;
 }
 
 export type McpSideEffect =
   | "read-only"
+  | "filesystem-read"
+  | "filesystem-write"
   | "write"
   | "network"
   | "shell"
   | "database"
-  | "secret-bearing";
+  | "secret-bearing"
+  | "unknown";
+
+export interface SupabaseDoctorReport {
+  staticChecks: string[];
+  twoAccountVerificationSteps: string[];
+  sqlCookbook: string[];
+}
 
 export interface McpServerInventory {
   name: string;
@@ -91,6 +110,24 @@ export interface McpReport extends BaseReport {
   command: "check-mcp";
   servers: McpServerInventory[];
   tools: string[];
+  policyTemplate?: McpPolicyTemplate;
+}
+
+export interface McpPolicyTemplate {
+  servers: Array<{
+    name: string;
+    configPath: string;
+    tools: string[];
+    sideEffects: McpSideEffect[];
+  }>;
+  localPolicyTemplate: string[];
+  receiptFormat: string[];
+}
+
+export interface ActionsReport extends BaseReport {
+  command: "check-actions";
+  workflows: string[];
+  hygieneChecklist: string[];
 }
 
 export type PrRiskCategory =
@@ -102,6 +139,7 @@ export type PrRiskCategory =
   | "env/secrets/deploy"
   | "permissions/storage"
   | "tests removed or weakened"
+  | "silent-success/fake-green"
   | "large AI-generated/refactor-like diff";
 
 export interface PrRiskFile {

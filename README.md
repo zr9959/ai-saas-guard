@@ -37,6 +37,8 @@ The risky parts are often not the obvious UI bugs. They are the small changes th
 - Can a Stripe webhook grant access twice, miss a failed payment, or trust an unsigned request?
 - Did a public environment variable expose a secret?
 - Did an MCP tool get shell, database, or broad filesystem access?
+- Did AI-generated error handling return fake success or demo data after a real provider failed?
+- Will the Next/Vercel deploy have the headers, env docs, logging, and request behavior needed for launch?
 - Did a pull request hide auth, billing, or deploy changes inside a large AI-generated diff?
 
 `ai-saas-guard` is a local-first, review-first preflight for that moment. It does not try to prove your app is secure. It is not a pentest, certification, or full audit. It gives founders, solo builders, small teams, and reviewers a short, evidence-backed list of what to check before launch or merge.
@@ -76,6 +78,7 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
 | Versioned Action tags | `v0.25.0`, `v0` |
 | npm package | `ai-saas-guard@0.25.0` |
+| Next source candidate | `0.26.0` with launch-risk expansion; not published until the release gate and GitHub release complete |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Runtime hardening | Per-file and total text scan caps, escaped markdown evidence, 1 MiB hosted webhook payload cap, stricter hosted deployment blockers |
@@ -101,8 +104,11 @@ Run focused checks:
 ```bash
 npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main
 npx ai-saas-guard@latest check-supabase --root /path/to/your-saas
+npx ai-saas-guard@latest check-supabase --root /path/to/your-saas --doctor
 npx ai-saas-guard@latest check-stripe --root /path/to/your-saas
 npx ai-saas-guard@latest check-mcp --root /path/to/your-saas
+npx ai-saas-guard@latest check-mcp --root /path/to/your-saas --policy-template
+npx ai-saas-guard@latest check-actions --root /path/to/your-saas
 ```
 
 Machine-readable output:
@@ -132,6 +138,7 @@ node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main
 node dist/cli.js check-supabase --root /path/to/your-saas
 node dist/cli.js check-stripe --root /path/to/your-saas
 node dist/cli.js check-mcp --root /path/to/your-saas
+node dist/cli.js check-actions --root /path/to/your-saas
 ```
 
 ## Example Finding
@@ -155,10 +162,12 @@ Evidence:
 | Secrets and env | Secret-like values, risky `NEXT_PUBLIC_*` exposure |
 | Stripe | Missing webhook route, unsigned webhook handling, parsed-body signature risk, missing idempotency, missing failure/cancel/update/refund paths |
 | Supabase | RLS disabled on sensitive tables, broad `USING`/`WITH CHECK`, tenant membership patterns, weak write checks, storage object policy scope |
+| Silent success | Swallowed provider errors, hardcoded fallback success, production mock/demo data in sensitive paths, temporary trust-boundary bypasses, skipped or placeholder tests |
 | API routes | Auth checks without obvious ownership guards, missing rate-limit hints on sensitive mutation routes |
-| MCP | Plaintext secrets, non-localhost binds, broad filesystem/write access, shell tools, raw SQL tools |
-| Deploy config | Next static export/runtime mismatches, Edge runtime with Node-only APIs, missing important env documentation |
-| PR risk | Auth, billing, RLS, env, deploy, API, storage, test-removal, and large mixed-diff classification |
+| MCP | Plaintext secrets, non-localhost binds, broad filesystem/write access, shell tools, raw SQL tools, side-effect classification, local policy and receipt template |
+| Next/Vercel deploy | Static export/runtime mismatches, Edge runtime with Node-only APIs, missing security headers, undocumented server env, public env inventory, image/request amplification hints, missing request ID logging |
+| GitHub Actions | Broad workflow permissions, stale PR runs, docs-only full CI, missing fail-fast secret checks, shallow `pr-risk` checkout, unpinned Action refs |
+| PR risk | Auth, billing, RLS, env, deploy, API, storage, silent-success, test-removal, missing spec context, and large mixed-diff classification |
 
 See [docs/rules.md](docs/rules.md) for the full rule map.
 
@@ -199,9 +208,10 @@ If `--base` cannot be resolved, `pr-risk` emits `pr-risk.diff-unavailable` inste
 | --- | --- |
 | `scan` | Broad local launch preflight across secrets, Stripe, Supabase, MCP, API routes, and deploy config |
 | `pr-risk` | Classify the current git diff or a base branch diff for review priority; supports JSON, SARIF, and PR-focused markdown |
-| `check-supabase` | Inspect migrations and policy files for RLS and ownership risks |
+| `check-supabase` | Inspect migrations and policy files for RLS and ownership risks; use `--doctor` for static RLS debugging steps and SQL cookbook output |
 | `check-stripe` | Inspect webhook handlers and billing lifecycle coverage |
-| `check-mcp` | Inventory MCP configs and classify side effects |
+| `check-mcp` | Inventory MCP configs and classify side effects; use `--policy-template` for a local allow/deny policy and tool-call receipt format |
+| `check-actions` | Inspect GitHub Actions hygiene that affects AI-built SaaS launch readiness |
 
 ## Launch Readiness Checklist
 

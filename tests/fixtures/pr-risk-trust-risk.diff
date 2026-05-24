@@ -1,0 +1,54 @@
+diff --git a/app/api/auth/session/route.ts b/app/api/auth/session/route.ts
+index 1111111..2222222 100644
+--- a/app/api/auth/session/route.ts
++++ b/app/api/auth/session/route.ts
+@@ -1,6 +1,12 @@
+ export async function GET(request: Request) {
++  try {
++    const session = await getSession(request);
++    return Response.json({ user: session.user });
++  } catch (error) {
++    return Response.json({ success: true, user: null });
++  }
+-  const session = await getSession(request);
+-  return Response.json({ user: session.user });
+ }
+diff --git a/app/api/billing/webhook/route.ts b/app/api/billing/webhook/route.ts
+index 3333333..4444444 100644
+--- a/app/api/billing/webhook/route.ts
++++ b/app/api/billing/webhook/route.ts
+@@ -1,5 +1,9 @@
+ export async function POST(request: Request) {
++  // skip verification temporarily for AI-generated demo
++  if (process.env.SKIP_WEBHOOK_VERIFY) return Response.json({ ok: true });
+   const event = await parseEvent(request);
+   await applyBillingEvent(event);
+   return Response.json({ ok: true });
+ }
+diff --git a/app/projects/[projectId]/page.tsx b/app/projects/[projectId]/page.tsx
+index 5555555..6666666 100644
+--- a/app/projects/[projectId]/page.tsx
++++ b/app/projects/[projectId]/page.tsx
+@@ -1,3 +1,7 @@
+ export default function Page() {
+-  return null;
++  return <main>Project</main>;
+ }
+diff --git a/supabase/migrations/202605240001_policy.sql b/supabase/migrations/202605240001_policy.sql
+new file mode 100644
+index 0000000..7777777
+--- /dev/null
++++ b/supabase/migrations/202605240001_policy.sql
+@@ -0,0 +1,3 @@
++create policy "read projects"
++on public.projects for select
++using (auth.uid() = user_id);
+diff --git a/vercel.json b/vercel.json
+index 8888888..9999999 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -1,3 +1,3 @@
+ {
+-  "regions": ["iad1"]
++  "regions": ["sfo1"]
+ }
