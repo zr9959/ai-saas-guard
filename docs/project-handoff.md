@@ -60,6 +60,7 @@ Implemented surfaces:
 - hosted service runtime document and provider-independent runtime core for signed webhook intake, idempotent queue upsert, read-only worker orchestration, compact report storage, Check Run publication adapters, and worker cleanup planning
 - hosted GitHub App deployment planner document and least-privilege manifest planner for required permissions, events, public HTTPS URLs, container digest, secret references, raw secret input blockers, and release-gate checks
 - hosted production adapter layer document and helpers for RS256 GitHub App JWT creation, selected-repository installation-token request planning, separate worker/check-run token scopes, fixed read-only worker execution, timeout/output budgets, and cleanup planning for success, failure, timeout, and cancellation
+- hosted read-only checkout worker runner exported from `ai-saas-guard/hosted/worker`, with trusted clone targets, git askpass token handling, bounded command execution, compact CLI JSON parsing, and checkout cleanup after success or failure
 - hosted Node/container app skeleton document and helpers for safe health and webhook HTTP ingress, one-job worker ticks, in-memory provider adapters, provider reference validation, and the chosen `node_container` roles `webhook-ingress` and `scan-worker`
 - hosted staging deployment planner document and helpers for provider binding, staging release-gate evidence, Node/container deployment composition, and production GitHub App promotion gating
 - hosted staging harness document and helpers for local signed webhook replay, file-backed queue/report/Check Run artifacts, worker sandbox cleanup verification, and release-gate evidence fixtures without cloud calls
@@ -149,8 +150,8 @@ Hosted staging:
 - GitHub App ID: `3834787`
 - GitHub App installation ID: `135085075`
 - Installed repository: `zr9959/ai-saas-guard`
-- Current hosted mode: deployed Worker health and Check Run publisher configuration pass; code supports signed webhook ingress, compact queueing, scoped GitHub App token exchange, PR file risk classification, and bounded Check Run publishing
-- Not yet complete: end-to-end GitHub App webhook delivery settings verification, full source checkout scan worker execution, monitoring evidence, rollback evidence, incident-response evidence, production hosted exposure, and paid hosted workflow features
+- Current hosted mode: deployed Worker health, signed GitHub App webhook delivery, compact KV records, cleanup, and Check Run publication pass in staging; code supports signed webhook ingress, compact queueing, scoped GitHub App token exchange, PR file risk classification, bounded Check Run publishing, and a Node/container read-only checkout worker runner
+- Not yet complete: deployed full source checkout scan worker with sandbox evidence, monitoring evidence, rollback evidence, incident-response evidence, production hosted exposure, and paid hosted workflow features
 
 OpenSSF Best Practices:
 
@@ -160,7 +161,7 @@ OpenSSF Best Practices:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current published release line: `v0.27.2`
+- Current published release line: `v0.28.0` pending this branch release
 - Next source candidate: none
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`

@@ -1416,8 +1416,9 @@ test("public docs record hosted operations evidence without overclaiming deliver
     assert.match(document, /webhook delivery|GitHub App webhook/i);
   }
 
-  assert.match(evidence, /bc4b87d9-420a-48bb-a058-8066b08abe03/);
-  assert.match(evidence, /Blocked/);
+  assert.match(evidence, /531d2286-86c6-4327-bfd0-67cad8693c10/);
+  assert.match(evidence, /Remaining Release Gate Gaps/);
+  assert.match(evidence, /not production hosted exposure/i);
   assert.doesNotMatch(evidence, /guaranteed secure|fully secure/i);
 });
 
@@ -1943,6 +1944,10 @@ test("hosted contract helpers have an explicit npm subpath export", async () => 
   assert.deepEqual(packageJson.exports["./hosted/staging-harness"], {
     types: "./dist/hosted/staging-harness.d.ts",
     default: "./dist/hosted/staging-harness.js"
+  });
+  assert.deepEqual(packageJson.exports["./hosted/worker"], {
+    types: "./dist/hosted/worker.d.ts",
+    default: "./dist/hosted/worker.js"
   });
 });
 

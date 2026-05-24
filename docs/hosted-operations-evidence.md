@@ -6,27 +6,28 @@ Passing these checks does not make the project a pentest, certification, or full
 
 ## Current Evidence
 
-Recorded on 2026-05-24 from the deployed Cloudflare Worker.
+Recorded on 2026-05-24 from the deployed Cloudflare Worker and a temporary no-file-change GitHub PR smoke.
 
 | Check | Evidence | Result |
 | --- | --- | --- |
-| Cloudflare Worker health | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned `ok: true`, `checkRunPublisher: "configured"`, `scannerVersion: "0.25.0"`, and all privacy flags set to false for raw payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens | Passed |
-| Deployed Worker version | `wrangler deployments list` showed current version `bc4b87d9-420a-48bb-a058-8066b08abe03`, deployed at `2026-05-24T04:30:41.924Z` | Passed |
+| Cloudflare Worker health | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned `ok: true`, `checkRunPublisher: "configured"`, `scannerVersion: "0.28.0"`, and all privacy flags set to false for raw payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens | Passed |
+| Deployed Worker version | `wrangler deployments list` showed current version `531d2286-86c6-4327-bfd0-67cad8693c10`, deployed at `2026-05-24T09:01:25.706Z` | Passed |
 | KV cleanup | `wrangler kv key list --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote` returned `[]` after smoke cleanup | Passed |
-| Temporary smoke PR cleanup | Temporary PR `#36` was closed and branch `codex/hosted-smoke-20260524123129` was deleted | Passed |
-| End-to-end GitHub App delivery | Temporary PR `#36` triggered normal GitHub Actions and CodeQL checks, but no `ai-saas-guard PR risk` Check Run appeared and no KV delivery record was created | Blocked |
+| Temporary smoke PR cleanup | Temporary PR `#52` was closed, branch `codex/hosted-smoke-20260524170208` was deleted, and in-progress workflow run `26357038569` was cancelled | Passed |
+| End-to-end GitHub App delivery | Temporary PR `#52` created `ai-saas-guard PR risk` from GitHub App `ai-saas-guard-hosted`; Check Run `77585561127` completed with conclusion `success` for head SHA `408925d2bf4df564082dabc3e1893a72c25bdd19` | Passed |
+| Compact hosted record | KV scan record `scan:135085075:1247239389:52:408925d2bf4df564082dabc3e1893a72c25bdd19:0.28.0` completed with zero findings, `conclusion: "success"`, and all privacy flags set to false for raw payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens | Passed |
 
-## Current Blocker
+## Remaining Release Gate Gaps
 
-The deployed Worker is configured to publish compact PR-risk Check Runs when it receives a signed `pull_request` webhook. The temporary smoke PR did not create any Worker KV records, which means the GitHub App webhook did not reach the Worker.
+The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
 
-Before claiming live automatic PR checks, inspect the private GitHub App settings for `ai-saas-guard-hosted` and verify:
+The hosted release gate still requires fresh deployed evidence for:
 
-- the webhook is active
-- the webhook URL is `https://ai-saas-guard-hosted.zr9959.workers.dev/github/webhook`
-- the webhook secret matches the Cloudflare `WEBHOOK_SECRET`
-- `pull_request` events are subscribed
-- the App installation still includes `zr9959/ai-saas-guard`
+- full Node/container read-only checkout scan worker deployment
+- worker sandbox network restrictions and cleanup evidence
+- logs, metrics, alerting, rollback, and incident-response drills
+- dependency and container artifact scanning for the deployed worker image
+- retention and uninstall cleanup against the deployed provider stores
 
 ## Smoke Procedure
 
