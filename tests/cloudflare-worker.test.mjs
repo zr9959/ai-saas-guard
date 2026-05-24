@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac, generateKeyPairSync, randomUUID } from "node:crypto";
 import { test } from "node:test";
 
 import worker, {
@@ -26,6 +26,11 @@ function createKv() {
       records.set(key, value);
     }
   };
+}
+
+function createGitHubAppPrivateKey() {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  return privateKey.export({ type: "pkcs1", format: "pem" });
 }
 
 function createPullRequestPayload(overrides = {}) {
@@ -55,8 +60,22 @@ test("Cloudflare hosted worker health response is public-safe", () => {
   assert.equal(health.ok, true);
   assert.equal(health.service, "ai-saas-guard-hosted");
   assert.equal(health.mode, "webhook-ingress");
+  assert.equal(health.checkRunPublisher, "not_configured");
   assert.deepEqual(health.privacy, HOSTED_WORKER_PRIVACY);
   assert.doesNotMatch(JSON.stringify(health), /private key|webhook secret|installation token|raw source|raw diff/i);
+});
+
+test("Cloudflare hosted worker health reports configured Check Run publisher without secrets", () => {
+  const health = createHostedWorkerHealth({
+    GITHUB_APP_ID: "3834787",
+    GITHUB_APP_PRIVATE_KEY: "secret-private-key",
+    GITHUB_APP_INSTALLATION_ID: "135085075",
+    SCANNER_VERSION: "0.25.0"
+  });
+
+  assert.equal(health.checkRunPublisher, "configured");
+  assert.equal(health.scannerVersion, "0.25.0");
+  assert.doesNotMatch(JSON.stringify(health), /secret-private-key|installation token|raw source|raw diff/i);
 });
 
 test("Cloudflare hosted worker manifest callback never stores the GitHub one-time code", () => {
@@ -126,7 +145,7 @@ test("Cloudflare hosted worker queues a signed pull request webhook idempotently
   const env = {
     WEBHOOK_SECRET: secret,
     HOSTED_EVENTS: createKv(),
-    SCANNER_VERSION: "0.24.0"
+    SCANNER_VERSION: "0.25.0"
   };
   const request = new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
     method: "POST",
@@ -159,11 +178,140 @@ test("Cloudflare hosted worker queues a signed pull request webhook idempotently
   assert.doesNotMatch(storedValues, /Untrusted title|Untrusted body|raw source|raw diff|webhook secret/i);
 });
 
+test("Cloudflare hosted worker exchanges installation token and publishes compact PR risk Check Run", async () => {
+  const secret = "local-test-webhook-secret";
+  const payload = JSON.stringify(createPullRequestPayload());
+  const deliveryId = randomUUID();
+  const githubRequests = [];
+  const env = {
+    WEBHOOK_SECRET: secret,
+    HOSTED_EVENTS: createKv(),
+    SCANNER_VERSION: "0.25.0",
+    GITHUB_APP_ID: "3834787",
+    GITHUB_APP_PRIVATE_KEY: createGitHubAppPrivateKey(),
+    GITHUB_APP_INSTALLATION_ID: "12345",
+    async GITHUB_FETCH(url, init) {
+      const request = { url: String(url), init };
+      githubRequests.push(request);
+
+      if (request.url.endsWith("/app/installations/12345/access_tokens")) {
+        assert.match(init.headers.authorization, /^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+        assert.doesNotMatch(init.body, /private|secret/i);
+        return Response.json({ token: "ghs_test_installation_token" });
+      }
+
+      if (request.url.includes("/repos/zr9959/ai-saas-guard/pulls/42/files")) {
+        assert.equal(init.headers.authorization, "Bearer ghs_test_installation_token");
+        return Response.json([
+          {
+            filename: "app/api/stripe/webhook/route.ts",
+            additions: 18,
+            deletions: 2,
+            patch: [
+              "+ const event = await request.json();",
+              "+ await grantSubscription(event.data.object.customer);",
+              "+ console.log(process.env.STRIPE_SECRET_KEY);"
+            ].join("\n")
+          },
+          {
+            filename: "supabase/migrations/001_policy.sql",
+            additions: 4,
+            deletions: 0,
+            patch: "+ create policy read_all on projects for select using (true);"
+          }
+        ]);
+      }
+
+      if (request.url.endsWith("/repos/zr9959/ai-saas-guard/check-runs")) {
+        assert.equal(init.headers.authorization, "Bearer ghs_test_installation_token");
+        const body = JSON.parse(init.body);
+        assert.equal(body.name, "ai-saas-guard PR risk");
+        assert.equal(body.head_sha, "a".repeat(40));
+        assert.equal(body.status, "completed");
+        assert.equal(body.conclusion, "neutral");
+        assert.match(body.output.summary, /Review first/i);
+        assert.match(body.output.summary, /app\/api\/stripe\/webhook\/route\.ts/);
+        assert.doesNotMatch(JSON.stringify(body), /ghs_test_installation_token|STRIPE_SECRET_KEY|grantSubscription|raw diff/i);
+        return Response.json({ id: 777, html_url: "https://github.example/checks/777" });
+      }
+
+      throw new Error(`unexpected GitHub request: ${request.url}`);
+    }
+  };
+
+  const response = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "pull_request",
+        "x-github-delivery": deliveryId,
+        "x-hub-signature-256": signPayload(payload, secret)
+      },
+      body: payload
+    }),
+    env
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 202);
+  assert.equal(body.accepted, true);
+  assert.equal(body.stage, "processed");
+  assert.equal(body.shouldCreateCheckRun, true);
+  assert.equal(body.checkRunConclusion, "neutral");
+  assert.equal(githubRequests.length, 3);
+
+  const storedValues = [...env.HOSTED_EVENTS.records.values()].join("\n");
+  assert.match(storedValues, /\"status\":\"completed\"/);
+  assert.match(storedValues, /\"checkRunId\":777/);
+  assert.match(storedValues, /billing\/subscription/);
+  assert.doesNotMatch(storedValues, /ghs_test_installation_token|STRIPE_SECRET_KEY|grantSubscription|Untrusted title|Untrusted body/i);
+});
+
+test("Cloudflare hosted worker blocks unexpected GitHub App installation before network calls", async () => {
+  const secret = "local-test-webhook-secret";
+  const payload = JSON.stringify(createPullRequestPayload());
+  let githubCalls = 0;
+  const env = {
+    WEBHOOK_SECRET: secret,
+    HOSTED_EVENTS: createKv(),
+    SCANNER_VERSION: "0.25.0",
+    GITHUB_APP_ID: "3834787",
+    GITHUB_APP_PRIVATE_KEY: createGitHubAppPrivateKey(),
+    GITHUB_APP_INSTALLATION_ID: "999",
+    async GITHUB_FETCH() {
+      githubCalls += 1;
+      return Response.json({});
+    }
+  };
+
+  const response = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "pull_request",
+        "x-github-delivery": randomUUID(),
+        "x-hub-signature-256": signPayload(payload, secret)
+      },
+      body: payload
+    }),
+    env
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 403);
+  assert.equal(body.accepted, false);
+  assert.equal(body.reason, "installation_mismatch");
+  assert.equal(githubCalls, 0);
+  assert.equal(env.HOSTED_EVENTS.records.size, 0);
+});
+
 test("Cloudflare hosted worker rejects invalid signatures before storage", async () => {
   const env = {
     WEBHOOK_SECRET: "local-test-webhook-secret",
     HOSTED_EVENTS: createKv(),
-    SCANNER_VERSION: "0.24.0"
+    SCANNER_VERSION: "0.25.0"
   };
   const response = await worker.fetch(
     new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
@@ -189,7 +337,7 @@ test("Cloudflare hosted worker rejects oversized payloads before storage", async
   const env = {
     WEBHOOK_SECRET: "local-test-webhook-secret",
     HOSTED_EVENTS: createKv(),
-    SCANNER_VERSION: "0.24.0"
+    SCANNER_VERSION: "0.25.0"
   };
   const response = await worker.fetch(
     new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {

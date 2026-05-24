@@ -87,6 +87,6 @@ The repository can now produce and validate the deployment plan, and a private s
 - Webhook URL: `https://ai-saas-guard-hosted.zr9959.workers.dev/github/webhook`
 - Secret storage: Cloudflare Worker secrets for `WEBHOOK_SECRET` and `GITHUB_APP_PRIVATE_KEY`
 
-This is still an ingress-only staging deployment. It verifies signatures and queues compact pull request identity records, but it does not fetch PR diffs, exchange installation tokens for worker access, run scans, or publish Check Runs yet.
+This is now a first-slice staging deployment, not a complete hosted scanner. It verifies signatures, queues compact pull request identity records, exchanges scoped installation tokens, fetches PR file metadata, classifies PR-risk hotspots, and publishes bounded Check Runs. It still does not run full source checkout scan workers, store raw diffs, store source code, or expose a production hosted service.
 
 The next deployment stage should wire the hosted service runtime, production adapters, [Node/container app skeleton](hosted-node-container-app.md), and [staging deployment planner](hosted-staging-deployment.md) to a real platform queue, compact report store, GitHub installation authentication, worker isolation layer, Checks API publisher, logs, metrics, rollback, and incident-response evidence.

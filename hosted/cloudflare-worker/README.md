@@ -9,16 +9,17 @@ It is intentionally narrow:
 - `POST /github/webhook` verifies GitHub `sha256` webhook signatures before JSON parsing or storage.
 - Requests over 1 MiB are rejected before JSON parsing or KV writes.
 - Signed `pull_request` events are reduced to trusted GitHub identity fields and stored in Cloudflare KV.
+- When GitHub App bindings are configured, the Worker exchanges a scoped installation token, fetches PR file metadata from GitHub, runs compact PR-risk classification, and publishes a bounded Check Run summary.
 - Duplicate GitHub delivery IDs are accepted idempotently.
 - Responses and KV records do not include raw webhook payloads, PR title/body text, source code, diffs, secrets, customer payloads, checkout paths, or installation tokens.
 
-This Worker is a real hosted ingress, not yet the complete scan worker. `shouldCreateCheckRun` stays `false` until GitHub App installation-token exchange, PR diff fetching, PR-risk classification, and Check Run publishing are wired and verified against deployed infrastructure.
+This Worker is a real hosted ingress with first-slice Check Run publishing, not yet the complete scan worker. `shouldCreateCheckRun` is `true` only when the GitHub App bindings are present and the event passes installation scope checks. Full source checkout scanning remains gated behind the hosted operational release gate.
 
 ## Required Cloudflare Bindings
 
 - `HOSTED_EVENTS`: Cloudflare KV namespace for compact delivery and queued scan records.
 - `WEBHOOK_SECRET`: Worker secret matching the GitHub App webhook secret.
-- `GITHUB_APP_PRIVATE_KEY`: Worker secret for the staging GitHub App private key. It is stored for the next Check Run publishing slice and is not used by this ingress-only Worker yet.
+- `GITHUB_APP_PRIVATE_KEY`: Worker secret for the staging GitHub App private key, used only in memory to sign short-lived GitHub App JWTs.
 - `SCANNER_VERSION`: public version string, currently `0.25.0`.
 - `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_INSTALLATION_ID`: public staging identifiers for the private GitHub App installation.
 
