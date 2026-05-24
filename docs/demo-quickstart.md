@@ -7,10 +7,10 @@ Use these public fixtures when you want to understand `ai-saas-guard` before poi
 Run the packaged demo without cloning this repository:
 
 ```bash
-npx ai-saas-guard@latest demo
+npx ai-saas-guard@latest demo --summary
 ```
 
-This prints the risky and safe demo summaries, the first risky files to review, manual verification steps, and launch-focused next steps. It uses only public fixture code shipped in the npm package.
+This prints the risky and safe demo summaries, the top risky files to review, manual verification steps, and launch-focused next steps. It uses only public fixture code shipped in the npm package. Rerun `npx ai-saas-guard@latest demo` without `--summary` for the full human-readable report.
 
 ## Risky Demo
 
@@ -20,6 +20,7 @@ Clone the repository only if you want to inspect or edit the fixture files:
 git clone https://github.com/zr9959/ai-saas-guard.git
 cd ai-saas-guard
 npx ai-saas-guard@latest scan --root examples/demo-risky-saas
+npx ai-saas-guard@latest scan --root examples/demo-risky-saas --summary
 ```
 
 The risky demo intentionally includes unsigned Stripe webhook handling, a silent-success billing fallback, broad Supabase RLS, and overpowered GitHub Actions permissions.
@@ -49,6 +50,7 @@ node dist/cli.js scan --root examples/demo-risky-saas
 
 ```bash
 npx ai-saas-guard@latest scan --root examples/demo-safe-saas
+npx ai-saas-guard@latest scan --root examples/demo-safe-saas --summary
 ```
 
 The safe demo keeps the same broad surfaces but uses safer static patterns: Stripe signature verification and idempotency hints, scoped RLS, security headers, documented env variables, request IDs, and bounded GitHub Actions permissions.

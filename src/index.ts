@@ -8,6 +8,7 @@ export { classifyPrRisk } from "./commands/prRisk.js";
 export { applyGuardConfig, defaultConfigFileName, loadGuardConfig } from "./config.js";
 export { createScanContext } from "./context.js";
 export { getRuleMetadata, RULE_CATALOG } from "./rules/catalog.js";
+export { formatSummaryReport } from "./report/summary.js";
 export type {
   BaseReport,
   CommandName,
