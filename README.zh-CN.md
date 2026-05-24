@@ -44,6 +44,7 @@ AI 能很快把一个 SaaS 做到“看起来能用”。真正危险的是上�
 
 一个命令会返回一份上线前 review 队列：
 
+- terminal 和 Markdown 输出开头会先给出直观上线判断
 - 先看高风险文件，再看 UI 或普通重构
 - 每个 finding 都有 rule ID、severity 和文件证据
 - 说明它为什么会影响 AI 构建的 SaaS 上线

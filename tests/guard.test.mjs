@@ -20,6 +20,7 @@ import {
 } from "../dist/index.js";
 import { collectTextFiles } from "../dist/utils/files.js";
 import { formatMarkdownReport } from "../dist/report/markdown.js";
+import { formatTerminalReport } from "../dist/report/terminal.js";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const fixtureRoot = resolve(testDir, "fixtures");
@@ -163,6 +164,51 @@ test("generic markdown report keeps attacker-controlled evidence on one escaped 
   assert.match(markdown, /Why: why line with break/);
   assert.match(markdown, /Verify: verify line with break/);
   assert.match(markdown, /Fix direction: fix line with break/);
+});
+
+test("reports start with a launch gate and next manual proof", () => {
+  const report = {
+    command: "scan",
+    rootDir: ".",
+    generatedAt: "2026-05-24T00:00:00.000Z",
+    findings: [
+      {
+        ruleId: "stripe.webhook.missing-signature",
+        title: "Stripe webhook does not verify signatures",
+        severity: "high",
+        evidence: [
+          {
+            file: "app/api/stripe/webhook/route.ts",
+            line: 7,
+            snippet: "const event = await request.json();"
+          }
+        ],
+        why: "Unsigned webhook handlers can grant access from forged events.",
+        suggestedVerification: "Send a forged Stripe webhook and confirm it is rejected.",
+        suggestedFix: "Verify the Stripe signature against the raw request body."
+      }
+    ],
+    summary: {
+      critical: 0,
+      high: 1,
+      medium: 0,
+      low: 0,
+      info: 0,
+      total: 1
+    }
+  };
+
+  const terminal = formatTerminalReport(report);
+  assert.match(terminal, /Launch gate: review required/);
+  assert.match(terminal, /Review first:/);
+  assert.match(terminal, /HIGH stripe\.webhook\.missing-signature at app\/api\/stripe\/webhook\/route\.ts:7/);
+  assert.match(terminal, /Manual proof to run next:/);
+  assert.match(terminal, /Send a forged Stripe webhook/);
+
+  const markdown = formatMarkdownReport(report);
+  assert.match(markdown, /\*\*Launch gate:\*\* review required/);
+  assert.match(markdown, /### Review First/);
+  assert.match(markdown, /### Manual Proof To Run Next/);
 });
 
 test("rule catalog contains metadata for every published rule", () => {
