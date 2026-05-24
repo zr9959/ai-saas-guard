@@ -70,6 +70,7 @@ Implemented surfaces:
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
 - CODEOWNERS for source, tests, docs, workflows, Action, and package metadata
 - repository trust hardening with strict `main` branch protection, required CI status checks, fast-check fuzzing, signed GitHub release assets backed by npm trusted publishing provenance, Dependabot for npm and GitHub Actions, CodeQL, private vulnerability reporting, secret scanning, and push protection
+- OpenSSF Best Practices preparation with `.bestpractices.json` for conservative repository-backed answer proposals and `CONTRIBUTING.md` for pull request process, tests, rule-design requirements, release gate evidence, and public-safety constraints
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper

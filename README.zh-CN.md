@@ -75,6 +75,7 @@ CLI 已发布到 npm：`ai-saas-guard@0.24.0`。GitHub Action 支持 `v0` 浮动
 | Hosted app skeleton | Node/container HTTP ingress、health route、worker tick、in-memory provider adapters 和 deployment plan 校验 |
 | Hosted staging deployment planner | provider binding、staging release-gate evidence、Node/container deployment 组合和 GitHub App promotion gating |
 | Hosted staging harness | 本地 file-backed webhook replay、queue/report/Check Run artifact、worker cleanup 校验和 release-gate evidence fixture |
+| OpenSSF Best Practices 准备 | `.bestpractices.json` 提供保守的自动预填答案，`CONTRIBUTING.md` 提供贡献流程和测试策略证据 |
 
 ## 快速开始
 
@@ -142,6 +143,8 @@ node dist/cli.js scan --root /path/to/your-saas
 最新 GitHub releases 会镜像 npm package tarball，并附带 `*.tgz.sigstore.json` 和 `*.tgz.intoto.jsonl` provenance assets。上传前会用 npm registry metadata 校验 tarball digest，并使用 npm provenance 作为来源。
 
 当前 Scorecard 提升路线优先做真实控制，不做表面刷分：更严格的 review gate、可被检测到的 fuzzing、以及 OpenSSF Best Practices Badge 流程。仓库年龄、贡献者多样性、已 review 的 PR 历史这些分数只能随着真实维护逐步提升。
+
+仓库现在包含 [.bestpractices.json](.bestpractices.json)，OpenSSF Best Practices 网站可以用它从仓库证据中自动预填保守答案。公开 badge 仍然需要有权限的维护者在 OpenSSF Best Practices 网站中创建并保存；这个 JSON 文件是准备工作，不等于已经获得 badge。
 
 ## PR 风险分流
 
@@ -319,6 +322,8 @@ node dist/cli.js scan --root .
 发布 CLI、GitHub Action、npm package 或任何公开仓库更新前，必须按照 [docs/release-quality-knowledge-base.md](docs/release-quality-knowledge-base.md) 的 release gate 执行。
 
 以后更新英文 `README.md` 时，也要同步检查并更新本中文 `README.zh-CN.md`。
+
+贡献要求见 [CONTRIBUTING.md](CONTRIBUTING.md)，里面说明了 PR 流程、测试要求、规则设计、release gate evidence 和公开安全边界。
 
 ## 安全报告
 

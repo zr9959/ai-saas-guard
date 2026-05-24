@@ -82,6 +82,7 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Hosted app skeleton | Node/container HTTP ingress, health route, worker tick, in-memory provider adapters, and deployment plan validation |
 | Hosted staging deployment planner | Provider binding, staging release-gate evidence, Node/container deployment composition, and GitHub App promotion gating |
 | Hosted staging harness | File-backed webhook replay, queue/report/Check Run artifacts, worker cleanup verification, and local release-gate evidence fixtures |
+| OpenSSF Best Practices preparation | `.bestpractices.json` with conservative proposed answers, plus CONTRIBUTING.md for contribution and test policy evidence |
 
 ## Quick Start
 
@@ -209,6 +210,8 @@ See [docs/repository-trust-hardening.md](docs/repository-trust-hardening.md) for
 The latest GitHub releases mirror the npm package tarball and attach `*.tgz.sigstore.json` plus `*.tgz.intoto.jsonl` provenance assets. These assets are generated from npm provenance, with the tarball digest checked against the npm registry metadata before upload.
 
 The current Scorecard improvement track focuses on real controls, not cosmetic score gaming: stricter review gates, detectable fuzzing, and the OpenSSF Best Practices Badge process. Some Scorecard items, such as repository age, contributor diversity, and reviewed PR history, improve only through time and normal public maintenance.
+
+The repository now includes [.bestpractices.json](.bestpractices.json) so the OpenSSF Best Practices app can prefill conservative proposed answers from repository evidence. The public badge still has to be created and saved through the OpenSSF Best Practices web app by an authorized maintainer; the JSON file is preparation, not a badge claim by itself.
 
 ## Stripe Webhook Replay
 
@@ -396,6 +399,8 @@ node dist/cli.js scan --root .
 ```
 
 Before publishing a CLI update, GitHub Action update, npm package, plugin, or public repository change, follow [docs/release-quality-knowledge-base.md](docs/release-quality-knowledge-base.md).
+
+Contribution expectations are documented in [CONTRIBUTING.md](CONTRIBUTING.md), including pull request process, tests, rule-design requirements, release gate evidence, and public-safety constraints.
 
 ## Roadmap
 

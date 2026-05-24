@@ -1501,6 +1501,47 @@ test("repository documents signed release provenance assets", async () => {
   }
 });
 
+test("repository exposes OpenSSF Best Practices badge preparation", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
+  const contributing = await readFile(resolve(packageRoot, "CONTRIBUTING.md"), "utf8");
+  const badge = JSON.parse(await readFile(resolve(packageRoot, ".bestpractices.json"), "utf8"));
+
+  assert.equal(badge.name, "ai-saas-guard");
+  assert.equal(badge.repo_url, "https://github.com/zr9959/ai-saas-guard");
+  assert.equal(badge.license, "MIT");
+  assert.match(badge.description, /local-first/i);
+  assert.match(badge.implementation_languages, /TypeScript/);
+
+  for (const criterion of [
+    "description_good",
+    "interact",
+    "contribution",
+    "floss_license",
+    "license_location",
+    "repo_public",
+    "version_semver",
+    "test",
+    "test_policy",
+    "static_analysis"
+  ]) {
+    assert.equal(badge[`${criterion}_status`], "Met", criterion);
+    assert.match(badge[`${criterion}_justification`], /https:\/\/github\.com\/zr9959\/ai-saas-guard/);
+  }
+
+  assert.match(contributing, /Pull request process/i);
+  assert.match(contributing, /npm test/);
+  assert.match(contributing, /release-quality-knowledge-base\.md/);
+  assert.match(contributing, /No real API keys/i);
+  assert.match(readme, /CONTRIBUTING\.md/);
+  assert.match(readme, /\.bestpractices\.json/);
+  assert.match(zhReadme, /CONTRIBUTING\.md/);
+  assert.match(zhReadme, /\.bestpractices\.json/);
+  assert.match(governance, /\.bestpractices\.json/);
+  assert.doesNotMatch(contributing, /sk_(?:live|test)_[A-Za-z0-9]+|whsec_[A-Za-z0-9]+/);
+});
+
 test("npm publish workflow uses token-free trusted publishing", async () => {
   const workflow = await readFile(resolve(packageRoot, ".github/workflows/npm-publish.yml"), "utf8");
   const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
