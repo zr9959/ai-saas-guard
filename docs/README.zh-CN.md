@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  ai-saas-guard 是面向 AI 构建的 SaaS 的本地优先上线 gate。它会优先指出 auth、billing、data access、secrets、MCP、deploy、CI 和“假成功”路径里最值得人工 review 的改动，让你在上线前知道该先看哪里。它本地运行、只读仓库、不上传代码。
+  ai-saas-guard 是面向 AI 构建的 Next.js、Supabase、Stripe、Vercel 和 MCP SaaS 的本地优先上线 gate。它会优先指出 auth、billing、data access、secrets、MCP、deploy、CI 和“假成功”路径里最值得人工 review 的改动，让你在上线前知道该先看哪里。它本地运行、只读仓库、不上传代码。
 </p>
 
 <p align="center">
@@ -40,6 +40,25 @@ AI 能很快把一个 SaaS 做到“看起来能用”。真正危险的是上�
 
 `ai-saas-guard` 是面向这个时刻的本地优先、review-first 上线预检工具。它不会证明你的应用绝对安全，也不是渗透测试、认证或完整安全审计。它的目标是给 founder、独立开发者、小团队和 reviewer 一份短而有证据的清单，告诉你上线或合并 PR 前最该先看哪里。
 
+## 输出长什么样
+
+报告是给上线前或合并 AI 大 PR 前快速阅读的：
+
+```text
+Launch Gate: review before launch
+4 findings: 1 high, 3 medium
+
+HIGH stripe.webhook.missing-signature
+File: app/api/stripe/webhook/route.ts
+Why: billing access can be granted from a webhook path that does not verify Stripe signatures.
+Verify: replay a webhook with an invalid signature and confirm the route rejects it.
+Fix: read the raw body, call stripe.webhooks.constructEvent, and make event handling idempotent.
+
+MEDIUM supabase.rls.tenant-predicate-missing
+File: supabase/migrations/20260524_accounts.sql
+Verify: sign in as user A and user B; confirm neither can SELECT or UPDATE the other's rows.
+```
+
 ## 你会得到什么
 
 一个命令会返回一份上线前 review 队列：
@@ -67,18 +86,18 @@ AI 能很快把一个 SaaS 做到“看起来能用”。真正危险的是上�
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.28.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.28.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.28.1`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.28.1`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.28.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.28.0` |
+| npm CLI | `ai-saas-guard@0.28.1` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.28.1` |
 | 输出格式 | Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.28.0` hosted read-only checkout worker export、hosted Check Run smoke evidence 和 README 同步 |
-| Action 标签 | `v0.28.0`、`v0` |
+| 当前版本 | `0.28.1` discoverability polish、首页输出示例、npm metadata 同步，并保留 hosted worker release line |
+| Action 标签 | `v0.28.1`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |

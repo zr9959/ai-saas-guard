@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  ai-saas-guard is a local-first launch gate for AI-built SaaS apps. It focuses on auth, billing, data access, secrets, MCP, and deploy decisions, plus CI and fake-success paths, so you know what to review before launch or merge. It runs locally, reads your repo only, and does not upload code.
+  ai-saas-guard is a local-first launch gate for AI-built Next.js, Supabase, Stripe, Vercel, and MCP SaaS apps. It focuses on auth, billing, data access, secrets, MCP, and deploy decisions, plus CI and fake-success paths, so you know what to review before launch or merge. It runs locally, reads your repo only, and does not upload code.
 </p>
 
 <p align="center">
@@ -41,6 +41,25 @@ AI can make a SaaS look finished while the real launch blockers sit in trust-bou
 
 `ai-saas-guard` gives you a short local review queue for those risks. It does not prove the app is secure, certify a release, or replace human review. It tells founders, solo builders, small teams, and reviewers what deserves attention first.
 
+## See The Output
+
+The report is designed to be read before launch or before merging an AI-heavy PR:
+
+```text
+Launch Gate: review before launch
+4 findings: 1 high, 3 medium
+
+HIGH stripe.webhook.missing-signature
+File: app/api/stripe/webhook/route.ts
+Why: billing access can be granted from a webhook path that does not verify Stripe signatures.
+Verify: replay a webhook with an invalid signature and confirm the route rejects it.
+Fix: read the raw body, call stripe.webhooks.constructEvent, and make event handling idempotent.
+
+MEDIUM supabase.rls.tenant-predicate-missing
+File: supabase/migrations/20260524_accounts.sql
+Verify: sign in as user A and user B; confirm neither can SELECT or UPDATE the other's rows.
+```
+
 ## What You Get
 
 One command returns a launch-readiness report with:
@@ -73,13 +92,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.28.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.28.0` |
+| npm CLI | `ai-saas-guard@0.28.1` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.28.1` |
 | Outputs | Terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.28.0`, `v0` |
-| Current release | `0.28.0` hosted read-only checkout worker export, hosted Check Run smoke evidence, and README sync |
+| Versioned Action tags | `v0.28.1`, `v0` |
+| Current release | `0.28.1` discoverability polish, clearer first-screen output example, npm metadata sync, and hosted worker release line preservation |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
@@ -296,7 +315,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.28.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.28.1` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
