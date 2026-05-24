@@ -792,6 +792,24 @@ test("hosted check-run summaries bound markdown and do not expose raw payload fi
   assert.equal(serialized.includes("person@example.test"), false);
 });
 
+test("hosted check-run summaries escape markdown table control characters", () => {
+  const summary = createHostedCheckRunSummary({
+    report: sampleCompactReport({
+      findings: [
+        {
+          ruleId: "stripe.webhook|missing\\signature",
+          severity: "high",
+          file: "app\\api|stripe\nwebhook.ts",
+          line: 12
+        }
+      ]
+    })
+  });
+
+  assert.match(summary.output.text, /stripe\.webhook\\\|missing\\\\signature/);
+  assert.match(summary.output.text, /app\\\\api\\\|stripe webhook\.ts:12/);
+});
+
 test("hosted check-run publication planner creates a bounded check-only payload", async () => {
   const planHostedCheckRunPublication = await loadCheckRunPublicationPlanner();
   const report = sampleCompactReport({

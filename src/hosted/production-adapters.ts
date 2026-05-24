@@ -391,7 +391,15 @@ function safeApiUrlBlockedReasons(apiBaseUrl?: string): string[] {
 
 function normalizeApiBaseUrl(apiBaseUrl?: string): string {
   const value = apiBaseUrl?.trim() || "https://api.github.com";
-  return value.replace(/\/+$/, "");
+  return trimTrailingSlashes(value);
+}
+
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") {
+    end -= 1;
+  }
+  return value.slice(0, end);
 }
 
 function permissionsForPurpose(

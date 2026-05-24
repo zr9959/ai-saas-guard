@@ -491,6 +491,24 @@ test("risky PR diff prioritizes auth, billing, RLS, env, and weakened tests", as
   assert.ok(report.requiredTests.some((item) => item.includes("two-account")));
 });
 
+test("pr-risk parses diff headers without regex backtracking risk", async () => {
+  const longPath = `${"nested/".repeat(200)}app/api/auth/route.ts`;
+  const diffText = `diff --git a/${longPath} b/${longPath}
+index 1111111..2222222 100644
+--- a/${longPath}
++++ b/${longPath}
+@@ -1,2 +1,5 @@
++export async function GET() {
++  return Response.json({ user_id: "demo-user" });
++}
+`;
+
+  const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
+
+  assert.equal(report.topRiskyFiles[0]?.path, longPath);
+  assert.ok(report.categories.includes("auth/session"));
+});
+
 test("pr-risk flags trust-boundary diffs without nearby spec updates and raises silent-success review", async () => {
   const diffText = await readFile(resolve(fixtureRoot, "pr-risk-trust-risk.diff"), "utf8");
   const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
