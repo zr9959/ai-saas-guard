@@ -87,6 +87,6 @@
   "devDependencies": {
     "@types/node": "^20",
     "fast-check": "^4.8.0",
-    "typescript": "^5"
+    "typescript": "^6"
   }
 }
