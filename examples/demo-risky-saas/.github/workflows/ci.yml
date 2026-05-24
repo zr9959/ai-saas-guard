@@ -1,0 +1,13 @@
+name: Risky demo CI
+
+on:
+  pull_request:
+
+permissions: write-all
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - run: npm test

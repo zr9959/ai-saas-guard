@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Demo quickstart
+    url: https://github.com/zr9959/ai-saas-guard/blob/main/docs/demo-quickstart.md
+    about: Try the public risky and safe demo fixtures before filing usability feedback.
   - name: Launch-readiness checklist
     url: https://github.com/zr9959/ai-saas-guard/blob/main/docs/launch-readiness-checklist.md
     about: Use this before filing a broad launch review request.

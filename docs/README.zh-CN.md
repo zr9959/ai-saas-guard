@@ -59,6 +59,21 @@ npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --
 
 你会得到 rule ID、severity、文件证据、为什么重要、如何人工验证，以及具体修复方向。扫描是 deterministic、只读的，不调用 LLM。
 
+## 先试公开 demo
+
+如果你还不想先扫自己的私有仓库，可以先跑公开 fixture：
+
+```bash
+git clone https://github.com/zr9959/ai-saas-guard.git
+cd ai-saas-guard
+npm ci
+npm run build
+node dist/cli.js scan --root examples/demo-risky-saas
+node dist/cli.js scan --root examples/demo-safe-saas
+```
+
+risky demo 会故意触发 Stripe、Supabase、silent-success 和 GitHub Actions 相关上线 finding。safe demo 展示同类风险面的更安全静态写法。说明见 [docs/demo-quickstart.md](demo-quickstart.md)。
+
 ## 输出长什么样
 
 报告是给上线前或合并 AI 大 PR 前快速阅读的。更完整的可复制样例见 [docs/sample-launch-report.md](sample-launch-report.md)。
