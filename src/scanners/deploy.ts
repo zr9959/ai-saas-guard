@@ -14,6 +14,7 @@ export async function scanDeployConfig(input: ScanInput): Promise<Finding[]> {
   const envReferences: Array<{ name: string; file: string; line: number; snippet: string }> = [];
   const sensitiveRoutes = files.filter((file) => isSensitiveServerRoute(file.path, file.content));
   const nextConfig = files.find((file) => /(^|\/)next\.config\.(ts|js|mjs|cjs)$/.test(file.path));
+  const vercelCronPaths = collectVercelCronPaths(files);
 
   for (const file of files) {
     for (const match of file.content.matchAll(/process\.env\.([A-Z0-9_]+)/g)) {
@@ -122,6 +123,23 @@ export async function scanDeployConfig(input: ScanInput): Promise<Finding[]> {
             "Trigger the route in staging and confirm logs include a request or trace ID that can be followed through billing and tenant updates.",
           suggestedFix:
             "Add structured logging with request ID or trace ID near the route entry point and around billing/tenant state changes."
+        })
+      );
+    }
+
+    if (isVercelCronRoute(file.path, vercelCronPaths) && !hasVercelCronLaunchGuard(file.content)) {
+      const line = firstLine(file.content, /export\s+async\s+function\s+(GET|POST)|\b(GET|POST)\b/i) ?? 1;
+      findings.push(
+        finding({
+          ruleId: "deploy.vercel.cron-missing-guard",
+          title: `Vercel cron route lacks secret, idempotency, or tracing guard: ${file.path}`,
+          severity: "medium",
+          evidence: [{ file: file.path, line, snippet: lineAt(file.content, line) }],
+          why: "Scheduled launch jobs often mutate billing, tenant, or cleanup state; without a secret guard, idempotency key, and request trace, retries or accidental calls can create hidden production drift.",
+          suggestedVerification:
+            "Call the cron route without the expected cron secret and with a repeated request ID; confirm unauthorized calls fail and repeated runs do not duplicate state changes.",
+          suggestedFix:
+            "Check a server-only cron secret, record an idempotency key or run lock, and log a request/trace ID before stateful cron work starts."
         })
       );
     }
@@ -238,6 +256,51 @@ function isObservabilitySensitiveRoute(path: string, content: string): boolean {
 
 function hasRequestLogging(content: string): boolean {
   return /\b(requestId|request_id|traceId|trace_id|x-request-id|console\.(info|log|warn|error)|logger\.(info|warn|error))\b/i.test(content);
+}
+
+function collectVercelCronPaths(files: readonly { path: string; content: string }[]): Set<string> {
+  const paths = new Set<string>();
+  for (const file of files) {
+    if (!/(^|\/)vercel\.json$/i.test(file.path)) continue;
+    for (const match of file.content.matchAll(/"path"\s*:\s*"([^"]+)"/g)) {
+      if (/\/api\/.+/i.test(match[1])) {
+        paths.add(normalizeRoutePath(match[1]));
+      }
+    }
+  }
+  return paths;
+}
+
+function isVercelCronRoute(path: string, cronPaths: ReadonlySet<string>): boolean {
+  const routePath = routePathForServerRoute(path);
+  return (
+    Boolean(routePath && cronPaths.has(routePath)) ||
+    /(^|\/)(app\/api|pages\/api|api)\/cron(\/|\.|-)/i.test(path)
+  );
+}
+
+function routePathForServerRoute(path: string): string | undefined {
+  const appRoute = path.match(/(?:^|\/)app\/api\/(.+)\/route\.[cm]?[jt]sx?$/i);
+  if (appRoute) return normalizeRoutePath(`/api/${appRoute[1]}`);
+  const pagesRoute = path.match(/(?:^|\/)pages\/api\/(.+)\.[cm]?[jt]sx?$/i);
+  if (pagesRoute) return normalizeRoutePath(`/api/${pagesRoute[1]}`);
+  const plainRoute = path.match(/(?:^|\/)api\/(.+)\.[cm]?[jt]sx?$/i);
+  if (plainRoute) return normalizeRoutePath(`/api/${plainRoute[1]}`);
+  return undefined;
+}
+
+function normalizeRoutePath(path: string): string {
+  return path
+    .replace(/\\/g, "/")
+    .replace(/\/+/g, "/")
+    .replace(/\/$/, "");
+}
+
+function hasVercelCronLaunchGuard(content: string): boolean {
+  const hasSecretGuard = /\b(CRON_SECRET|AUTHORIZATION|authorization|Bearer|x-vercel-cron|x-vercel-signature)\b/i.test(content);
+  const hasIdempotency = /\b(idempotency|idempotent|cronRun|jobRun|runId|x-vercel-id|upsert|dedupe|lock)\b/i.test(content);
+  const hasRequestTrace = /\b(requestId|request_id|traceId|trace_id|x-vercel-id|logger\.(info|warn|error)|console\.(info|warn|error))\b/i.test(content);
+  return hasSecretGuard && hasIdempotency && hasRequestTrace;
 }
 
 function firstLine(content: string, pattern: RegExp): number | undefined {

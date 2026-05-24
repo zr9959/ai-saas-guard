@@ -21,6 +21,7 @@ The package exports `ai-saas-guard/hosted/app` with:
 
 - `createHostedHttpApp`
 - `createInMemoryHostedAppPlatform`
+- `createHostedNodeCheckoutAppPlatform`
 - `planHostedNodeContainerDeployment`
 
 The staging deployment planner in [hosted-staging-deployment.md](hosted-staging-deployment.md) composes this Node/container deployment plan with real provider references, hosted operational release-gate evidence, and GitHub App promotion gates.
@@ -78,6 +79,18 @@ These adapters are not production storage. Real providers must wire the same bou
 - read-only worker sandbox
 - GitHub Checks API publisher
 
+`createHostedNodeCheckoutAppPlatform` composes the same HTTP app and service runtime with the concrete read-only checkout worker from `ai-saas-guard/hosted/worker`. It is still adapter-driven: deployments must provide a runtime installation-token provider, durable queue/store, worker sandbox, and Check Run publisher. The helper exposes a safe `workerSafety` summary so deployers can verify the runtime boundary without logging private paths or tokens:
+
+- command source: trusted runtime plan
+- timeout capped at 600 seconds
+- output capped at 1 MiB
+- shell disabled
+- CLI network access disabled
+- read-only write mode
+- compact JSON-only output
+- checkout cleanup required
+- no checkout path, source, diff, secret, or customer payload persistence
+
 ## Deployment Plan
 
 `planHostedNodeContainerDeployment` validates the provider-facing deployment shape.
@@ -121,6 +134,6 @@ It does not return:
 
 ## Current Status
 
-The repository can now instantiate a Node/container hosted app skeleton, route signed webhooks into the hosted service runtime, process one worker tick through adapters, and validate provider adapter references before deployment.
+The repository can now instantiate a Node/container hosted app skeleton, route signed webhooks into the hosted service runtime, process one worker tick through adapters, compose the real read-only checkout scan runner behind a token-provider boundary, expose clamped worker safety budgets, and validate provider adapter references before deployment.
 
 A public hosted environment still requires actual platform infrastructure, a public HTTPS webhook URL, platform secrets, durable queue/storage, worker sandboxing, GitHub Checks API credentials at runtime, monitoring, rollback, incident-response evidence, and the hosted operational release gate. Use [hosted-staging-deployment.md](hosted-staging-deployment.md) to plan and block staging exposure until those provider references and evidence exist.

@@ -207,6 +207,20 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "Login checks do not prove resource ownership checks.",
     stability: "experimental"
   },
+  "auth.clerk.unsafe-metadata": {
+    ruleId: "auth.clerk.unsafe-metadata",
+    severity: "high",
+    title: "Clerk unsafe metadata is used for privileged state",
+    why: "Clerk unsafe metadata is user-writable and should not drive roles, plans, tenant membership, or entitlements.",
+    stability: "default"
+  },
+  "data.prisma.tenant-scope-missing": {
+    ruleId: "data.prisma.tenant-scope-missing",
+    severity: "high",
+    title: "Prisma resource access lacks tenant or owner scope",
+    why: "Authenticated Prisma reads or mutations on tenant-like resources need tenant, owner, organization, or workspace predicates.",
+    stability: "experimental"
+  },
   "silent-success.swallowed-error": {
     ruleId: "silent-success.swallowed-error",
     severity: "high",
@@ -289,6 +303,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     severity: "low",
     title: "Sensitive route lacks request ID logging",
     why: "Billing, webhook, and tenant incidents are hard to debug without traceable request IDs.",
+    stability: "experimental"
+  },
+  "deploy.vercel.cron-missing-guard": {
+    ruleId: "deploy.vercel.cron-missing-guard",
+    severity: "medium",
+    title: "Vercel cron route lacks launch guards",
+    why: "Scheduled billing, tenant, or cleanup jobs need a secret guard, idempotency, and request tracing before launch.",
     stability: "experimental"
   },
   "deploy.edge-runtime-node-api": {

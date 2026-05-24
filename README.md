@@ -33,6 +33,7 @@ AI can make a SaaS look finished while the real launch blockers sit in trust-bou
 
 - one customer can see or change another customer's data
 - Stripe grants access from an unsigned, duplicated, missing, or failed webhook path
+- Clerk or Prisma code trusts user-writable metadata or an unscoped tenant query
 - provider errors get swallowed and the app returns fake success or demo data
 - a secret leaks through env config or `NEXT_PUBLIC_*`
 - an MCP tool, GitHub workflow, or deploy job has more power than the launch needs
@@ -43,7 +44,7 @@ AI can make a SaaS look finished while the real launch blockers sit in trust-bou
 
 ## See The Output
 
-The report is designed to be read before launch or before merging an AI-heavy PR:
+The report is designed to be read before launch or before merging an AI-heavy PR. A longer copy-paste example is in [docs/sample-launch-report.md](docs/sample-launch-report.md).
 
 ```text
 Launch Gate: review before launch
@@ -77,9 +78,10 @@ One command returns a launch-readiness report with:
 | Launch question | What ai-saas-guard checks |
 | --- | --- |
 | Can users only access their own data? | Supabase RLS, tenant/owner predicates, storage policies, API ownership hints, two-account verification guidance |
+| Can auth metadata be trusted? | Clerk unsafe metadata used for roles, plans, tenant membership, or entitlements |
 | Will billing change access correctly? | Stripe webhook signature, raw body, idempotency, entitlement paths, failure/cancel/update/refund coverage |
 | Will broken integrations fail visibly? | Silent-success fallbacks, swallowed errors, hardcoded success responses, production mock/demo data, skipped or placeholder tests |
-| Will production behave like local? | Next/Vercel headers, env docs, public env inventory, image/request amplification hints, request ID logging |
+| Will production behave like local? | Next/Vercel headers, env docs, public env inventory, image/request amplification hints, request ID logging, Vercel cron guard hints |
 | Are tools and CI overpowered? | MCP side-effect classes, local policy/receipt templates, GitHub Actions permissions, concurrency, checkout depth, action pinning |
 | Can reviewers trust the PR? | `pr-risk` ranking for auth, billing, RLS, deploy, API, storage, tests, silent-success paths, missing spec context, and large AI diffs |
 
@@ -177,9 +179,9 @@ Evidence:
 | Stripe | Missing webhook route, unsigned webhook handling, parsed-body signature risk, missing idempotency, missing failure/cancel/update/refund paths |
 | Supabase | RLS disabled on sensitive tables, broad `USING`/`WITH CHECK`, tenant membership patterns, weak write checks, storage object policy scope |
 | Silent success | Swallowed provider errors, hardcoded fallback success, production mock/demo data in sensitive paths, temporary trust-boundary bypasses, skipped or placeholder tests |
-| API routes | Auth checks without obvious ownership guards, missing rate-limit hints on sensitive mutation routes |
+| API routes | Auth checks without obvious ownership guards, Clerk unsafe metadata, Prisma tenant-scope gaps, missing rate-limit hints on sensitive mutation routes |
 | MCP | Plaintext secrets, non-localhost binds, broad filesystem/write access, shell tools, raw SQL tools, side-effect classification, local policy and receipt template |
-| Next/Vercel deploy | Static export/runtime mismatches, Edge runtime with Node-only APIs, missing security headers, undocumented server env, public env inventory, image/request amplification hints, missing request ID logging |
+| Next/Vercel deploy | Static export/runtime mismatches, Edge runtime with Node-only APIs, missing security headers, undocumented server env, public env inventory, image/request amplification hints, missing request ID logging, unguarded Vercel cron routes |
 | GitHub Actions | Broad workflow permissions, stale PR runs, docs-only full CI, missing fail-fast secret checks, shallow `pr-risk` checkout, unpinned Action refs |
 | PR risk | Auth, billing, RLS, env, deploy, API, storage, silent-success, test-removal, missing spec context, and large mixed-diff classification |
 
@@ -261,7 +263,7 @@ The hosted production adapter layer is documented in [docs/hosted-production-ada
 
 The hosted read-only checkout worker is exported from `ai-saas-guard/hosted/worker`. It creates a temporary checkout from trusted GitHub App identity, uses a runtime installation token only through git askpass, runs the fixed `ai-saas-guard pr-risk --json` command with bounded timeout/output, converts CLI JSON into compact findings, and deletes the checkout after success or failure. It does not return source, diffs, secrets, checkout paths, PR-authored commands, or installation tokens.
 
-The hosted Node/container app skeleton is documented in [docs/hosted-node-container-app.md](docs/hosted-node-container-app.md). It exports `createHostedHttpApp`, `createInMemoryHostedAppPlatform`, and `planHostedNodeContainerDeployment` from `ai-saas-guard/hosted/app`. It adds a safe `/healthz` route, signed `/github/webhook` ingress, one-job worker tick, in-memory provider adapters for tests, and deployment-plan validation for secret manager, queue, compact report store, worker sandbox, and GitHub Checks publisher references. It still does not deploy or expose a public hosted service by itself.
+The hosted Node/container app skeleton is documented in [docs/hosted-node-container-app.md](docs/hosted-node-container-app.md). It exports `createHostedHttpApp`, `createInMemoryHostedAppPlatform`, `createHostedNodeCheckoutAppPlatform`, and `planHostedNodeContainerDeployment` from `ai-saas-guard/hosted/app`. It adds a safe `/healthz` route, signed `/github/webhook` ingress, one-job worker tick, in-memory provider adapters for tests, a concrete read-only checkout worker composition with visible timeout/output safety budgets, and deployment-plan validation for secret manager, queue, compact report store, worker sandbox, and GitHub Checks publisher references. It still does not deploy or expose a public hosted service by itself.
 
 The hosted staging deployment planner is documented in [docs/hosted-staging-deployment.md](docs/hosted-staging-deployment.md). It exports `planHostedProviderBinding`, `planHostedStagingDeployment`, and `planHostedGitHubAppPromotion` from `ai-saas-guard/hosted/staging`. It composes real provider references, the Node/container deployment plan, hosted operational release-gate evidence, and GitHub App deployment planning so staging and production promotion stay blocked until the required queue, store, worker sandbox, Check Run publisher, logs, metrics, rollback, and incident-response references are present. It still does not call a cloud provider, create a GitHub App, or expose a public hosted service by itself.
 
@@ -371,6 +373,8 @@ For PR-readable markdown in the Actions run:
 Use markdown for reviewer-facing PR triage and SARIF for GitHub code scanning alerts. See [docs/github-action.md](docs/github-action.md) for copy-paste workflows and trade-offs.
 
 For maximum reproducibility, replace `v0` with the full commit SHA from the release notes.
+
+The GitHub Marketplace wrapper decision is documented in [docs/github-marketplace-wrapper-decision.md](docs/github-marketplace-wrapper-decision.md). The current decision is to keep this as one product repo and not create a separate listing wrapper yet.
 
 ## Ignore File
 
