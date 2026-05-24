@@ -160,7 +160,7 @@ OpenSSF Best Practices:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current published release line: `v0.26.2`
+- Current published release line: `v0.27.0`
 - Next source candidate: none
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
