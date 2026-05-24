@@ -41,7 +41,9 @@ Production deployments must provide durable adapters:
 
 The exported `createInMemoryHostedServiceAdapters` is only for tests, local smoke runs, and examples. It is not a production queue or production data store.
 
-The production adapter layer in [hosted-production-adapters.md](hosted-production-adapters.md) now defines the next boundary around this runtime: GitHub App JWT creation, selected-repository installation-token request planning, separate worker and Check Run token scopes, fixed read-only worker execution, bounded timeout/output settings, compact JSON-only output, and cleanup planning for success, failure, timeout, and cancellation.
+The production adapter layer in [hosted-production-adapters.md](hosted-production-adapters.md) defines the next boundary around this runtime: GitHub App JWT creation, selected-repository installation-token request planning, separate worker and Check Run token scopes, fixed read-only worker execution, bounded timeout/output settings, compact JSON-only output, and cleanup planning for success, failure, timeout, and cancellation.
+
+The Node/container app skeleton in [hosted-node-container-app.md](hosted-node-container-app.md) now wraps this runtime with a safe `/healthz` route, signed `/github/webhook` ingress, a scan-worker tick, in-memory provider adapters for tests, and deployment-plan validation for real provider references.
 
 ## Privacy
 
@@ -84,6 +86,7 @@ This runtime makes the hosted service implementation-ready inside the repository
 - managed queue
 - compact report storage
 - production adapters wired to the platform secret manager and GitHub Checks API
+- Node/container app skeleton wired to real HTTP, queue, store, worker sandbox, and Check publisher infrastructure
 - container image and digest
 - live monitoring and rollback evidence
 - hosted operational release gate evidence from the deployed artifact

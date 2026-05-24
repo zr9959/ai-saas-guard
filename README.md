@@ -73,11 +73,12 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.20.0`, `v0` |
-| npm package | `ai-saas-guard@0.20.0` |
+| Versioned Action tags | `v0.21.0`, `v0` |
+| npm package | `ai-saas-guard@0.21.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Runtime hardening | Per-file and total text scan caps, escaped markdown evidence, stricter hosted deployment blockers |
 | Hosted production adapters | GitHub App JWT signing, installation-token request planning, bounded worker execution, and terminal-state cleanup planning |
+| Hosted app skeleton | Node/container HTTP ingress, health route, worker tick, in-memory provider adapters, and deployment plan validation |
 
 ## Quick Start
 
@@ -216,13 +217,15 @@ The hosted GitHub App deployment planner is documented in [docs/github-app-deplo
 
 The hosted production adapter layer is documented in [docs/hosted-production-adapters.md](docs/hosted-production-adapters.md). It exports `createHostedGitHubAppJwt`, `planHostedGitHubInstallationTokenRequest`, and `planHostedProductionWorkerExecution` from `ai-saas-guard/hosted/production-adapters`. It adds RS256 GitHub App JWT generation, selected-repository installation-token request plans, separate worker and Check Run token scopes, a fixed read-only worker command, bounded timeout and output budgets, compact JSON-only output, and cleanup plans for success, failure, timeout, and cancellation. It still does not expose a public hosted service by itself.
 
+The hosted Node/container app skeleton is documented in [docs/hosted-node-container-app.md](docs/hosted-node-container-app.md). It exports `createHostedHttpApp`, `createInMemoryHostedAppPlatform`, and `planHostedNodeContainerDeployment` from `ai-saas-guard/hosted/app`. It adds a safe `/healthz` route, signed `/github/webhook` ingress, one-job worker tick, in-memory provider adapters for tests, and deployment-plan validation for secret manager, queue, compact report store, worker sandbox, and GitHub Checks publisher references. It still does not deploy or expose a public hosted service by itself.
+
 The hosted operational release gate is documented in [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md). It defines the hosted-specific CI, replay, queue, worker cleanup, privacy, monitoring, rollback, and incident-response evidence required before any hosted environment is exposed to users. The pure gate evaluator exported from `ai-saas-guard/hosted/contracts` blocks hosted exposure unless every P0 evidence item is fresh, a container digest is recorded, and release notes avoid pentest, certification, and full-audit claims.
 
 Hosted uninstall and data deletion behavior is documented in [docs/hosted-uninstall-data-deletion.md](docs/hosted-uninstall-data-deletion.md). It defines repository removal, full app uninstall, compact report deletion, queue cancellation, audit record retention, repeated cleanup, and user-facing deletion wording.
 
 Hosted pricing and packaging boundaries are documented in [docs/hosted-pricing-packaging.md](docs/hosted-pricing-packaging.md). Core local scanning stays useful without an account; hosted plans may add workflow convenience, saved reports, team policy, and optional human review, but they do not gate local CLI scanning.
 
-Hosted pre-implementation pure contracts are documented in [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md). They now include a pull request webhook intake planner that verifies signatures before parsing or queueing, a durable scan queue planner that reuses queued, running, and completed jobs for the same trusted scan key, a worker read-only scan planner that fixes the CLI command and requires repository `contents: read`, and a Check Run publication planner that requires repository `checks: write` and builds bounded check-only payloads from compact reports. They also cover queue-safe webhook event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, a retention/deletion cleanup planner, an operational release gate evaluator, and the production adapter plans needed for GitHub App auth and bounded worker execution. The service runtime composes these contracts behind replaceable adapters. PR comments remain a later workflow or paid hosted feature, not part of the hosted MVP contract.
+Hosted pre-implementation pure contracts are documented in [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md). They now include a pull request webhook intake planner that verifies signatures before parsing or queueing, a durable scan queue planner that reuses queued, running, and completed jobs for the same trusted scan key, a worker read-only scan planner that fixes the CLI command and requires repository `contents: read`, and a Check Run publication planner that requires repository `checks: write` and builds bounded check-only payloads from compact reports. They also cover queue-safe webhook event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, a retention/deletion cleanup planner, an operational release gate evaluator, the production adapter plans needed for GitHub App auth and bounded worker execution, and the Node/container app skeleton needed for real provider wiring. The service runtime composes these contracts behind replaceable adapters. PR comments remain a later workflow or paid hosted feature, not part of the hosted MVP contract.
 
 A public hosted compact report schema fixture is available at [examples/hosted-compact-report.json](examples/hosted-compact-report.json). It is synthetic and public-safe: compact evidence only, no raw source, raw diffs, secrets, webhook payload bodies, customer payloads, private URLs, or worker checkout paths.
 
@@ -262,7 +265,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.20.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.21.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
@@ -392,7 +395,7 @@ Open-source core:
 
 Near-term priorities:
 
-- Wire the hosted production adapters to a real provider queue, secret manager, compact report store, and GitHub Checks API client.
+- Wire the hosted Node/container app skeleton to a real provider queue, secret manager, compact report store, read-only worker sandbox, and GitHub Checks API client.
 - Keep hosted exposure blocked until the operational release gate has fresh evidence from a deployed artifact.
 
 Potential paid layer later:

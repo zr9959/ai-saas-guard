@@ -4,6 +4,8 @@ This document describes the hosted production adapter layer implemented in `src/
 
 It does not announce a public hosted service. The module provides provider-independent auth, token-request, worker-execution, timeout, output, and cleanup plans that can be wired to a real hosted platform after the operational release gate has evidence.
 
+The Node/container app skeleton in [hosted-node-container-app.md](hosted-node-container-app.md) composes this layer with HTTP ingress, worker tick, and provider adapter references.
+
 ## What Exists
 
 The package exports `ai-saas-guard/hosted/production-adapters` with:

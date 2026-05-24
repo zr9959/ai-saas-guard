@@ -9,7 +9,7 @@ const identity = {
   pullRequestNumber: 7,
   baseSha: "b".repeat(40),
   headSha: "a".repeat(40),
-  scannerVersion: "0.20.0"
+  scannerVersion: "0.21.0"
 };
 
 async function loadProductionAdapters() {
@@ -113,7 +113,7 @@ test("hosted production worker execution fixes command, bounds resources, and pl
   const { planHostedProductionWorkerExecution } = await loadProductionAdapters();
   const plan = planHostedProductionWorkerExecution({
     identity,
-    jobKey: "123:456:7:head:0.20.0",
+    jobKey: "123:456:7:head:0.21.0",
     requestedAt: "2026-05-24T13:05:00.000Z",
     selectedRepositoryIds: [456],
     temporaryCheckoutRoot: "/private/tmp/ai-saas-guard/job-123",

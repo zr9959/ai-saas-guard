@@ -2,7 +2,7 @@
 
 This document collects pure hosted contracts that can be tested before any hosted GitHub App service is deployed. These contracts keep the hosted design inspectable, local-first, and implementation-ready without adding network calls, credentials, queues, workers, or GitHub API writes. They are no network calls contracts by design.
 
-The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`. The production adapter plans live in `src/hosted/production-adapters.ts` and are exported from `ai-saas-guard/hosted/production-adapters`.
+The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`. The production adapter plans live in `src/hosted/production-adapters.ts` and are exported from `ai-saas-guard/hosted/production-adapters`. The Node/container app skeleton lives in `src/hosted/app.ts` and is exported from `ai-saas-guard/hosted/app`.
 
 ## Pull Request Webhook Intake Planner
 
@@ -92,6 +92,30 @@ Privacy boundaries:
 - keep local CLI usage independent from the hosted service
 
 The exported helpers are `createHostedGitHubAppJwt`, `planHostedGitHubInstallationTokenRequest`, and `planHostedProductionWorkerExecution`.
+
+## Node Container App Skeleton
+
+The Node/container app skeleton gives the future hosted service a deployable shape without binding the package to one cloud provider. It is still a local, testable skeleton only: it does not expose a public hosted environment, call GitHub, fetch repositories, or write Check Runs by itself.
+
+Default behavior:
+
+- expose a safe `/healthz` route with platform and role names
+- expose a signed `/github/webhook` ingress route
+- pass webhook body bytes and signature headers into the hosted service runtime
+- keep signature verification, trusted identity parsing, repository scope authorization, and queue upsert in the runtime
+- process at most one queued job per `runWorkerTick()` call
+- return safe worker summaries for empty queue, completed job, and failed job states
+- include in-memory provider adapters for tests and local smoke runs
+- validate provider references for secret manager, durable queue, compact report store, read-only worker sandbox, and GitHub Checks publisher
+- choose `node_container` roles: `webhook-ingress` and `scan-worker`
+
+Privacy boundaries:
+
+- do not return raw webhook payloads, untrusted PR text, raw source, raw diffs, secrets, customer payloads, checkout paths, App JWTs, or installation tokens
+- do not accept repository identity, token scope, or worker command from PR-authored text
+- keep local CLI usage independent from the hosted service
+
+The exported helpers are `createHostedHttpApp`, `createInMemoryHostedAppPlatform`, and `planHostedNodeContainerDeployment`.
 
 ## Webhook Event Parser
 

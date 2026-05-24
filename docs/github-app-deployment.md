@@ -78,4 +78,4 @@ When `readyToCreateGitHubApp` is true:
 
 The repository can now produce and validate the deployment plan, but it cannot honestly create a live GitHub App until a public hosted webhook URL, container image digest, and secret manager references exist.
 
-The next deployment stage should wire the hosted service runtime and production adapters to a real platform queue, compact report store, GitHub installation authentication, worker isolation layer, and Checks API publisher.
+The next deployment stage should wire the hosted service runtime, production adapters, and [Node/container app skeleton](hosted-node-container-app.md) to a real platform queue, compact report store, GitHub installation authentication, worker isolation layer, and Checks API publisher.

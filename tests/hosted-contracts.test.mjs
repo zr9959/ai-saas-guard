@@ -1316,7 +1316,7 @@ test("hosted operational release gate passes only with complete fresh evidence",
     await loadOperationalReleaseGateEvaluator();
   const decision = evaluateHostedOperationalReleaseGate({
     commitSha: "31c71b61ec2d37b24f10fe62a3b463e4f77bef3d",
-    scannerVersion: "0.20.0",
+    scannerVersion: "0.21.0",
     deploymentTarget: "staging-hosted",
     containerImageDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     evaluatedAt: "2026-05-24T11:00:00.000Z",
@@ -1353,7 +1353,7 @@ test("hosted operational release gate blocks missing stale failed evidence and u
     await loadOperationalReleaseGateEvaluator();
   const decision = evaluateHostedOperationalReleaseGate({
     commitSha: "31c71b61ec2d37b24f10fe62a3b463e4f77bef3d",
-    scannerVersion: "0.20.0",
+    scannerVersion: "0.21.0",
     deploymentTarget: "production-hosted",
     evaluatedAt: "2026-05-24T11:00:00.000Z",
     releaseNotes: "This release is not a pentest but provides a full security audit and certification.",

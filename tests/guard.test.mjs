@@ -919,6 +919,34 @@ test("public docs define the hosted service runtime", async () => {
   assert.doesNotMatch(runtime, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs define the hosted Node container app skeleton", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const app = await readFile(resolve(packageRoot, "docs", "hosted-node-container-app.md"), "utf8");
+
+  assert.match(readme, /docs\/hosted-node-container-app\.md/);
+  assert.match(app, /Hosted Node Container App Skeleton/i);
+  assert.match(app, /ai-saas-guard\/hosted\/app/);
+  assert.match(app, /createHostedHttpApp/);
+  assert.match(app, /createInMemoryHostedAppPlatform/);
+  assert.match(app, /planHostedNodeContainerDeployment/);
+  assert.match(app, /node_container/);
+  assert.match(app, /webhook-ingress/);
+  assert.match(app, /scan-worker/);
+  assert.match(app, /\/healthz/);
+  assert.match(app, /\/github\/webhook/);
+  assert.match(app, /provider adapter/i);
+  assert.match(app, /durable queue/i);
+  assert.match(app, /compact report store/i);
+  assert.match(app, /read-only worker sandbox/i);
+  assert.match(app, /GitHub Checks API publisher/i);
+  assert.match(app, /public HTTPS base URL/i);
+  assert.match(app, /sha256:<digest>/i);
+  assert.match(app, /does not announce a public hosted service/i);
+  assert.match(app, /does not return raw webhook payloads/i);
+  assert.match(app, /does not return.*installation tokens/i);
+  assert.doesNotMatch(app, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
 test("public docs define hosted GitHub App deployment planning", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
@@ -1357,6 +1385,14 @@ test("hosted contract helpers have an explicit npm subpath export", async () => 
   assert.deepEqual(packageJson.exports["./hosted/github-app"], {
     types: "./dist/hosted/github-app.d.ts",
     default: "./dist/hosted/github-app.js"
+  });
+  assert.deepEqual(packageJson.exports["./hosted/production-adapters"], {
+    types: "./dist/hosted/production-adapters.d.ts",
+    default: "./dist/hosted/production-adapters.js"
+  });
+  assert.deepEqual(packageJson.exports["./hosted/app"], {
+    types: "./dist/hosted/app.d.ts",
+    default: "./dist/hosted/app.js"
   });
 });
 
