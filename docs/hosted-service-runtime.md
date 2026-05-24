@@ -47,6 +47,8 @@ The Node/container app skeleton in [hosted-node-container-app.md](hosted-node-co
 
 The staging deployment planner in [hosted-staging-deployment.md](hosted-staging-deployment.md) composes the runtime-facing provider references with hosted operational release-gate evidence and GitHub App promotion gating.
 
+The staging harness in [hosted-staging-harness.md](hosted-staging-harness.md) exercises this runtime with local file-backed queue, report, Check Run, and worker sandbox adapters so webhook replay and cleanup can be verified before any public staging deployment.
+
 ## Privacy
 
 The runtime intentionally returns safe planning and status objects only.
@@ -90,6 +92,7 @@ This runtime makes the hosted service implementation-ready inside the repository
 - production adapters wired to the platform secret manager and GitHub Checks API
 - Node/container app skeleton wired to real HTTP, queue, store, worker sandbox, and Check publisher infrastructure
 - staging deployment planner passed with real provider references and fresh release-gate evidence
+- local staging harness replay passed with queue, report, Check Run, and worker cleanup artifacts
 - container image and digest
 - live monitoring and rollback evidence
 - hosted operational release gate evidence from the deployed artifact

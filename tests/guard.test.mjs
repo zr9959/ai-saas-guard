@@ -781,6 +781,7 @@ test("public README keeps an updated Chinese translation entry point", async () 
   assert.match(zhReadme, /check-mcp/);
   assert.match(zhReadme, /GitHub Action/);
   assert.match(zhReadme, /Hosted GitHub App/);
+  assert.match(zhReadme, /docs\/hosted-staging-harness\.md/);
   assert.match(zhReadme, /不是渗透测试/);
   assert.match(zhReadme, /不上传代码/);
   assert.match(releaseGate, /README\.zh-CN\.md/);
@@ -974,6 +975,30 @@ test("public docs define hosted staging deployment planning", async () => {
   assert.match(staging, /staging deployment, Check Run publication, and rollback verification/i);
   assert.match(staging, /does not announce a public hosted service/i);
   assert.doesNotMatch(staging, /client_secret|-----BEGIN|sk_(?:live|test)_|whsec_/i);
+});
+
+test("public docs define the hosted staging harness", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const contracts = await readFile(resolve(packageRoot, "docs", "hosted-preimplementation-contracts.md"), "utf8");
+  const harness = await readFile(resolve(packageRoot, "docs", "hosted-staging-harness.md"), "utf8");
+
+  assert.match(readme, /docs\/hosted-staging-harness\.md/);
+  assert.match(contracts, /ai-saas-guard\/hosted\/staging-harness/);
+  assert.match(harness, /Hosted Staging Harness/i);
+  assert.match(harness, /ai-saas-guard\/hosted\/staging-harness/);
+  assert.match(harness, /createFileBackedHostedStagingHarness/);
+  assert.match(harness, /createHostedStagingHarnessEvidence/);
+  assert.match(harness, /signed pull request webhook replay/i);
+  assert.match(harness, /queue\/jobs\.json/);
+  assert.match(harness, /reports\//);
+  assert.match(harness, /check-runs\//);
+  assert.match(harness, /worker-sandbox\//);
+  assert.match(harness, /Invalid signatures stop at the signature stage/i);
+  assert.match(harness, /worker sandbox is empty after cleanup/i);
+  assert.match(harness, /release-gate evidence/i);
+  assert.match(harness, /not hosted exposure/i);
+  assert.match(harness, /not a live hosted service/i);
+  assert.doesNotMatch(harness, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
 test("public docs define hosted GitHub App deployment planning", async () => {
@@ -1426,6 +1451,10 @@ test("hosted contract helpers have an explicit npm subpath export", async () => 
   assert.deepEqual(packageJson.exports["./hosted/staging"], {
     types: "./dist/hosted/staging.d.ts",
     default: "./dist/hosted/staging.js"
+  });
+  assert.deepEqual(packageJson.exports["./hosted/staging-harness"], {
+    types: "./dist/hosted/staging-harness.d.ts",
+    default: "./dist/hosted/staging-harness.js"
   });
 });
 

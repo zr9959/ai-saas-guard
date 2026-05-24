@@ -29,7 +29,7 @@ const baseInput = {
   homepageUrl: "https://guard-staging.example.test",
   containerImageDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   commitSha: "a23030be462e48f070fcfd40471033fc6ec5eca9",
-  scannerVersion: "0.22.0",
+  scannerVersion: "0.23.0",
   evaluatedAt: "2026-05-24T16:05:00.000Z",
   releaseNotes:
     "Staging hosted service evidence for review-first checks. This is not a pentest, certification, or full audit.",

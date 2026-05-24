@@ -14,6 +14,8 @@ The package exports `ai-saas-guard/hosted/staging` with:
 
 These helpers are pure planners. They do not call a cloud provider, create a GitHub App, read secrets, write Check Runs, or expose a hosted service.
 
+The local staging harness in [hosted-staging-harness.md](hosted-staging-harness.md) is the executable rehearsal for this plan. It runs signed webhook replay through file-backed queue, report, Check Run, and worker sandbox adapters without calling a cloud provider.
+
 ## Provider Binding
 
 `planHostedProviderBinding` validates the real provider references a hosted deployment needs:
@@ -89,5 +91,7 @@ The staging planner never returns:
 ## Current Status
 
 The repository can now produce a staging deployment plan that ties together provider references, release-gate evidence, Node/container deployment, and GitHub App promotion readiness.
+
+The repository can also run a local staging harness that proves the runtime path can accept a signed replay, persist safe artifacts, publish a fake Check Run request, and remove the temporary worker sandbox.
 
 This still is not a live hosted service. A real staging environment still requires actual platform infrastructure, deployed containers, secret manager entries, durable queue/storage resources, worker sandboxing, GitHub Checks runtime credentials, monitoring, rollback evidence, and incident-response evidence collected from the deployed artifact.

@@ -2,7 +2,7 @@
 
 This document collects pure hosted contracts that can be tested before any hosted GitHub App service is deployed. These contracts keep the hosted design inspectable, local-first, and implementation-ready without adding network calls, credentials, queues, workers, or GitHub API writes. They are no network calls contracts by design.
 
-The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`. The production adapter plans live in `src/hosted/production-adapters.ts` and are exported from `ai-saas-guard/hosted/production-adapters`. The Node/container app skeleton lives in `src/hosted/app.ts` and is exported from `ai-saas-guard/hosted/app`. The staging deployment planner lives in `src/hosted/staging.ts` and is exported from `ai-saas-guard/hosted/staging`.
+The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`. The production adapter plans live in `src/hosted/production-adapters.ts` and are exported from `ai-saas-guard/hosted/production-adapters`. The Node/container app skeleton lives in `src/hosted/app.ts` and is exported from `ai-saas-guard/hosted/app`. The staging deployment planner lives in `src/hosted/staging.ts` and is exported from `ai-saas-guard/hosted/staging`. The local staging harness lives in `src/hosted/staging-harness.ts` and is exported from `ai-saas-guard/hosted/staging-harness`.
 
 ## Pull Request Webhook Intake Planner
 
@@ -137,6 +137,28 @@ Privacy boundaries:
 - keep local CLI usage independent from the hosted service
 
 The exported helpers are `planHostedProviderBinding`, `planHostedStagingDeployment`, and `planHostedGitHubAppPromotion`.
+
+## Local Staging Harness
+
+The local staging harness is the first executable hosted rehearsal that persists artifacts outside in-memory tests. It is still local-only: it does not call a cloud provider, create a GitHub App, fetch repositories from GitHub, publish live Check Runs, or expose a public service.
+
+Default behavior:
+
+- replay a signed pull request webhook through the hosted service runtime
+- persist a safe queue snapshot to a file-backed harness root
+- persist compact hosted reports without raw source or diffs
+- persist fake Check Run publication requests for review
+- create a temporary worker sandbox during the scan runner phase
+- remove worker sandbox contents before returning the worker result
+- create hosted operational release-gate evidence fixtures with the same shape required by the deployment gate
+
+Privacy boundaries:
+
+- invalid signatures create no queue, report, or Check Run side effects
+- result objects do not include raw webhook payloads, untrusted PR text, raw source, raw diffs, secrets, customer payloads, checkout paths, or installation tokens
+- local evidence is labeled as harness evidence and must not be used to claim live hosted exposure
+
+The exported helpers are `createFileBackedHostedStagingHarness` and `createHostedStagingHarnessEvidence`.
 
 ## Webhook Event Parser
 
