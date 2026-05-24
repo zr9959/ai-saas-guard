@@ -69,7 +69,7 @@ Implemented surfaces:
 - hosted GitHub App contract helpers and tests for webhook intake order, webhook verification, installation token scoping, durable scan queue idempotency, compact reports, retention limits, uninstall cleanup, repeated cleanup idempotency, scoped deletion planning, operational release gate blocking, provider-independent service runtime orchestration, GitHub App deployment planning, hosted production adapter planning, Node/container app skeleton planning, hosted staging deployment planning, and local staging harness replay
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
 - CODEOWNERS for source, tests, docs, workflows, Action, and package metadata
-- repository trust hardening with strict `main` branch protection, required CI status checks, fast-check fuzzing, Dependabot for npm and GitHub Actions, CodeQL, private vulnerability reporting, secret scanning, and push protection
+- repository trust hardening with strict `main` branch protection, required CI status checks, fast-check fuzzing, signed GitHub release assets backed by npm trusted publishing provenance, Dependabot for npm and GitHub Actions, CodeQL, private vulnerability reporting, secret scanning, and push protection
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper

@@ -70,6 +70,18 @@ The fuzz tests cover:
 
 The dedicated `fuzz` CI job runs `npm run test:fuzz`. The regular `test` job also includes `tests/fuzz.test.js` because it runs the full Node test suite.
 
+## Signed Release Assets
+
+GitHub releases mirror the published npm package tarball and attach the npm trusted publishing provenance used for that release.
+
+Each release should include:
+
+- `ai-saas-guard-<version>.tgz`
+- `ai-saas-guard-<version>.tgz.sigstore.json`
+- `ai-saas-guard-<version>.tgz.intoto.jsonl`
+
+Before upload, the tarball SHA-512 digest must match npm registry metadata, and the SLSA subject digest in the npm provenance must match the same tarball digest. The `sigstore.json` asset keeps the npm Sigstore bundle for independent verification. The `intoto.jsonl` asset keeps the DSSE in-toto envelope that OpenSSF Scorecard and other release-integrity tooling can detect.
+
 ## Vulnerability Intake
 
 The repository has:
@@ -92,6 +104,7 @@ Every public release should keep these controls intact. If a release changes wor
 - self-scan JSON and SARIF
 - dependency audit
 - fuzz/property tests
+- signed release asset digest and npm provenance checks
 - npm package inspection
 - packaged CLI smoke test
 

@@ -1489,6 +1489,18 @@ test("repository documents strict Scorecard branch protection controls", async (
   assert.match(governance, /OpenSSF Best Practices Badge/i);
 });
 
+test("repository documents signed release provenance assets", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
+
+  for (const document of [readme, zhReadme, governance]) {
+    assert.match(document, /sigstore\.json/i);
+    assert.match(document, /intoto\.jsonl/i);
+    assert.match(document, /npm provenance|npm trusted publishing/i);
+  }
+});
+
 test("npm publish workflow uses token-free trusted publishing", async () => {
   const workflow = await readFile(resolve(packageRoot, ".github/workflows/npm-publish.yml"), "utf8");
   const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
