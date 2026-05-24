@@ -1,0 +1,53 @@
+name: Quickstart feedback
+description: Share what happened when you tried the README, demo fixtures, CLI, or GitHub Action.
+title: "[Quickstart feedback]: "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when you tried the public README, demo fixtures, npm CLI, or GitHub Action and something was confusing.
+
+        No real API keys, tokens, cookies, webhook signing secrets, database URLs, customer data, production URLs, or private source code.
+  - type: dropdown
+    id: entry-point
+    attributes:
+      label: Entry point
+      options:
+        - README 60-second local check
+        - Risky demo fixture
+        - Safe demo fixture
+        - npm CLI
+        - GitHub Action
+        - Chinese README
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe what you tried and where you got stuck.
+      placeholder: I ran `npx ai-saas-guard@latest scan --root ...` and expected ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What would have helped?
+      description: Tell us what wording, example, output, or workflow would have made the next step clearer.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or Action tag
+      placeholder: ai-saas-guard@0.29.1 or zr9959/ai-saas-guard@v0
+    validations:
+      required: false
+  - type: checkboxes
+    id: public-safety
+    attributes:
+      label: Public safety check
+      options:
+        - label: No real API keys, tokens, cookies, webhook signing secrets, database URLs, customer data, production URLs, or private source code are included.
+          required: true

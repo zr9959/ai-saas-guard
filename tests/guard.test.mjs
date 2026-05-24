@@ -1628,6 +1628,44 @@ test("public examples include a hosted compact report fixture", async () => {
   );
 });
 
+test("public demo fixtures show risky and safe launch scans", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
+  const demoDocs = await readFile(resolve(packageRoot, "docs", "demo-quickstart.md"), "utf8");
+  const riskyReadme = await readFile(resolve(packageRoot, "examples", "demo-risky-saas", "README.md"), "utf8");
+  const safeReadme = await readFile(resolve(packageRoot, "examples", "demo-safe-saas", "README.md"), "utf8");
+
+  assert.match(readme, /examples\/demo-risky-saas/);
+  assert.match(readme, /examples\/demo-safe-saas/);
+  assert.match(zhReadme, /examples\/demo-risky-saas/);
+  assert.match(zhReadme, /examples\/demo-safe-saas/);
+  assert.match(demoDocs, /Risky Demo/i);
+  assert.match(demoDocs, /Safe Demo/i);
+  assert.match(riskyReadme, /unsigned Stripe webhook/i);
+  assert.match(safeReadme, /not a complete SaaS template/i);
+
+  const riskyReport = await scanRepository({
+    rootDir: resolve(packageRoot, "examples", "demo-risky-saas")
+  });
+  const safeReport = await scanRepository({
+    rootDir: resolve(packageRoot, "examples", "demo-safe-saas")
+  });
+  const riskyRuleIds = findingRuleIds(riskyReport);
+
+  assert.ok(riskyRuleIds.includes("stripe.webhook.missing-signature"));
+  assert.ok(riskyRuleIds.includes("supabase.rls.broad-policy"));
+  assert.ok(riskyRuleIds.includes("silent-success.swallowed-error"));
+  assert.ok(riskyRuleIds.includes("actions.pr-missing-concurrency"));
+  assert.equal(safeReport.summary.total, 0);
+
+  for (const document of [demoDocs, riskyReadme, safeReadme]) {
+    assert.doesNotMatch(
+      document,
+      /client_secret|private key|sk_(?:live|test)_|whsec_|postgres:\/\/|mysql:\/\//i
+    );
+  }
+});
+
 test("hosted GitHub App docs define an implementation-ready permission contract", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
@@ -1757,6 +1795,12 @@ test("repository exposes security-safe GitHub issue templates", async () => {
       name: "Security-safe report",
       label: "bug",
       phrases: ["public-safe", "Do not post secrets", "Do not include exploit steps", "local-first"]
+    },
+    {
+      file: "quickstart_feedback.yml",
+      name: "Quickstart feedback",
+      label: "feedback",
+      phrases: ["Entry point", "What happened", "What would have helped", "No real API keys"]
     }
   ];
 
@@ -1778,6 +1822,7 @@ test("repository exposes security-safe GitHub issue templates", async () => {
 
   const config = await readFile(resolve(templateDir, "config.yml"), "utf8");
   assert.match(config, /blank_issues_enabled:\s*false/);
+  assert.match(config, /docs\/demo-quickstart\.md/);
   assert.match(config, /docs\/launch-readiness-checklist\.md/);
 });
 

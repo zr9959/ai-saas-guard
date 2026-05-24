@@ -60,6 +60,21 @@ npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --
 
 You get rule IDs, severity, file evidence, why it matters, how to verify it manually, and a concrete fix direction. The scanner is deterministic, read-only, and does not call an LLM.
 
+## Try The Demo Fixtures
+
+Want to see the report before scanning your own repo?
+
+```bash
+git clone https://github.com/zr9959/ai-saas-guard.git
+cd ai-saas-guard
+npm ci
+npm run build
+node dist/cli.js scan --root examples/demo-risky-saas
+node dist/cli.js scan --root examples/demo-safe-saas
+```
+
+The risky demo intentionally triggers launch findings across Stripe, Supabase, silent-success paths, and GitHub Actions. The safe demo shows the same broad surfaces with safer static patterns. See [docs/demo-quickstart.md](docs/demo-quickstart.md).
+
 ## See The Output
 
 The report is designed to be read before launch or before merging an AI-heavy PR. A longer copy-paste example is in [docs/sample-launch-report.md](docs/sample-launch-report.md).
