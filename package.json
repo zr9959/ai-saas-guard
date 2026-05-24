@@ -85,7 +85,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^25",
     "fast-check": "^4.8.0",
     "typescript": "^6"
   }
