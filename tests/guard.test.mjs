@@ -1471,6 +1471,9 @@ test("public docs define the hosted staging harness", async () => {
   assert.match(harness, /ai-saas-guard\/hosted\/staging-harness/);
   assert.match(harness, /createFileBackedHostedStagingHarness/);
   assert.match(harness, /createHostedStagingHarnessEvidence/);
+  assert.match(harness, /createHostedStagingReleaseEvidenceBundle/);
+  assert.match(harness, /evaluateHostedStagingReleaseEvidenceBundle/);
+  assert.match(harness, /validateHostedLogBoundary/);
   assert.match(harness, /signed pull request webhook replay/i);
   assert.match(harness, /queue\/jobs\.json/);
   assert.match(harness, /reports\//);
@@ -1479,6 +1482,8 @@ test("public docs define the hosted staging harness", async () => {
   assert.match(harness, /Invalid signatures stop at the signature stage/i);
   assert.match(harness, /worker sandbox is empty after cleanup/i);
   assert.match(harness, /release-gate evidence/i);
+  assert.match(harness, /success and failure cleanup probes/i);
+  assert.match(harness, /log boundary/i);
   assert.match(harness, /not hosted exposure/i);
   assert.match(harness, /not a live hosted service/i);
   assert.doesNotMatch(harness, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
@@ -1552,6 +1557,9 @@ test("public docs define the hosted operational release gate", async () => {
   assert.match(gate, /monitoring and alerting/i);
   assert.match(gate, /Current Source Candidate Evidence Notes/i);
   assert.match(gate, /evaluateHostedOperationalReleaseGate/);
+  assert.match(gate, /evaluateHostedStagingReleaseEvidenceBundle/);
+  assert.match(gate, /createHostedStagingReleaseEvidenceBundle/);
+  assert.match(gate, /validateHostedLogBoundary/);
   assert.match(gate, /HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS/);
   assert.match(gate, /positive pentest, certification, and full-audit claims/i);
   assert.match(gate, /No hosted production environment is exposed/i);
@@ -1613,6 +1621,8 @@ test("public docs record hosted operations evidence without overclaiming deliver
   assert.match(evidence, /Read-Only Checkout Worker Evidence Checklist/i);
   assert.match(evidence, /failure cleanup/i);
   assert.match(evidence, /log boundary/i);
+  assert.match(evidence, /source-candidate executable evidence/i);
+  assert.match(evidence, /validateHostedLogBoundary/i);
   assert.match(evidence, /askpass/i);
   assert.match(evidence, /no raw source/i);
   assert.match(evidence, /no raw diffs/i);
@@ -1953,7 +1963,7 @@ test("repository exposes security-safe GitHub issue templates", async () => {
   assert.match(quickstart, /Was the finding useful/i);
   assert.match(quickstart, /Confusing output/i);
   assert.match(quickstart, /Version or Action tag/i);
-  assert.match(quickstart, /ai-saas-guard@0\.30\.2 or zr9959\/ai-saas-guard@v0/i);
+  assert.match(quickstart, /ai-saas-guard@0\.31\.0 or zr9959\/ai-saas-guard@v0/i);
 });
 
 test("repository exposes CODEOWNERS for public maintenance boundaries", async () => {

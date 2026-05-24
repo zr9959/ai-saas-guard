@@ -29,6 +29,8 @@ The hosted release gate still requires fresh deployed evidence for:
 - dependency and container artifact scanning for the deployed worker image
 - retention and uninstall cleanup against the deployed provider stores
 
+Source-candidate executable evidence now exists in `ai-saas-guard/hosted/staging-harness`: `createHostedStagingReleaseEvidenceBundle` combines signed webhook replay, success and failure cleanup probes, safe worker failure reasons, and `validateHostedLogBoundary` samples into hosted release-gate evidence, then `evaluateHostedStagingReleaseEvidenceBundle` runs the same gate evaluator used by deployment planning. This improves local release readiness, but it is still not production hosted exposure and does not replace deployed worker, logging, metrics, rollback, incident-response, dependency, or container evidence.
+
 ## Read-Only Checkout Worker Evidence Checklist
 
 Before any hosted source checkout worker is exposed beyond staging, attach fresh evidence for each row below. The current Cloudflare ingress evidence above does not satisfy these rows because it publishes compact PR-risk signals without running a full source checkout scan worker.
@@ -37,7 +39,7 @@ Before any hosted source checkout worker is exposed beyond staging, attach fresh
 | --- | --- | --- |
 | Trusted checkout identity | Worker input is derived from signed GitHub event identity, selected-repository installation scope, and repository `contents: read`; PR title, body, branch names, README, and code cannot choose the repository, token scope, checkout path, or command | Required |
 | Runtime credential boundary | Installation credentials are passed to git only through temporary askpass material, are removed before the CLI scan phase, and are never returned in worker output, compact reports, Check Runs, or logs | Required |
-| Fixed scanner command | Worker runs the fixed read-only command shape `ai-saas-guard pr-risk --root <worker-checkout> --base <trusted-base-sha> --json` without shell parsing or PR-authored arguments | Required |
+| Fixed scanner command | Worker runs the fixed read-only command shape `ai-saas-guard pr-risk --root <worker-checkout> --base <trusted-base-sha> --json` without shell parsing or PR-authored arguments, and rejects command, checkout, or token-scope mutations before running git | Required |
 | Success cleanup | A successful worker run deletes the checkout directory, askpass material, generated JSON/SARIF scratch files, and any local package tarballs | Required |
 | Failure cleanup | A failed clone, timeout, CLI non-zero exit, malformed JSON output, Check Run write failure, cancellation, or process interruption still attempts checkout deletion and records only a safe cleanup status | Required |
 | Log boundary | Logs may include scan key, installation ID, repository ID, PR number, head SHA, scanner version, duration, summary counts, error class, and cleanup status; logs must include no raw source, no raw diffs, no secrets, no installation tokens, no customer payloads, no private URLs, and no checkout paths | Required |

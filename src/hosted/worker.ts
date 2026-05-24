@@ -111,6 +111,9 @@ export async function runHostedReadOnlyCheckoutScan(
   if (!plan.accepted || !plan.readOnly || !checkout || !cli || cli.writeMode !== "read_only") {
     throw new HostedReadOnlyCheckoutScanError("invalid_worker_plan");
   }
+  if (!isTrustedFixedReadOnlyPlan(input)) {
+    throw new HostedReadOnlyCheckoutScanError("invalid_worker_plan");
+  }
 
   const repository = parseRepositoryFullName(checkout.repositoryFullName);
   if (!repository) {
@@ -226,6 +229,7 @@ export async function runHostedReadOnlyCheckoutScan(
       )
     );
 
+    await rm(askpassPath, { force: true });
     const cliEnv = safeWorkerEnv(checkoutDir);
     const cliArgs = cli.args.map((arg) =>
       arg === "<worker-checkout>" ? checkoutDir : arg
@@ -321,6 +325,58 @@ function compactScanRunnerResult(stdout: string): HostedServiceScanRunnerResult 
   } catch {
     throw new HostedReadOnlyCheckoutScanError("invalid_cli_output");
   }
+}
+
+function isTrustedFixedReadOnlyPlan(input: HostedServiceScanRunnerInput): boolean {
+  const { plan, queueRecord } = input;
+  const { checkout, cli, installationTokenScope, output } = plan;
+  const identity = queueRecord.identity;
+  if (!checkout || !cli || !installationTokenScope || !output) return false;
+
+  const expectedCliArgs = [
+    "pr-risk",
+    "--root",
+    "<worker-checkout>",
+    "--base",
+    identity.baseSha,
+    "--json"
+  ];
+
+  return (
+    plan.jobKey === queueRecord.key &&
+    plan.readOnly === true &&
+    plan.shouldFetchSource === true &&
+    plan.shouldRunCli === true &&
+    plan.shouldPersistRawSource === false &&
+    plan.shouldPersistRawDiffs === false &&
+    plan.shouldCreatePrComment === false &&
+    installationTokenScope.installationId === identity.installationId &&
+    installationTokenScope.repositoryId === identity.repositoryId &&
+    installationTokenScope.permissions.contents === "read" &&
+    installationTokenScope.selectedRepositoryOnly === true &&
+    checkout.repositoryId === identity.repositoryId &&
+    checkout.repositoryFullName === identity.repositoryFullName &&
+    checkout.pullRequestNumber === identity.pullRequestNumber &&
+    checkout.baseSha === identity.baseSha &&
+    checkout.targetCommitSha === identity.headSha &&
+    checkout.directoryScope === "temporary_worker_directory" &&
+    checkout.cleanupRequired === true &&
+    checkout.returnsCheckoutPath === false &&
+    cli.command === "ai-saas-guard" &&
+    cli.workingDirectory === "<worker-checkout>" &&
+    cli.networkAccess === "disabled" &&
+    cli.writeMode === "read_only" &&
+    arraysEqual(cli.args, expectedCliArgs) &&
+    output.compactJsonOnly === true &&
+    output.persistRawSource === false &&
+    output.persistRawDiffs === false &&
+    output.persistSecrets === false &&
+    output.persistCustomerPayloads === false
+  );
+}
+
+function arraysEqual(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function compactFinding(value: unknown): CompactHostedFinding[] {

@@ -40,7 +40,7 @@ Every hosted release must record:
 
 The current public package release is still a local CLI and pure hosted-contract release. No hosted production environment is exposed by this release.
 
-The pure evaluator `evaluateHostedOperationalReleaseGate` and the exported `HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS` list make the gate machine-checkable for the next hosted service stage. The evaluator blocks hosted exposure unless every P0 item has fresh evidence, a `sha256:<digest>` container image digest is recorded, and release notes avoid positive pentest, certification, and full-audit claims. Explicit wording such as "not a pentest, certification, or full security audit" remains allowed.
+The pure evaluator `evaluateHostedOperationalReleaseGate` and the exported `HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS` list make the gate machine-checkable for the next hosted service stage. The staging harness also exports `createHostedStagingReleaseEvidenceBundle`, `evaluateHostedStagingReleaseEvidenceBundle`, and `validateHostedLogBoundary` so source-candidate rehearsals can turn webhook replay, success/failure cleanup probes, required safe failure reasons, and log samples into an executable gate decision. The evaluator blocks hosted exposure unless every P0 item has fresh evidence, a `sha256:<digest>` container image digest is recorded, and release notes avoid positive pentest, certification, and full-audit claims. Explicit wording such as "not a pentest, certification, or full security audit" remains allowed.
 
 Source-level evidence notes for this release candidate:
 
@@ -52,8 +52,8 @@ Source-level evidence notes for this release candidate:
 | `workflow_static_checks` | GitHub Actions static analysis | `actionlint` and `uvx zizmor --offline .github/workflows` | Passed for repository workflows |
 | `dependency_scan` | Dependency scan has no unresolved high or critical production findings | `npm audit --audit-level=high --registry=https://registry.npmjs.org` | Passed for source package |
 | `container_scan` | Container image scan has no unresolved high or critical runtime-layer findings | No hosted container image exists in the public package release | Not applicable to current non-hosted release; required before hosted exposure |
-| `queue_worker_cleanup` | Queue dedupe, running cancellation, terminal cleanup, worker checkout deletion, and no long-running processes | Pure queue, worker, checkout, and retention cleanup planner tests | Passed for pure contracts; must verify against deployed queue and worker before exposure |
-| `privacy_retention` | No raw source, raw diffs, secrets, customer payloads, private URLs, or full file contents; retention and uninstall cleanup are proven | Compact report, Check Run publication, retention/deletion cleanup, and docs tests | Passed for pure contracts; log sampling still required before exposure |
+| `queue_worker_cleanup` | Queue dedupe, running cancellation, terminal cleanup, worker checkout deletion, and no long-running processes | Pure queue, worker, checkout, retention cleanup planner tests, and staging harness success/failure cleanup probes | Passed for source candidate; must verify against deployed queue and worker before exposure |
+| `privacy_retention` | No raw source, raw diffs, secrets, customer payloads, private URLs, or full file contents; retention and uninstall cleanup are proven | Compact report, Check Run publication, retention/deletion cleanup, docs tests, and `validateHostedLogBoundary` source-candidate log checks | Passed for source candidate; deployed log sampling still required before exposure |
 | `monitoring_alerting` | Ingress, queue depth, worker failures, Check Run failures, cleanup failures, retention failures, and credential rotation alerts | Required alert list remains in this document | Documented; must attach provider evidence before exposure |
 | `manual_rollback` | Worker pause, previous artifact redeploy, queue resume, controlled ingress failure, and affected Check Run identification | Manual rollback procedure remains in this document | Documented; must execute against deployed artifact before exposure |
 | `incident_response` | Owner, backup, credential rotation, queue pause, customer communication, status path, and privacy-safe evidence collection | Incident response checklist remains in this document | Documented; must name live owners before exposure |
@@ -148,6 +148,7 @@ Required proof:
 - runtime credentials reach git through temporary askpass material only.
 - the CLI phase runs after credential material is removed from the environment.
 - the worker command is fixed to the deterministic read-only `pr-risk --json` shape.
+- the worker rejects accepted-looking plans if command, checkout identity, or token scope differs from trusted GitHub event identity.
 - success deletes the worker checkout, askpass material, generated JSON/SARIF scratch files, and local package tarballs.
 - failure cleanup covers clone failure, timeout, CLI failure, malformed JSON output, Check Run write failure, cancellation, and process interruption.
 - cleanup failures create an operator-review event without returning raw source, raw diffs, installation tokens, checkout paths, private URLs, or low-level filesystem errors to users.
