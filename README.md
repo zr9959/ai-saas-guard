@@ -73,9 +73,10 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | JSON and SARIF output | Available |
 | Composite GitHub Action | Available |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, and fail thresholds |
-| Versioned Action tags | `v0.23.0`, `v0` |
-| npm package | `ai-saas-guard@0.23.0` |
+| Versioned Action tags | `v0.24.0`, `v0` |
+| npm package | `ai-saas-guard@0.24.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
+| Repository trust hardening | Branch protection, Dependabot, CodeQL, private vulnerability reporting, secret scanning, and push protection |
 | Runtime hardening | Per-file and total text scan caps, escaped markdown evidence, stricter hosted deployment blockers |
 | Hosted production adapters | GitHub App JWT signing, installation-token request planning, bounded worker execution, and terminal-state cleanup planning |
 | Hosted app skeleton | Node/container HTTP ingress, health route, worker tick, in-memory provider adapters, and deployment plan validation |
@@ -201,6 +202,10 @@ If `--base` cannot be resolved, `pr-risk` emits `pr-risk.diff-unavailable` inste
 
 Use [docs/launch-readiness-checklist.md](docs/launch-readiness-checklist.md) when an app is close to inviting real users. It explains how to combine `ai-saas-guard` output with manual two-account authorization testing, Stripe webhook verification, MCP config review, Supabase policy review, deploy checks, rollback planning, and a clear reminder that this is not a full security audit.
 
+## Repository Trust Hardening
+
+See [docs/repository-trust-hardening.md](docs/repository-trust-hardening.md) for the public repository controls behind this release line: branch protection, required CI checks, Dependabot for npm and GitHub Actions, CodeQL SAST, private vulnerability reporting, secret scanning, and push protection.
+
 ## Stripe Webhook Replay
 
 Use [docs/stripe-webhook-replay.md](docs/stripe-webhook-replay.md) after `check-stripe` flags missing signature verification, idempotency, lifecycle handlers, or entitlement updates. The cookbook maps findings to concrete `stripe listen` and `stripe trigger` commands for checkout success, failed renewal, subscription update, cancellation, refund, duplicate delivery, and out-of-order event review.
@@ -271,7 +276,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.23.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.24.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard

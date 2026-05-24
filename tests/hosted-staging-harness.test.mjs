@@ -44,7 +44,7 @@ test("hosted staging harness replays a signed webhook through file-backed queue 
     const harness = createFileBackedHostedStagingHarness({
       rootDir,
       signingKey,
-      scannerVersion: "0.23.0",
+      scannerVersion: "0.24.0",
       selectedRepositoryIdsByInstallation: { 123: [456] },
       now: () => "2026-05-24T17:00:00.000Z",
       scanResult: {
@@ -108,7 +108,7 @@ test("hosted staging harness rejects invalid replay before file-backed side effe
     const harness = createFileBackedHostedStagingHarness({
       rootDir,
       signingKey,
-      scannerVersion: "0.23.0",
+      scannerVersion: "0.24.0",
       selectedRepositoryIdsByInstallation: { 123: [456] },
       scanResult: {
         summaryCounts: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },

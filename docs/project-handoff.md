@@ -69,6 +69,7 @@ Implemented surfaces:
 - hosted GitHub App contract helpers and tests for webhook intake order, webhook verification, installation token scoping, durable scan queue idempotency, compact reports, retention limits, uninstall cleanup, repeated cleanup idempotency, scoped deletion planning, operational release gate blocking, provider-independent service runtime orchestration, GitHub App deployment planning, hosted production adapter planning, Node/container app skeleton planning, hosted staging deployment planning, and local staging harness replay
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
 - CODEOWNERS for source, tests, docs, workflows, Action, and package metadata
+- repository trust hardening with `main` branch protection, required CI status checks, Dependabot for npm and GitHub Actions, CodeQL, private vulnerability reporting, secret scanning, and push protection
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper
@@ -132,12 +133,15 @@ CI:
 - Workflow: `.github/workflows/ci.yml`
 - Runs on pull requests and pushes to `main`
 - Uses `permissions: contents: read`
-- Latest verified run for the hosted Check Run publication release succeeded
+- Static workflow checks: `actionlint` and `zizmor`
+- Code scanning workflow: `.github/workflows/codeql.yml`
+- Dependabot config: `.github/dependabot.yml`
+- Latest verified run for the repository trust hardening release must succeed before publishing
 
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.23.0`
+- Current release line: `v0.24.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.

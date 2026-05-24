@@ -1023,6 +1023,30 @@ test("public docs define hosted GitHub App deployment planning", async () => {
   assert.doesNotMatch(deployment, /client_secret|sk_(?:live|test)_|whsec_[A-Za-z0-9_]+/i);
 });
 
+test("public docs describe repository trust hardening", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
+
+  assert.match(readme, /docs\/repository-trust-hardening\.md/);
+  assert.match(readme, /Dependabot/);
+  assert.match(readme, /CodeQL/);
+  assert.match(zhReadme, /docs\/repository-trust-hardening\.md/);
+  assert.match(zhReadme, /Dependabot/);
+  assert.match(zhReadme, /CodeQL/);
+  assert.match(governance, /Repository Trust Hardening/i);
+  assert.match(governance, /branch protection/i);
+  assert.match(governance, /required status checks/i);
+  assert.match(governance, /test/);
+  assert.match(governance, /actionlint/);
+  assert.match(governance, /zizmor/);
+  assert.match(governance, /Dependabot/i);
+  assert.match(governance, /CodeQL/i);
+  assert.match(governance, /private vulnerability reporting/i);
+  assert.match(governance, /secret scanning/i);
+  assert.doesNotMatch(governance, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
 test("public docs define the hosted operational release gate", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
@@ -1396,6 +1420,37 @@ test("CI runs GitHub Actions static analysis", async () => {
   assert.match(workflow, /zizmor:/);
   assert.match(workflow, /uses: zizmorcore\/zizmor-action@[a-f0-9]{40}/);
   assert.match(workflow, /advanced-security: false/);
+});
+
+test("repository enables low-noise Dependabot updates", async () => {
+  const dependabot = await readFile(resolve(packageRoot, ".github", "dependabot.yml"), "utf8");
+
+  assert.match(dependabot, /version:\s*2/);
+  assert.match(dependabot, /package-ecosystem:\s*"npm"/);
+  assert.match(dependabot, /package-ecosystem:\s*"github-actions"/);
+  assert.match(dependabot, /directory:\s*"\/"/);
+  assert.match(dependabot, /interval:\s*"weekly"/);
+  assert.match(dependabot, /open-pull-requests-limit:\s*5/);
+  assert.match(dependabot, /labels:\s*\n\s+-\s*"dependencies"/);
+  assert.doesNotMatch(dependabot, /registries:|token:|password:|secrets\./i);
+});
+
+test("repository runs CodeQL SAST with least privilege", async () => {
+  const workflow = await readFile(resolve(packageRoot, ".github/workflows/codeql.yml"), "utf8");
+
+  assert.match(workflow, /name:\s*CodeQL/);
+  assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /push:\s*\n\s+branches:\s*\n\s+-\s+main/);
+  assert.match(workflow, /schedule:\s*\n\s+-\s+cron:/);
+  assert.match(workflow, /contents:\s*read/);
+  assert.match(workflow, /security-events:\s*write/);
+  assert.match(workflow, /actions:\s*read/);
+  assert.match(workflow, /languages:\s*javascript-typescript/);
+  assert.match(workflow, /build-mode:\s*none/);
+  assert.match(workflow, /github\/codeql-action\/init@[a-f0-9]{40}/);
+  assert.match(workflow, /github\/codeql-action\/analyze@[a-f0-9]{40}/);
+  assert.doesNotMatch(workflow, /github\/codeql-action\/(?:init|analyze)@v\d/i);
+  assert.doesNotMatch(workflow, /secrets\.|id-token:\s*write|contents:\s*write/i);
 });
 
 test("npm publish workflow uses token-free trusted publishing", async () => {

@@ -55,7 +55,7 @@ AI 能很快把一个 SaaS 从想法做成可运行的产品。真正难的是�
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.23.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.23.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.24.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.24.0`。
 
 | 模块 | 状态 |
 | --- | --- |
@@ -66,9 +66,10 @@ CLI 已发布到 npm：`ai-saas-guard@0.23.0`。GitHub Action 支持 `v0` 浮动
 | Markdown PR summary | 已可用 |
 | GitHub Action | 已可用 |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖和 fail threshold |
-| 当前版本 | `0.23.0` |
-| Action 标签 | `v0.23.0`、`v0` |
+| 当前版本 | `0.24.0` |
+| Action 标签 | `v0.24.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
+| 仓库可信度加固 | branch protection、Dependabot、CodeQL、private vulnerability reporting、secret scanning 和 push protection |
 | 运行时加固 | 单文件和总扫描文本预算、markdown evidence 转义、更严格的 hosted deployment 阻断 |
 | Hosted production adapters | GitHub App JWT 签名、installation-token 请求规划、有边界的 worker 执行和终态 cleanup 规划 |
 | Hosted app skeleton | Node/container HTTP ingress、health route、worker tick、in-memory provider adapters 和 deployment plan 校验 |
@@ -133,6 +134,10 @@ node dist/cli.js scan --root /path/to/your-saas
 | PR risk | auth、billing、RLS、env、deploy、API、storage、测试删除、大型混合 diff |
 
 完整规则请看 [docs/rules.md](docs/rules.md)。
+
+## 仓库可信度加固
+
+公开仓库的维护和发布控制见 [docs/repository-trust-hardening.md](docs/repository-trust-hardening.md)。当前已经配置 branch protection、required CI checks、Dependabot npm/GitHub Actions 更新、CodeQL SAST、private vulnerability reporting、secret scanning 和 push protection。
 
 ## PR 风险分流
 
