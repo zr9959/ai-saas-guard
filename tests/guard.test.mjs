@@ -1905,6 +1905,7 @@ test("npm publish workflow uses token-free trusted publishing", async () => {
 test("package bin entries are publish-safe npm paths", async () => {
   const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
 
+  assert.equal(packageJson.readmeFilename, "README.md");
   assert.deepEqual(packageJson.bin, {
     "ai-saas-guard": "dist/cli.js",
     "launch-guard": "dist/cli.js"
