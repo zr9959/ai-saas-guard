@@ -18,6 +18,7 @@
 
 <p align="center">
   <a href="https://github.com/zr9959/ai-saas-guard/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zr9959/ai-saas-guard/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://www.bestpractices.dev/projects/12955"><img alt="OpenSSF Best Practices" src="https://www.bestpractices.dev/projects/12955/badge"></a>
   <a href="https://www.npmjs.com/package/ai-saas-guard"><img alt="npm" src="https://img.shields.io/npm/v/ai-saas-guard.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <a href="package.json"><img alt="Node.js >=20" src="https://img.shields.io/badge/node-%3E%3D20-339933.svg"></a>
@@ -77,12 +78,14 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | npm package | `ai-saas-guard@0.24.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
-| Runtime hardening | Per-file and total text scan caps, escaped markdown evidence, stricter hosted deployment blockers |
+| Runtime hardening | Per-file and total text scan caps, escaped markdown evidence, 1 MiB hosted webhook payload cap, stricter hosted deployment blockers |
 | Hosted production adapters | GitHub App JWT signing, installation-token request planning, bounded worker execution, and terminal-state cleanup planning |
 | Hosted app skeleton | Node/container HTTP ingress, health route, worker tick, in-memory provider adapters, and deployment plan validation |
 | Hosted staging deployment planner | Provider binding, staging release-gate evidence, Node/container deployment composition, and GitHub App promotion gating |
 | Hosted staging harness | File-backed webhook replay, queue/report/Check Run artifacts, worker cleanup verification, and local release-gate evidence fixtures |
-| OpenSSF Best Practices preparation | `.bestpractices.json` with conservative proposed answers, plus CONTRIBUTING.md for contribution and test policy evidence |
+| Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev` for signed GitHub webhook intake and KV queueing; scan workers and Check Runs are still gated |
+| Hosted GitHub App staging | Private App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard` with contents read, pull requests read, metadata read, and checks write |
+| OpenSSF Best Practices | Passing badge, project `12955`; `.bestpractices.json` remains the conservative evidence record |
 
 ## Quick Start
 
@@ -211,7 +214,7 @@ The latest GitHub releases mirror the npm package tarball and attach `*.tgz.sigs
 
 The current Scorecard improvement track focuses on real controls, not cosmetic score gaming: stricter review gates, detectable fuzzing, and the OpenSSF Best Practices Badge process. Some Scorecard items, such as repository age, contributor diversity, and reviewed PR history, improve only through time and normal public maintenance.
 
-The repository now includes [.bestpractices.json](.bestpractices.json) so the OpenSSF Best Practices app can prefill conservative proposed answers from repository evidence. The public badge still has to be created and saved through the OpenSSF Best Practices web app by an authorized maintainer; the JSON file is preparation, not a badge claim by itself.
+The repository now has an [OpenSSF Best Practices passing badge](https://www.bestpractices.dev/projects/12955). [.bestpractices.json](.bestpractices.json) remains the conservative evidence record for the public project entry. `dynamic_analysis_enable_assertions` is still intentionally marked unmet until runtime assertion coverage is broader than the current test, property, and fuzz assertions.
 
 ## Stripe Webhook Replay
 
@@ -236,6 +239,8 @@ The hosted Node/container app skeleton is documented in [docs/hosted-node-contai
 The hosted staging deployment planner is documented in [docs/hosted-staging-deployment.md](docs/hosted-staging-deployment.md). It exports `planHostedProviderBinding`, `planHostedStagingDeployment`, and `planHostedGitHubAppPromotion` from `ai-saas-guard/hosted/staging`. It composes real provider references, the Node/container deployment plan, hosted operational release-gate evidence, and GitHub App deployment planning so staging and production promotion stay blocked until the required queue, store, worker sandbox, Check Run publisher, logs, metrics, rollback, and incident-response references are present. It still does not call a cloud provider, create a GitHub App, or expose a public hosted service by itself.
 
 The hosted staging harness is documented in [docs/hosted-staging-harness.md](docs/hosted-staging-harness.md). It exports `createFileBackedHostedStagingHarness` and `createHostedStagingHarnessEvidence` from `ai-saas-guard/hosted/staging-harness`. It runs signed webhook replay through the provider-independent hosted runtime with local file-backed queue, compact report, and Check Run adapters, then verifies worker sandbox cleanup. It is a staging rehearsal tool only; it does not call cloud providers, create a GitHub App, publish live Check Runs, or expose a public hosted service.
+
+The first live hosted ingress is deployed on Cloudflare Workers at `https://ai-saas-guard-hosted.zr9959.workers.dev` and documented in [hosted/cloudflare-worker/README.md](hosted/cloudflare-worker/README.md). It exposes `/healthz`, `/github/app/manifest-callback`, and signed `/github/webhook` intake backed by Cloudflare KV. A private staging GitHub App, `ai-saas-guard-hosted`, is installed on `zr9959/ai-saas-guard` with selected-repository access and the first-slice permission contract. The deployed ingress has the required Cloudflare credential bindings configured. It deliberately queues compact pull request identity records only; scan worker execution, GitHub installation-token exchange, PR diff fetching, and Check Run publishing remain blocked until their deployed evidence passes the hosted operational release gate.
 
 The hosted operational release gate is documented in [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md). It defines the hosted-specific CI, replay, queue, worker cleanup, privacy, monitoring, rollback, and incident-response evidence required before any hosted environment is exposed to users. The pure gate evaluator exported from `ai-saas-guard/hosted/contracts` blocks hosted exposure unless every P0 evidence item is fresh, a container digest is recorded, and release notes avoid pentest, certification, and full-audit claims.
 

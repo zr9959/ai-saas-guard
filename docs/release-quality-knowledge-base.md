@@ -170,7 +170,7 @@ P2:
 
 - Use GitHub Projects for a public roadmap.
 - Add OpenSSF Scorecard badge once score is acceptable.
-- Add OpenSSF Best Practices Badge process once project stabilizes.
+- Keep the OpenSSF Best Practices Badge evidence current after public process, README, or release-gate changes.
 
 ## GitHub Actions Security
 

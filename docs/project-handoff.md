@@ -63,6 +63,7 @@ Implemented surfaces:
 - hosted Node/container app skeleton document and helpers for safe health and webhook HTTP ingress, one-job worker ticks, in-memory provider adapters, provider reference validation, and the chosen `node_container` roles `webhook-ingress` and `scan-worker`
 - hosted staging deployment planner document and helpers for provider binding, staging release-gate evidence, Node/container deployment composition, and production GitHub App promotion gating
 - hosted staging harness document and helpers for local signed webhook replay, file-backed queue/report/Check Run artifacts, worker sandbox cleanup verification, and release-gate evidence fixtures without cloud calls
+- live Cloudflare hosted ingress at `https://ai-saas-guard-hosted.zr9959.workers.dev` with `/healthz`, `/github/app/manifest-callback`, signed `/github/webhook` intake, Cloudflare KV storage, private staging GitHub App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard`, and explicit `shouldCreateCheckRun: false` until scan worker and Check Run publishing are wired
 - resource caps for repository text collection, including per-file, total-file, and total-byte scan budgets to reduce worst-case memory use
 - hosted pre-implementation contracts document, hosted compact report fixture, and pure helpers for pull request webhook intake planning, durable scan queue upsert planning, worker read-only scan planning, Check Run publication planning, queue-safe pull request event parsing from trusted GitHub event fields, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, retention/deletion cleanup planning, and operational release gate evaluation
 - implementation-ready hosted GitHub App permission contract for required permissions, optional PR comment permissions, selected repository installation, and out-of-scope broad permissions
@@ -70,7 +71,7 @@ Implemented surfaces:
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
 - CODEOWNERS for source, tests, docs, workflows, Action, and package metadata
 - repository trust hardening with strict `main` branch protection, required CI status checks, fast-check fuzzing, signed GitHub release assets backed by npm trusted publishing provenance, Dependabot for npm and GitHub Actions, CodeQL, private vulnerability reporting, secret scanning, and push protection
-- OpenSSF Best Practices preparation with `.bestpractices.json` for conservative repository-backed answer proposals and `CONTRIBUTING.md` for pull request process, tests, rule-design requirements, release gate evidence, and public-safety constraints
+- OpenSSF Best Practices passing badge at https://www.bestpractices.dev/projects/12955, with `.bestpractices.json` for conservative repository-backed answer proposals and `CONTRIBUTING.md` for pull request process, tests, rule-design requirements, release gate evidence, and public-safety constraints
 - JSON output
 - SARIF output
 - composite GitHub Action wrapper
@@ -139,6 +140,22 @@ CI:
 - Fuzz/property tests: `npm run test:fuzz` with `fast-check`
 - Dependabot config: `.github/dependabot.yml` with weekly schedules, bounded PR volume, and cooldown windows
 - Latest verified run for the repository trust hardening release must succeed before publishing
+
+Hosted staging:
+
+- Cloudflare Worker URL: https://ai-saas-guard-hosted.zr9959.workers.dev
+- Cloudflare KV binding: `HOSTED_EVENTS`
+- GitHub App: `ai-saas-guard-hosted`
+- GitHub App ID: `3834787`
+- GitHub App installation ID: `135085075`
+- Installed repository: `zr9959/ai-saas-guard`
+- Current hosted mode: signed webhook ingress and compact queueing only
+- Not yet complete: GitHub App installation-token exchange, PR diff fetching, scan worker execution, Check Run publishing, monitoring evidence, rollback evidence, and incident-response evidence
+
+OpenSSF Best Practices:
+
+- Project: https://www.bestpractices.dev/projects/12955
+- Badge level: passing
 
 Publishing:
 
