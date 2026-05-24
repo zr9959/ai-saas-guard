@@ -2,7 +2,7 @@
 
 `ai-saas-guard` ships as a composite GitHub Action for pull request and code scanning workflows.
 
-Use `zr9959/ai-saas-guard@v0` for the latest compatible pre-1.0 Action. Use a specific tag such as `v0.24.0` or a reviewed commit SHA when reproducibility is more important than automatic minor updates.
+Use `zr9959/ai-saas-guard@v0` for the latest compatible pre-1.0 Action. Use a specific tag such as `v0.25.0` or a reviewed commit SHA when reproducibility is more important than automatic minor updates.
 
 ## PR Summary
 
