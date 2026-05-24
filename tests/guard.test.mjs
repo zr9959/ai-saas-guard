@@ -1469,7 +1469,7 @@ test("repository runs CodeQL SAST with least privilege", async () => {
   assert.match(workflow, /schedule:\s*\n\s+-\s+cron:/);
   assert.match(workflow, /contents:\s*read/);
   assert.match(workflow, /security-events:\s*write/);
-  assert.match(workflow, /actions:\s*read/);
+  assert.doesNotMatch(workflow, /actions:\s*read/);
   assert.match(workflow, /languages:\s*javascript-typescript/);
   assert.match(workflow, /build-mode:\s*none/);
   assert.match(workflow, /github\/codeql-action\/init@[a-f0-9]{40}/);
