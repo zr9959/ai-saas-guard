@@ -1,7 +1,10 @@
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  evaluateHostedOperationalReleaseGate,
   HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS,
+  type HostedOperationalReleaseGateDecision,
+  type HostedOperationalReleaseGateRequirementId,
   type HostedOperationalReleaseGateEvidence
 } from "./contracts.js";
 import {
@@ -13,6 +16,7 @@ import {
   type HostedServiceQueueAdapter,
   type HostedServiceRuntime,
   type HostedServiceRuntimeOptions,
+  type HostedServiceScanRunnerInput,
   type HostedServiceScanRunnerResult,
   type HostedServiceWebhookStage
 } from "./service.js";
@@ -25,7 +29,11 @@ export interface FileBackedHostedStagingHarnessOptions {
   scannerVersion: string;
   selectedRepositoryIdsByInstallation: RepositoryIdSource;
   removedRepositoryIdsByInstallation?: RepositoryIdSource;
-  scanResult: HostedServiceScanRunnerResult;
+  scanResult:
+    | HostedServiceScanRunnerResult
+    | ((
+        input: HostedServiceScanRunnerInput
+      ) => HostedServiceScanRunnerResult | Promise<HostedServiceScanRunnerResult>);
   now?: () => string;
 }
 
@@ -85,6 +93,7 @@ export type HostedStagingHarnessWorkerTickResult =
       status: "failed";
       errorClass: "worker_plan_rejected" | "check_run_publication_rejected" | "scan_runner_failed";
       reason?: string;
+      safeFailureReason?: string;
       workerSandboxDeleted: boolean;
       activeWorkerSandboxCount: number;
       cleanupVerified: boolean;
@@ -109,6 +118,79 @@ export interface HostedStagingHarnessPrivacy {
   claimsLiveHostedService: false;
 }
 
+export type HostedLogBoundaryBlockedReason =
+  | "raw_source"
+  | "raw_diff"
+  | "secret_value"
+  | "customer_payload"
+  | "installation_token"
+  | "checkout_path"
+  | "private_url"
+  | "untrusted_pr_text";
+
+export interface HostedLogBoundaryForbiddenInput {
+  rawSource?: string;
+  rawDiff?: string;
+  secretValues?: string[];
+  customerPayloads?: string[];
+  installationTokens?: string[];
+  checkoutPaths?: string[];
+  privateUrls?: string[];
+  untrustedPrText?: string[];
+}
+
+export interface HostedLogBoundaryValidationInput {
+  samples: unknown[];
+  forbidden: HostedLogBoundaryForbiddenInput;
+}
+
+export interface HostedLogBoundaryValidation {
+  accepted: boolean;
+  sampleCount: number;
+  blockedReasons: HostedLogBoundaryBlockedReason[];
+  allowedFields: string[];
+  privacy: HostedStagingHarnessPrivacy;
+}
+
+export interface HostedStagingReleaseEvidenceBundleInput {
+  collectedAt: string;
+  evidenceBaseUrl: string;
+  owner: string;
+  webhookReplays: HostedStagingHarnessReplayResult[];
+  workerTicks: HostedStagingHarnessWorkerTickResult[];
+  logBoundary: HostedLogBoundaryValidation;
+  externalEvidence: HostedOperationalReleaseGateEvidence[];
+  requiredFailureReasons?: string[];
+}
+
+export interface HostedStagingReleaseEvidenceBundle {
+  readyForReleaseGate: boolean;
+  evidence: HostedOperationalReleaseGateEvidence[];
+  releaseGateInput: {
+    evidence: HostedOperationalReleaseGateEvidence[];
+  };
+  scenarioSummary: {
+    webhookReplayAccepted: boolean;
+    completedWorkerProbe: boolean;
+    failureCleanupProbe: boolean;
+    observedFailureReasons: string[];
+    allWorkerCheckoutsDeleted: boolean;
+    logBoundaryAccepted: boolean;
+  };
+  privacy: HostedStagingHarnessPrivacy;
+}
+
+export interface HostedStagingReleaseEvidenceGateInput {
+  bundle: HostedStagingReleaseEvidenceBundle;
+  commitSha: string;
+  scannerVersion: string;
+  deploymentTarget: string;
+  evaluatedAt: string;
+  releaseNotes: string;
+  containerImageDigest: string;
+  maxEvidenceAgeDays?: number;
+}
+
 export function createFileBackedHostedStagingHarness(
   options: FileBackedHostedStagingHarnessOptions
 ): FileBackedHostedStagingHarness {
@@ -125,12 +207,17 @@ export function createFileBackedHostedStagingHarness(
     queue,
     compactReportStore: reportStore,
     checkRunPublisher,
-    scanRunner: async ({ queueRecord }) => {
+    scanRunner: async (input) => {
+      const { queueRecord } = input;
       const sandboxPath = join(paths.workerSandboxRoot, safeFileSegment(queueRecord.key));
       workerSandboxPaths.add(sandboxPath);
       await mkdir(sandboxPath, { recursive: true });
-      await writeFile(join(sandboxPath, "source.ts"), options.scanResult.rawSource ?? "", "utf8");
-      return options.scanResult;
+      const scanResult =
+        typeof options.scanResult === "function"
+          ? await options.scanResult(input)
+          : options.scanResult;
+      await writeFile(join(sandboxPath, "source.ts"), scanResult.rawSource ?? "", "utf8");
+      return scanResult;
     },
     now: options.now
   });
@@ -191,6 +278,7 @@ export function createFileBackedHostedStagingHarness(
         status: "failed",
         errorClass: result.errorClass,
         ...(result.reason === undefined ? {} : { reason: result.reason }),
+        ...(result.reason === undefined ? {} : { safeFailureReason: result.reason }),
         workerSandboxDeleted: activeWorkerSandboxCount === 0,
         activeWorkerSandboxCount,
         cleanupVerified:
@@ -212,6 +300,269 @@ export function createHostedStagingHarnessEvidence(
     note: `Local staging harness evidence for ${requirement.label}. This is not hosted exposure.`,
     owner: input.owner
   }));
+}
+
+export function validateHostedLogBoundary(
+  input: HostedLogBoundaryValidationInput
+): HostedLogBoundaryValidation {
+  const serializedSamples = input.samples.map((sample) => JSON.stringify(sample)).join("\n");
+  const blockedReasons = new Set<HostedLogBoundaryBlockedReason>();
+
+  markIfContains(blockedReasons, serializedSamples, input.forbidden.rawSource, "raw_source");
+  markIfContains(blockedReasons, serializedSamples, input.forbidden.rawDiff, "raw_diff");
+  markIfContainsAny(blockedReasons, serializedSamples, input.forbidden.secretValues, "secret_value");
+  markIfContainsAny(
+    blockedReasons,
+    serializedSamples,
+    input.forbidden.customerPayloads,
+    "customer_payload"
+  );
+  markIfContainsAny(
+    blockedReasons,
+    serializedSamples,
+    input.forbidden.installationTokens,
+    "installation_token"
+  );
+  markIfContainsAny(blockedReasons, serializedSamples, input.forbidden.checkoutPaths, "checkout_path");
+  markIfContainsAny(blockedReasons, serializedSamples, input.forbidden.privateUrls, "private_url");
+  markIfContainsAny(
+    blockedReasons,
+    serializedSamples,
+    input.forbidden.untrustedPrText,
+    "untrusted_pr_text"
+  );
+
+  if (/\bgh[opsu]_[A-Za-z0-9_]{8,}\b/.test(serializedSamples)) {
+    blockedReasons.add("installation_token");
+  }
+  if (/\b(?:sk_(?:live|test)|whsec_)[A-Za-z0-9_]+\b|-----BEGIN [A-Z ]+-----/.test(serializedSamples)) {
+    blockedReasons.add("secret_value");
+  }
+
+  return {
+    accepted: blockedReasons.size === 0,
+    sampleCount: input.samples.length,
+    blockedReasons: [...blockedReasons].sort(),
+    allowedFields: [
+      "scanKey",
+      "installationId",
+      "repositoryId",
+      "pullRequestNumber",
+      "headSha",
+      "scannerVersion",
+      "durationMs",
+      "summaryCounts",
+      "errorClass",
+      "cleanupStatus"
+    ],
+    privacy: hostedStagingHarnessPrivacy()
+  };
+}
+
+export function createHostedStagingReleaseEvidenceBundle(
+  input: HostedStagingReleaseEvidenceBundleInput
+): HostedStagingReleaseEvidenceBundle {
+  const externalEvidence = new Map(
+    input.externalEvidence.map((evidence) => [evidence.id, sanitizeEvidence(evidence, input)])
+  );
+  const scenarioSummary = hostedStagingScenarioSummary(input);
+  const evidence = HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS.map((requirement) => {
+    const generated = generatedEvidenceFor(requirement.id, input, scenarioSummary);
+    return generated ?? externalEvidence.get(requirement.id) ?? missingEvidence(requirement.id, input);
+  });
+  const readyForReleaseGate = evidence.every((item) => item.status === "passed");
+
+  return {
+    readyForReleaseGate,
+    evidence,
+    releaseGateInput: { evidence },
+    scenarioSummary,
+    privacy: hostedStagingHarnessPrivacy()
+  };
+}
+
+export function evaluateHostedStagingReleaseEvidenceBundle(
+  input: HostedStagingReleaseEvidenceGateInput
+): HostedOperationalReleaseGateDecision {
+  return evaluateHostedOperationalReleaseGate({
+    commitSha: input.commitSha,
+    scannerVersion: input.scannerVersion,
+    deploymentTarget: input.deploymentTarget,
+    evaluatedAt: input.evaluatedAt,
+    evidence: input.bundle.evidence,
+    releaseNotes: input.releaseNotes,
+    containerImageDigest: input.containerImageDigest,
+    maxEvidenceAgeDays: input.maxEvidenceAgeDays
+  });
+}
+
+function hostedStagingScenarioSummary(
+  input: HostedStagingReleaseEvidenceBundleInput
+): HostedStagingReleaseEvidenceBundle["scenarioSummary"] {
+  const processedWorkers = input.workerTicks.filter((tick) => tick.processed);
+  const webhookReplayAccepted = input.webhookReplays.some(
+    (replay) => replay.accepted && replay.queuedWorker && replay.shouldCreateCheckRun
+  );
+  const completedWorkerProbe = processedWorkers.some(
+    (tick) => tick.status === "completed" && tick.cleanupVerified
+  );
+  const observedFailureReasons = [
+    ...new Set(
+      processedWorkers.flatMap((tick) =>
+        tick.status === "failed" && tick.cleanupVerified && tick.safeFailureReason
+          ? [tick.safeFailureReason]
+          : []
+      )
+    )
+  ].sort();
+  const requiredFailureReasons = input.requiredFailureReasons ?? [];
+  const failureCleanupProbe = requiredFailureReasons.length
+    ? requiredFailureReasons.every((reason) => observedFailureReasons.includes(reason))
+    : processedWorkers.some((tick) => tick.status === "failed" && tick.cleanupVerified);
+  const allWorkerCheckoutsDeleted =
+    processedWorkers.length > 0 &&
+    processedWorkers.every(
+      (tick) =>
+        tick.workerSandboxDeleted &&
+        tick.activeWorkerSandboxCount === 0 &&
+        tick.cleanupVerified
+    );
+
+  return {
+    webhookReplayAccepted,
+    completedWorkerProbe,
+    failureCleanupProbe,
+    observedFailureReasons,
+    allWorkerCheckoutsDeleted,
+    logBoundaryAccepted: input.logBoundary.accepted
+  };
+}
+
+function generatedEvidenceFor(
+  id: HostedOperationalReleaseGateRequirementId,
+  input: HostedStagingReleaseEvidenceBundleInput,
+  summary: HostedStagingReleaseEvidenceBundle["scenarioSummary"]
+): HostedOperationalReleaseGateEvidence | undefined {
+  if (id === "webhook_replay") {
+    return summary.webhookReplayAccepted
+      ? passedEvidence(id, "Signed webhook replay queued a check-run-only worker from trusted fields.", input)
+      : missingEvidence(id, input);
+  }
+
+  if (id === "queue_worker_cleanup") {
+    return summary.completedWorkerProbe &&
+      summary.failureCleanupProbe &&
+      summary.allWorkerCheckoutsDeleted
+      ? passedEvidence(
+          id,
+          "Success and failure worker probes deleted worker checkouts and recorded cleanup-safe status.",
+          input
+        )
+      : missingEvidence(id, input);
+  }
+
+  if (id === "privacy_retention") {
+    return input.logBoundary.sampleCount > 0 && summary.logBoundaryAccepted && privacyFlagsAreSafe(input)
+      ? passedEvidence(
+          id,
+          "Log boundary accepted safe metadata only and compact reports avoided raw payloads.",
+          input
+        )
+      : missingEvidence(id, input);
+  }
+
+  if (id === "release_cleanup") {
+    return summary.allWorkerCheckoutsDeleted
+      ? passedEvidence(id, "Release cleanup probe left no active staging worker sandbox entries.", input)
+      : missingEvidence(id, input);
+  }
+
+  return undefined;
+}
+
+function privacyFlagsAreSafe(input: HostedStagingReleaseEvidenceBundleInput): boolean {
+  const replayPrivacySafe = input.webhookReplays.every((replay) =>
+    Object.values(replay.privacy).every((value) => value === false)
+  );
+  const workerPrivacySafe = input.workerTicks.every((tick) =>
+    Object.values(tick.privacy).every((value) => value === false)
+  );
+  const logPrivacySafe = Object.values(input.logBoundary.privacy).every((value) => value === false);
+
+  return replayPrivacySafe && workerPrivacySafe && logPrivacySafe;
+}
+
+function sanitizeEvidence(
+  evidence: HostedOperationalReleaseGateEvidence,
+  input: HostedStagingReleaseEvidenceBundleInput
+): HostedOperationalReleaseGateEvidence {
+  return {
+    id: evidence.id,
+    status: evidence.status,
+    ...(evidence.collectedAt === undefined
+      ? { collectedAt: input.collectedAt }
+      : { collectedAt: evidence.collectedAt }),
+    ...(evidence.evidenceUrl === undefined ? {} : { evidenceUrl: evidence.evidenceUrl }),
+    note: `External release-gate evidence recorded for ${evidence.id}.`,
+    ...(evidence.owner === undefined ? { owner: input.owner } : { owner: evidence.owner })
+  };
+}
+
+function passedEvidence(
+  id: HostedOperationalReleaseGateRequirementId,
+  note: string,
+  input: HostedStagingReleaseEvidenceBundleInput
+): HostedOperationalReleaseGateEvidence {
+  return {
+    id,
+    status: "passed",
+    collectedAt: input.collectedAt,
+    evidenceUrl: evidenceUrlFor(input, id),
+    note,
+    owner: input.owner
+  };
+}
+
+function missingEvidence(
+  id: HostedOperationalReleaseGateRequirementId,
+  input: HostedStagingReleaseEvidenceBundleInput
+): HostedOperationalReleaseGateEvidence {
+  return {
+    id,
+    status: "missing",
+    collectedAt: input.collectedAt,
+    note: `Missing executable staging evidence for ${id}.`,
+    owner: input.owner
+  };
+}
+
+function evidenceUrlFor(
+  input: Pick<HostedStagingReleaseEvidenceBundleInput, "evidenceBaseUrl">,
+  id: HostedOperationalReleaseGateRequirementId
+): string {
+  return `${input.evidenceBaseUrl.replace(/\/+$/, "")}/${id}.json`;
+}
+
+function markIfContains(
+  blockedReasons: Set<HostedLogBoundaryBlockedReason>,
+  haystack: string,
+  value: string | undefined,
+  reason: HostedLogBoundaryBlockedReason
+): void {
+  if (value && haystack.includes(value)) {
+    blockedReasons.add(reason);
+  }
+}
+
+function markIfContainsAny(
+  blockedReasons: Set<HostedLogBoundaryBlockedReason>,
+  haystack: string,
+  values: readonly string[] | undefined,
+  reason: HostedLogBoundaryBlockedReason
+): void {
+  for (const value of values ?? []) {
+    markIfContains(blockedReasons, haystack, value, reason);
+  }
 }
 
 function hostedStagingHarnessPaths(rootDir: string): FileBackedHostedStagingHarnessPaths {

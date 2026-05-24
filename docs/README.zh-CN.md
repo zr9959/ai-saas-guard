@@ -169,18 +169,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.30.2`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.30.2`。
+CLI 已发布到 npm：`ai-saas-guard@0.31.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.31.0`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.30.2` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.30.2` |
+| npm CLI | `ai-saas-guard@0.31.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.31.0` |
 | 输出格式 | 短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.30.2` 做发布后质量优化：降低 Vercel/Actions 误报、增加 launch-gate 定位文档，并补 hosted worker 证据边界 |
-| Action 标签 | `v0.30.2`、`v0` |
+| 当前版本 | `0.31.0` 增加可执行 hosted staging evidence：成功/失败 cleanup probes、log-boundary validation、更严格的 read-only checkout worker 边界，以及从 evidence bundle 直接评估 release gate |
+| Action 标签 | `v0.31.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
@@ -359,13 +359,13 @@ GitHub Marketplace wrapper 决策见 [docs/github-marketplace-wrapper-decision.m
 - pull request webhook intake planner：先验签，再解析 payload、生成可信 identity、校验 selected-repository scope，并默认只走 check-run-only 输出
 - durable scan queue planner：同一个 trusted scan key 的 queued/running/completed job 会复用，不重复排 worker，也不会把源码、diff、secret 或 PR 正文放进队列 payload
 - worker read-only scan planner：只用 trusted identity 规划临时 worker checkout，要求 repository `contents: read`，固定运行 `ai-saas-guard pr-risk --json`，并忽略 PR 正文里的 repo 名、token scope 或命令
-- hosted read-only checkout worker：`ai-saas-guard/hosted/worker` 导出 `createHostedReadOnlyCheckoutScanRunner`，从 trusted GitHub App identity 创建临时 checkout，只通过 git askpass 使用 runtime installation token，运行固定 `ai-saas-guard pr-risk --json`，把 CLI JSON 转成 compact findings，并在成功或失败后删除 checkout；不会返回源码、diff、secret、checkout path、PR 里写的命令或 installation token
+- hosted read-only checkout worker：`ai-saas-guard/hosted/worker` 导出 `createHostedReadOnlyCheckoutScanRunner`，从 trusted GitHub App identity 创建临时 checkout，只通过 git askpass 使用 runtime installation token，在 CLI 阶段前移除 askpass material，拒绝被篡改的 command/checkout/token-scope plan，运行固定 `ai-saas-guard pr-risk --json`，把 CLI JSON 转成 compact findings，并在成功或失败后删除 checkout；不会返回源码、diff、secret、checkout path、PR 里写的命令或 installation token
 - hosted service runtime：`ai-saas-guard/hosted/service` 导出 `createHostedServiceRuntime`，把签名 webhook intake、幂等 queue upsert、read-only worker 编排、compact report 存储、Check Run 发布 adapter 和 worker cleanup 串成可测试的服务核心；它本身不部署公开 hosted 环境
 - GitHub App deployment planner：`ai-saas-guard/hosted/github-app` 导出 `planHostedGitHubAppDeployment`，生成 first slice 最小权限 manifest，并在 release gate、公开 HTTPS URL、container digest、secret 引用、原始 secret 输入、permission 或 event 不安全时阻止创建
 - Hosted production adapter layer：`ai-saas-guard/hosted/production-adapters` 导出 `createHostedGitHubAppJwt`、`planHostedGitHubInstallationTokenRequest` 和 `planHostedProductionWorkerExecution`，用于 GitHub App RS256 JWT、selected-repository installation token 请求规划、worker/check-run 分离 token scope、固定只读 worker 命令、timeout/output 预算、compact JSON-only 输出，以及 success/failure/timeout/cancellation 的 cleanup 规划；它本身仍然不部署公开 hosted 服务
 - Hosted Node/container app skeleton：`ai-saas-guard/hosted/app` 导出 `createHostedHttpApp`、`createInMemoryHostedAppPlatform`、`createHostedNodeCheckoutAppPlatform` 和 `planHostedNodeContainerDeployment`，提供安全 `/healthz`、签名 `/github/webhook` ingress、单 job worker tick、测试用 in-memory provider adapters、真实 read-only checkout worker 组合入口、可见 timeout/output 安全预算，以及 secret manager、queue、compact report store、worker sandbox、GitHub Checks publisher 的部署引用校验；它本身仍然不部署或暴露公开 hosted 服务
 - Hosted staging deployment planner：`ai-saas-guard/hosted/staging` 导出 `planHostedProviderBinding`、`planHostedStagingDeployment` 和 `planHostedGitHubAppPromotion`，把真实 provider 引用、Node/container deployment plan、hosted operational release-gate evidence 和 GitHub App deployment planning 组合起来；缺少 queue、store、worker sandbox、Check Run publisher、logs、metrics、rollback 或 incident-response 引用时，会阻止 staging exposure 和 production promotion；它本身仍然不会调用云平台、创建 GitHub App 或暴露公开 hosted 服务
-- Hosted staging harness：`ai-saas-guard/hosted/staging-harness` 导出 `createFileBackedHostedStagingHarness` 和 `createHostedStagingHarnessEvidence`，可以在本地用 file-backed queue、compact report、Check Run request 和 worker sandbox 跑通签名 webhook replay、worker tick 和 cleanup 校验；它只是 staging 演练工具，不会调用云平台、创建 GitHub App、写真实 Check Run 或暴露公开 hosted 服务
+- Hosted staging harness：`ai-saas-guard/hosted/staging-harness` 导出 `createFileBackedHostedStagingHarness`、`createHostedStagingHarnessEvidence`、`createHostedStagingReleaseEvidenceBundle`、`evaluateHostedStagingReleaseEvidenceBundle` 和 `validateHostedLogBoundary`，可以在本地用 file-backed queue、compact report、Check Run request 和 worker sandbox 跑通签名 webhook replay、worker tick 和 cleanup 校验，把 success/failure cleanup probes 与 log-boundary samples 转成 release-gate evidence，并直接执行 hosted release gate 判断；它只是 staging 演练工具，不会调用云平台、创建 GitHub App、写真实 Check Run 或暴露公开 hosted 服务
 - Cloudflare hosted ingress：`hosted/cloudflare-worker` 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`，提供 `/healthz`、`/github/app/manifest-callback` 和签名 `/github/webhook` intake；Worker 已具备 compact pull request identity、file/category risk signal 和 Check Run metadata 路径；staging GitHub App ID 为 `3834787`，installation ID 为 `135085075`；真实 GitHub App webhook delivery 和 Check Run smoke 已通过；完整 source checkout worker deployment、monitoring、rollback 和 incident-response evidence 仍需要通过 hosted operational release gate
 - webhook event parser
 - check-run summary renderer

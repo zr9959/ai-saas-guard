@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -38,6 +39,9 @@ test("hosted checkout worker runs trusted git and CLI commands with bounded outp
         assert.doesNotMatch(JSON.stringify(command), /ghs_do_not_echo|scan evil\/repo|rm -rf/i);
 
         if (command.stage === "cli_scan") {
+          assert.equal(command.env.GIT_ASKPASS, undefined);
+          assert.equal(command.env.AI_SAAS_GUARD_GITHUB_TOKEN, undefined);
+          assert.equal(existsSync(join(command.cwd, ".git-askpass.sh")), false);
           return {
             stdout: JSON.stringify({
               command: "pr-risk",
@@ -160,6 +164,107 @@ test("hosted checkout worker runs trusted git and CLI commands with bounded outp
     assert.equal(serialized.includes("do-not-echo"), false);
     assert.equal(serialized.includes("private/checkout"), false);
     assert.equal(serialized.includes("ghs_"), false);
+  } finally {
+    await rm(checkoutRoot, { recursive: true, force: true });
+  }
+});
+
+test("hosted checkout worker rejects accepted plans with mutated command checkout or token scope", async () => {
+  const checkoutRoot = await mkdtemp(join(tmpdir(), "ai-saas-guard-worker-"));
+  try {
+    const { HostedReadOnlyCheckoutScanError, createHostedReadOnlyCheckoutScanRunner } =
+      await loadHostedWorker();
+    const runner = createHostedReadOnlyCheckoutScanRunner({
+      checkoutRoot,
+      installationTokenProvider: async () => "ghs_do_not_echo",
+      commandRunner: async () => {
+        throw new Error("command runner should not be reached");
+      }
+    });
+    const basePlan = {
+      accepted: true,
+      jobKey: "job-worker",
+      requestedAt: "2026-05-24T18:10:00.000Z",
+      readOnly: true,
+      shouldFetchSource: true,
+      shouldRunCli: true,
+      shouldPersistRawSource: false,
+      shouldPersistRawDiffs: false,
+      shouldCreatePrComment: false,
+      installationTokenScope: {
+        installationId: 123,
+        repositoryId: 456,
+        permissions: { contents: "read" },
+        selectedRepositoryOnly: true
+      },
+      checkout: {
+        repositoryId: 456,
+        repositoryFullName: "owner/repo",
+        pullRequestNumber: 7,
+        baseSha: identity.baseSha,
+        targetCommitSha: identity.headSha,
+        directoryScope: "temporary_worker_directory",
+        cleanupRequired: true,
+        returnsCheckoutPath: false
+      },
+      cli: {
+        command: "ai-saas-guard",
+        args: ["pr-risk", "--root", "<worker-checkout>", "--base", identity.baseSha, "--json"],
+        workingDirectory: "<worker-checkout>",
+        networkAccess: "disabled",
+        writeMode: "read_only"
+      },
+      output: {
+        compactJsonOnly: true,
+        persistRawSource: false,
+        persistRawDiffs: false,
+        persistSecrets: false,
+        persistCustomerPayloads: false
+      },
+      privacy: {
+        returnsCheckoutPath: false,
+        returnsRawSource: false,
+        returnsRawDiffs: false,
+        returnsSecrets: false,
+        returnsCustomerPayloads: false,
+        acceptsCommandFromPrText: false
+      }
+    };
+    const queueRecord = {
+      key: "job-worker",
+      identity,
+      status: "running",
+      attempt: 1,
+      deliveryIds: ["delivery-1"],
+      createdAt: "2026-05-24T18:10:00.000Z",
+      updatedAt: "2026-05-24T18:10:00.000Z"
+    };
+
+    for (const plan of [
+      { ...basePlan, cli: { ...basePlan.cli, command: "bash" } },
+      { ...basePlan, cli: { ...basePlan.cli, args: [...basePlan.cli.args, "--output", "/tmp/report.json"] } },
+      { ...basePlan, checkout: { ...basePlan.checkout, repositoryFullName: "evil/repo" } },
+      {
+        ...basePlan,
+        installationTokenScope: {
+          ...basePlan.installationTokenScope,
+          permissions: { contents: "write" }
+        }
+      }
+    ]) {
+      await assert.rejects(
+        () => runner({ plan, queueRecord }),
+        (error) => {
+          assert.ok(error instanceof HostedReadOnlyCheckoutScanError);
+          assert.equal(error.safeReason, "invalid_worker_plan");
+          assert.equal(error.message.includes("bash"), false);
+          assert.equal(error.message.includes("evil/repo"), false);
+          return true;
+        }
+      );
+    }
+
+    assert.deepEqual(await readdir(checkoutRoot), []);
   } finally {
     await rm(checkoutRoot, { recursive: true, force: true });
   }

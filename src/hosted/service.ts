@@ -368,7 +368,7 @@ export function createHostedServiceRuntime(
           checkRunPublication,
           cleanup
         };
-      } catch {
+      } catch (error) {
         const cleanup = createHostedWorkerCheckoutCleanupPlan({
           identity: queuedRecord.identity,
           jobKey: queuedRecord.key,
@@ -382,6 +382,7 @@ export function createHostedServiceRuntime(
           processed: true,
           status: "failed",
           queueRecord: cloneQueueRecord(queuedRecord),
+          reason: safeScanRunnerFailureReason(error),
           errorClass: "scan_runner_failed",
           workerPlan: acceptedWorkerPlan,
           cleanup
@@ -389,6 +390,20 @@ export function createHostedServiceRuntime(
       }
     }
   };
+}
+
+function safeScanRunnerFailureReason(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "safeReason" in error &&
+    typeof error.safeReason === "string" &&
+    /^[a-z][a-z0-9_]{1,80}$/.test(error.safeReason)
+  ) {
+    return error.safeReason;
+  }
+
+  return "scan_runner_failed";
 }
 
 function rejectWebhookRequest(

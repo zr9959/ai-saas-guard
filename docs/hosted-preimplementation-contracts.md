@@ -79,6 +79,8 @@ Default behavior:
 - derive the GitHub clone URL only from trusted repository identity
 - require a runtime installation token provider and keep the token out of command arguments, returned results, compact reports, and serialized plans
 - pass the installation token to git only through a temporary askpass helper inside the worker checkout
+- remove askpass material before the CLI phase starts
+- reject accepted-looking plans when command, checkout identity, or token scope differs from the trusted worker plan
 - run `git init`, add the trusted remote, fetch the trusted head and base SHAs with bounded depth, and checkout the trusted head SHA
 - run the fixed `ai-saas-guard pr-risk --root <worker-checkout> --base <baseSha> --json` command without shell parsing
 - cap command timeout and output bytes
@@ -174,6 +176,9 @@ Default behavior:
 - create a temporary worker sandbox during the scan runner phase
 - remove worker sandbox contents before returning the worker result
 - create hosted operational release-gate evidence fixtures with the same shape required by the deployment gate
+- turn success and failure cleanup probes into executable release-gate evidence
+- validate log boundaries without returning sampled log lines or forbidden values
+- evaluate the hosted release gate directly from the generated evidence bundle
 
 Privacy boundaries:
 
@@ -181,7 +186,7 @@ Privacy boundaries:
 - result objects do not include raw webhook payloads, untrusted PR text, raw source, raw diffs, secrets, customer payloads, checkout paths, or installation tokens
 - local evidence is labeled as harness evidence and must not be used to claim live hosted exposure
 
-The exported helpers are `createFileBackedHostedStagingHarness` and `createHostedStagingHarnessEvidence`.
+The exported helpers are `createFileBackedHostedStagingHarness`, `createHostedStagingHarnessEvidence`, `createHostedStagingReleaseEvidenceBundle`, `evaluateHostedStagingReleaseEvidenceBundle`, and `validateHostedLogBoundary`.
 
 ## Webhook Event Parser
 

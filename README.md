@@ -187,13 +187,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.30.2` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.30.2` |
+| npm CLI | `ai-saas-guard@0.31.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.31.0` |
 | Outputs | Short summary, terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.30.2`, `v0` |
-| Current release | `0.30.2` adds post-release quality tuning: lower-noise Vercel/Actions checks, focused launch-gate positioning docs, and hosted worker evidence boundaries |
+| Versioned Action tags | `v0.31.0`, `v0` |
+| Current release | `0.31.0` adds executable hosted staging evidence: success/failure cleanup probes, log-boundary validation, stricter read-only checkout worker boundaries, and release-gate evaluation from evidence bundles |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
@@ -304,13 +304,13 @@ The hosted GitHub App deployment planner is documented in [docs/github-app-deplo
 
 The hosted production adapter layer is documented in [docs/hosted-production-adapters.md](docs/hosted-production-adapters.md). It exports `createHostedGitHubAppJwt`, `planHostedGitHubInstallationTokenRequest`, and `planHostedProductionWorkerExecution` from `ai-saas-guard/hosted/production-adapters`. It adds RS256 GitHub App JWT generation, selected-repository installation-token request plans, separate worker and Check Run token scopes, a fixed read-only worker command, bounded timeout and output budgets, compact JSON-only output, and cleanup plans for success, failure, timeout, and cancellation. It still does not expose a public hosted service by itself.
 
-The hosted read-only checkout worker is exported from `ai-saas-guard/hosted/worker`. It creates a temporary checkout from trusted GitHub App identity, uses a runtime installation token only through git askpass, runs the fixed `ai-saas-guard pr-risk --json` command with bounded timeout/output, converts CLI JSON into compact findings, and deletes the checkout after success or failure. It does not return source, diffs, secrets, checkout paths, PR-authored commands, or installation tokens.
+The hosted read-only checkout worker is exported from `ai-saas-guard/hosted/worker`. It creates a temporary checkout from trusted GitHub App identity, uses a runtime installation token only through git askpass, removes askpass material before the CLI phase, rejects mutated command/checkout/token-scope plans, runs the fixed `ai-saas-guard pr-risk --json` command with bounded timeout/output, converts CLI JSON into compact findings, and deletes the checkout after success or failure. It does not return source, diffs, secrets, checkout paths, PR-authored commands, or installation tokens.
 
 The hosted Node/container app skeleton is documented in [docs/hosted-node-container-app.md](docs/hosted-node-container-app.md). It exports `createHostedHttpApp`, `createInMemoryHostedAppPlatform`, `createHostedNodeCheckoutAppPlatform`, and `planHostedNodeContainerDeployment` from `ai-saas-guard/hosted/app`. It adds a safe `/healthz` route, signed `/github/webhook` ingress, one-job worker tick, in-memory provider adapters for tests, a concrete read-only checkout worker composition with visible timeout/output safety budgets, and deployment-plan validation for secret manager, queue, compact report store, worker sandbox, and GitHub Checks publisher references. It still does not deploy or expose a public hosted service by itself.
 
 The hosted staging deployment planner is documented in [docs/hosted-staging-deployment.md](docs/hosted-staging-deployment.md). It exports `planHostedProviderBinding`, `planHostedStagingDeployment`, and `planHostedGitHubAppPromotion` from `ai-saas-guard/hosted/staging`. It composes real provider references, the Node/container deployment plan, hosted operational release-gate evidence, and GitHub App deployment planning so staging and production promotion stay blocked until the required queue, store, worker sandbox, Check Run publisher, logs, metrics, rollback, and incident-response references are present. It still does not call a cloud provider, create a GitHub App, or expose a public hosted service by itself.
 
-The hosted staging harness is documented in [docs/hosted-staging-harness.md](docs/hosted-staging-harness.md). It exports `createFileBackedHostedStagingHarness` and `createHostedStagingHarnessEvidence` from `ai-saas-guard/hosted/staging-harness`. It runs signed webhook replay through the provider-independent hosted runtime with local file-backed queue, compact report, and Check Run adapters, then verifies worker sandbox cleanup. It is a staging rehearsal tool only; it does not call cloud providers, create a GitHub App, publish live Check Runs, or expose a public hosted service.
+The hosted staging harness is documented in [docs/hosted-staging-harness.md](docs/hosted-staging-harness.md). It exports `createFileBackedHostedStagingHarness`, `createHostedStagingHarnessEvidence`, `createHostedStagingReleaseEvidenceBundle`, `evaluateHostedStagingReleaseEvidenceBundle`, and `validateHostedLogBoundary` from `ai-saas-guard/hosted/staging-harness`. It runs signed webhook replay through the provider-independent hosted runtime with local file-backed queue, compact report, and Check Run adapters, verifies worker sandbox cleanup, turns success/failure cleanup probes plus log-boundary samples into release-gate evidence, and evaluates the hosted gate without cloud calls. It is a staging rehearsal tool only; it does not call cloud providers, create a GitHub App, publish live Check Runs, or expose a public hosted service.
 
 The first live hosted ingress is deployed on Cloudflare Workers at `https://ai-saas-guard-hosted.zr9959.workers.dev` and documented in [hosted/cloudflare-worker/README.md](hosted/cloudflare-worker/README.md). It exposes `/healthz`, `/github/app/manifest-callback`, and signed `/github/webhook` intake backed by Cloudflare KV. A private staging GitHub App, `ai-saas-guard-hosted`, is installed on `zr9959/ai-saas-guard` with selected-repository access and the first-slice permission contract. The Worker verifies signatures, stores compact pull request identity records, exchanges a scoped installation token, fetches PR file metadata from GitHub, classifies PR-risk hotspots, and publishes a bounded Check Run summary. Current deployed evidence is tracked in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md): health, signed webhook delivery, compact KV records, cleanup, and Check Run publication pass for the staging smoke. The Cloudflare Worker still does not run a full source checkout scan worker or store raw webhook payloads, PR title/body text, raw diffs, source, secrets, checkout paths, or installation tokens.
 
@@ -360,7 +360,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.30.2` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.31.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
