@@ -72,13 +72,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.26.1` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.26.1` |
+| npm CLI | `ai-saas-guard@0.26.2` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.26.2` |
 | Outputs | Terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.26.1`, `v0` |
-| Current release | `0.26.1` launch-risk expansion and CodeQL cleanup |
+| Versioned Action tags | `v0.26.2`, `v0` |
+| Current release | `0.26.2` README positioning, TypeScript 6, and dependency policy cleanup |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; Worker health and Check Run publisher configuration are live, but end-to-end GitHub App webhook delivery is still blocked pending private App settings verification |
@@ -293,7 +293,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.26.1` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.26.2` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
