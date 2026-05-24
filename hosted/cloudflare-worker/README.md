@@ -19,7 +19,7 @@ This Worker is a real hosted ingress, not yet the complete scan worker. `shouldC
 - `HOSTED_EVENTS`: Cloudflare KV namespace for compact delivery and queued scan records.
 - `WEBHOOK_SECRET`: Worker secret matching the GitHub App webhook secret.
 - `GITHUB_APP_PRIVATE_KEY`: Worker secret for the staging GitHub App private key. It is stored for the next Check Run publishing slice and is not used by this ingress-only Worker yet.
-- `SCANNER_VERSION`: public version string, currently `0.24.0`.
+- `SCANNER_VERSION`: public version string, currently `0.25.0`.
 - `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_INSTALLATION_ID`: public staging identifiers for the private GitHub App installation.
 
 ## Deployment
