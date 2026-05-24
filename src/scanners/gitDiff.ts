@@ -345,20 +345,131 @@ function isRemovedOrWeakenedTest(filePath: string, lines: string[]): boolean {
 }
 
 function hasSilentSuccessChange(filePath: string, changedText: string): boolean {
+  const searchableText = `${filePath}\n${changedText}`;
   const sensitive =
     isTestFile(filePath) ||
     isApiSurface(filePath) ||
     isAuthSurface(filePath) ||
     isBillingSurface(filePath) ||
     isRlsSurface(filePath) ||
-    /\b(stripe|supabase|openai|payment|billing|auth|session|webhook|entitlement)\b/i.test(`${filePath}\n${changedText}`);
+    includesAnyWord(searchableText, ["stripe", "supabase", "openai", "payment", "billing", "auth", "session", "webhook", "entitlement"]);
   if (!sensitive) return false;
+  return hasCatchFakeSuccess(changedText) || hasWeakTestOrBypassMarker(changedText) || hasMockFallbackSuccess(changedText);
+}
+
+function hasCatchFakeSuccess(text: string): boolean {
+  const lower = text.toLowerCase();
+  return hasKeywordWindowMatch(lower, "catch", 360, (window) => {
+    if (!window.includes("{") && !window.includes("=>")) return false;
+    return hasFakeSuccessToken(window);
+  });
+}
+
+function hasWeakTestOrBypassMarker(text: string): boolean {
+  const compact = compactAscii(text.toLowerCase());
+  if (compact.includes("test.skip(") || compact.includes("describe.skip(") || compact.includes("it.skip(")) return true;
+  if (compact.includes("tobetruthy(")) return true;
+
+  const words = normalizeWords(text);
+  if (hasWindowMatch(words, "todo", 40, (window) => includesAnyWord(window, ["test", "auth", "verify"]))) return true;
   return (
-    /catch\s*(?:\([^)]*\))?\s*\{[\s\S]{0,300}(success\s*:\s*true|ok\s*:\s*true|return\s+(?:\{\s*\}|\[\s*\]|null|true)|user\s*:\s*null)/i.test(changedText) ||
-    /\.(?:catch)\s*\([^)]*=>\s*(?:\{\s*\}|\[\s*\]|null|true|\{\s*(?:success|ok)\s*:\s*true)/i.test(changedText) ||
-    /\b(test|describe|it)\.skip\s*\(|TODO\s*:?\s*(test|auth|verify)|toBeTruthy\s*\(\s*\)|temporary\s+bypass|skip\s+(auth|verification|validation|ownership|webhook)|disable\s+(auth|verification|validation)/i.test(changedText) ||
-    /\b(mock|fixture|fixtures|demo|sample|fallback)\b[\s\S]{0,180}\b(success\s*:\s*true|ok\s*:\s*true|subscription|entitlement|auth)\b/i.test(changedText)
+    words.includes("temporary bypass") ||
+    words.includes("skip auth") ||
+    words.includes("skip verification") ||
+    words.includes("skip validation") ||
+    words.includes("skip ownership") ||
+    words.includes("skip webhook") ||
+    words.includes("disable auth") ||
+    words.includes("disable verification") ||
+    words.includes("disable validation")
   );
+}
+
+function hasMockFallbackSuccess(text: string): boolean {
+  const lower = text.toLowerCase();
+  for (const marker of ["mock", "fixture", "fixtures", "demo", "sample", "fallback"]) {
+    if (
+      hasKeywordWindowMatch(lower, marker, 220, (window) => {
+        return hasFakeSuccessToken(window) || includesAnyWord(window, ["subscription", "entitlement", "auth"]);
+      })
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasFakeSuccessToken(text: string): boolean {
+  const compact = compactAscii(text.toLowerCase());
+  return (
+    compact.includes("success:true") ||
+    compact.includes("ok:true") ||
+    compact.includes("return{}") ||
+    compact.includes("return[]") ||
+    compact.includes("returnnull") ||
+    compact.includes("returntrue") ||
+    compact.includes("user:null")
+  );
+}
+
+function hasKeywordWindowMatch(text: string, keyword: string, windowSize: number, predicate: (window: string) => boolean): boolean {
+  let index = text.indexOf(keyword);
+  while (index !== -1) {
+    const before = index === 0 ? "" : text[index - 1] ?? "";
+    const after = text[index + keyword.length] ?? "";
+    if (!isAsciiWordChar(before) && !isAsciiWordChar(after)) {
+      const window = text.slice(index, index + windowSize);
+      if (predicate(window)) return true;
+    }
+    index = text.indexOf(keyword, index + keyword.length);
+  }
+  return false;
+}
+
+function hasWindowMatch(text: string, needle: string, windowSize: number, predicate: (window: string) => boolean): boolean {
+  let index = text.indexOf(needle);
+  while (index !== -1) {
+    const window = text.slice(index, index + windowSize);
+    if (predicate(window)) return true;
+    index = text.indexOf(needle, index + needle.length);
+  }
+  return false;
+}
+
+function isAsciiWordChar(char: string): boolean {
+  if (!char) return false;
+  const code = char.charCodeAt(0);
+  return (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || char === "_";
+}
+
+function includesAnyWord(text: string, words: string[]): boolean {
+  const normalized = normalizeWords(text);
+  return words.some((word) => normalized.includes(` ${word.toLowerCase()} `));
+}
+
+function normalizeWords(text: string): string {
+  let normalized = " ";
+  let lastWasSpace = true;
+  for (const char of text.toLowerCase()) {
+    const code = char.charCodeAt(0);
+    const isWord = (code >= 48 && code <= 57) || (code >= 97 && code <= 122) || char === "_";
+    if (isWord) {
+      normalized += char;
+      lastWasSpace = false;
+    } else if (!lastWasSpace) {
+      normalized += " ";
+      lastWasSpace = true;
+    }
+  }
+  return lastWasSpace ? normalized : `${normalized} `;
+}
+
+function compactAscii(text: string): string {
+  let compact = "";
+  for (const char of text) {
+    if (char > " ") compact += char;
+  }
+  return compact;
 }
 
 function buildReviewChecklist(categories: PrRiskCategory[]): string[] {
