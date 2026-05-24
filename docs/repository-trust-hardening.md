@@ -40,6 +40,8 @@ It covers:
 
 The schedule is weekly with cooldown windows and a small open pull request limit. This keeps update noise low while still surfacing security and maintenance updates.
 
+The npm update policy ignores semver-major `@types/node` bumps while the package supports Node.js 20. This avoids accidentally type-checking against newer Node-only APIs that the published CLI does not promise to support.
+
 Dependabot security updates and vulnerability alerts are enabled in repository settings.
 
 ## CodeQL

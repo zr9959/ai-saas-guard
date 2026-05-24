@@ -1697,6 +1697,8 @@ test("repository enables low-noise Dependabot updates", async () => {
   assert.match(dependabot, /semver-minor-days:\s*7/);
   assert.match(dependabot, /semver-patch-days:\s*3/);
   assert.match(dependabot, /open-pull-requests-limit:\s*5/);
+  assert.match(dependabot, /dependency-name:\s*"@types\/node"/);
+  assert.match(dependabot, /version-update:semver-major/);
   assert.match(dependabot, /labels:\s*\n\s+-\s*"dependencies"/);
   assert.doesNotMatch(dependabot, /registries:|token:|password:|secrets\./i);
 });
