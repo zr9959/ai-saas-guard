@@ -124,6 +124,8 @@ One command returns a launch-readiness report with:
 | Are tools and CI overpowered? | MCP side-effect classes, local policy/receipt templates, GitHub Actions permissions, concurrency, checkout depth, action pinning |
 | Can reviewers trust the PR? | `pr-risk` ranking for auth, billing, RLS, deploy, API, storage, tests, silent-success paths, missing spec context, and large AI diffs |
 
+For a concise comparison with Semgrep, zizmor, OpenSSF Scorecard, Snyk, and GitHub code scanning, see [docs/launch-gate-positioning.md](docs/launch-gate-positioning.md).
+
 ## Quick Start
 
 Run the published CLI without installing it globally:
@@ -185,13 +187,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.30.1` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.30.1` |
+| npm CLI | `ai-saas-guard@0.30.2` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.30.2` |
 | Outputs | Short summary, terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.30.1`, `v0` |
-| Current release | `0.30.1` adds `--summary` for first-run launch triage and sharper fix directions for Stripe, Supabase, silent-success, and Next/Vercel findings |
+| Versioned Action tags | `v0.30.2`, `v0` |
+| Current release | `0.30.2` adds post-release quality tuning: lower-noise Vercel/Actions checks, focused launch-gate positioning docs, and hosted worker evidence boundaries |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
@@ -358,7 +360,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.30.1` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.30.2` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard

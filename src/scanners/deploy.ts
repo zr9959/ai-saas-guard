@@ -230,11 +230,19 @@ function isImportantServerEnv(name: string): boolean {
 }
 
 function hasSecurityHeaders(files: readonly { path: string; content: string }[]): boolean {
-  const combined = files
+  const nextOrMiddleware = files
     .filter((file) => /(^|\/)(next\.config\.[cm]?[jt]s|middleware\.[cm]?[jt]s)$/i.test(file.path))
     .map((file) => file.content)
     .join("\n");
-  return /\bheaders\s*\(/i.test(combined) && /(X-Frame-Options|Content-Security-Policy|X-Content-Type-Options|Referrer-Policy)/i.test(combined);
+  if (/\bheaders\s*\(/i.test(nextOrMiddleware) && hasBrowserSecurityHeaderNames(nextOrMiddleware)) return true;
+
+  return files.some((file) => {
+    return /(^|\/)vercel\.json$/i.test(file.path) && /"headers"\s*:/i.test(file.content) && hasBrowserSecurityHeaderNames(file.content);
+  });
+}
+
+function hasBrowserSecurityHeaderNames(content: string): boolean {
+  return /(X-Frame-Options|Content-Security-Policy|X-Content-Type-Options|Referrer-Policy)/i.test(content);
 }
 
 function usesUnboundedNextImage(path: string, content: string, nextConfigContent?: string): boolean {
