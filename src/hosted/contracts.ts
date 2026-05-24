@@ -2225,7 +2225,7 @@ function getHostedCheckRunFiles(report: CompactHostedReport): string[] {
 }
 
 function escapeMarkdownTableCell(value: string): string {
-  return value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+  return value.replaceAll("\\", "\\\\").replaceAll("|", "\\|").replaceAll("\r", " ").replaceAll("\n", " ");
 }
 
 function capitalize(value: string): string {

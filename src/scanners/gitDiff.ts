@@ -202,11 +202,11 @@ function parseDiffFiles(diffText: string): PrRiskFile[] {
   let current: (PrRiskFile & { lines: string[] }) | undefined;
 
   for (const line of diffText.split(/\r?\n/)) {
-    const fileMatch = /^diff --git a\/(.+?) b\/(.+)$/.exec(line);
-    if (fileMatch) {
+    const filePath = parseDiffHeaderPath(line);
+    if (filePath) {
       if (current) files.push(finalizeDiffFile(current));
       current = {
-        path: fileMatch[2],
+        path: filePath,
         score: 0,
         categories: [],
         added: 0,
@@ -224,6 +224,18 @@ function parseDiffFiles(diffText: string): PrRiskFile[] {
 
   if (current) files.push(finalizeDiffFile(current));
   return files;
+}
+
+function parseDiffHeaderPath(line: string): string | undefined {
+  const prefix = "diff --git a/";
+  if (!line.startsWith(prefix)) return undefined;
+
+  const separator = " b/";
+  const separatorIndex = line.lastIndexOf(separator);
+  if (separatorIndex === -1) return undefined;
+
+  const path = line.slice(separatorIndex + separator.length);
+  return path || undefined;
 }
 
 function finalizeDiffFile(file: PrRiskFile & { lines: string[] }): PrRiskFile {

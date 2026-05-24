@@ -65,7 +65,7 @@ AI 能很快把一个 SaaS 从想法做成可运行的产品。真正难的是�
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.26.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.26.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.26.1`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.26.1`。
 
 | 模块 | 状态 |
 | --- | --- |
@@ -76,8 +76,8 @@ CLI 已发布到 npm：`ai-saas-guard@0.26.0`。GitHub Action 支持 `v0` 浮动
 | Markdown PR summary | 已可用 |
 | GitHub Action | 已可用 |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖和 fail threshold |
-| 当前版本 | `0.26.0` launch-risk expansion |
-| Action 标签 | `v0.26.0`、`v0` |
+| 当前版本 | `0.26.1` launch-risk expansion |
+| Action 标签 | `v0.26.1`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | 运行时加固 | 单文件和总扫描文本预算、markdown evidence 转义、1 MiB hosted webhook payload 上限、更严格的 hosted deployment 阻断 |

@@ -151,7 +151,7 @@ test("hosted node container deployment plan maps real provider adapters without 
   const { planHostedNodeContainerDeployment } = await loadHostedApp();
   const plan = planHostedNodeContainerDeployment({
     environment: "production",
-    publicBaseUrl: "https://guard.example.test",
+    publicBaseUrl: "https://guard.example.test////",
     containerImageDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     secretRefs: {
       githubAppId: "secret:AI_SAAS_GUARD_APP_ID",

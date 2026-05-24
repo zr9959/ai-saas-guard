@@ -73,7 +73,7 @@ test("hosted installation token request plans scoped GitHub permissions without 
     repositoryId: 456,
     purpose: "first_slice",
     requestedAt: "2026-05-24T13:00:00.000Z",
-    apiBaseUrl: "https://api.github.com",
+    apiBaseUrl: "https://api.github.com////",
     appJwt: "gh-app-jwt-should-not-be-serialized",
     rawPrivateKey: "-----BEGIN PRIVATE KEY-----should-not-leak",
     rawInstallationToken: "ghs_should-not-leak"
