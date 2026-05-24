@@ -39,7 +39,7 @@ test("hosted service runtime accepts signed webhooks and runs one check-run-only
   const payload = pullRequestPayload();
   const runtime = createHostedServiceRuntime({
     signingKey,
-    scannerVersion: "0.19.0",
+    scannerVersion: "0.20.0",
     selectedRepositoryIdsByInstallation: { 123: [456] },
     now: () => "2026-05-24T12:00:00.000Z",
     queue: adapters.queue,
@@ -121,7 +121,7 @@ test("hosted service runtime rejects invalid webhooks before queue or worker sid
   const payload = pullRequestPayload();
   const runtime = createHostedServiceRuntime({
     signingKey,
-    scannerVersion: "0.19.0",
+    scannerVersion: "0.20.0",
     selectedRepositoryIdsByInstallation: { 123: [456] },
     queue: adapters.queue,
     compactReportStore: adapters.compactReportStore,
@@ -156,7 +156,7 @@ test("hosted service runtime records cleanup-safe worker failures", async () => 
   const payload = pullRequestPayload();
   const runtime = createHostedServiceRuntime({
     signingKey,
-    scannerVersion: "0.19.0",
+    scannerVersion: "0.20.0",
     selectedRepositoryIdsByInstallation: { 123: [456] },
     now: () => "2026-05-24T12:05:00.000Z",
     queue: adapters.queue,

@@ -61,6 +61,8 @@ The deployment plan never returns:
 - client secret values
 - customer payloads
 
+The production adapter layer in [hosted-production-adapters.md](hosted-production-adapters.md) extends this boundary after App creation: it generates short-lived RS256 GitHub App JWTs, plans selected-repository installation-token requests, separates worker checkout and Check Run token scopes, and keeps bearer credentials out of serializable request plans.
+
 It returns only safe manifest fields, blocker IDs, environment metadata, container digest, secret reference names, and deployment steps.
 
 ## Deployment Steps
@@ -76,4 +78,4 @@ When `readyToCreateGitHubApp` is true:
 
 The repository can now produce and validate the deployment plan, but it cannot honestly create a live GitHub App until a public hosted webhook URL, container image digest, and secret manager references exist.
 
-The next deployment stage should wire the hosted service runtime to a real platform queue, compact report store, GitHub installation authentication, and Checks API publisher.
+The next deployment stage should wire the hosted service runtime and production adapters to a real platform queue, compact report store, GitHub installation authentication, worker isolation layer, and Checks API publisher.

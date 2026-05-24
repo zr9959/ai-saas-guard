@@ -2,7 +2,7 @@
 
 This document collects pure hosted contracts that can be tested before any hosted GitHub App service is deployed. These contracts keep the hosted design inspectable, local-first, and implementation-ready without adding network calls, credentials, queues, workers, or GitHub API writes. They are no network calls contracts by design.
 
-The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`.
+The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`. The production adapter plans live in `src/hosted/production-adapters.ts` and are exported from `ai-saas-guard/hosted/production-adapters`.
 
 ## Pull Request Webhook Intake Planner
 
@@ -69,6 +69,29 @@ Trust boundaries:
 - do not return checkout paths, raw source, raw diffs, secret values, customer payloads, private URLs, or installation token values
 
 The exported helper is `planHostedWorkerReadOnlyScan`. It is intended to be the worker-provider-independent contract for the first real hosted worker implementation.
+
+## Production Adapter Plans
+
+The production adapter layer turns the pure hosted contracts into a safer shape for real platform wiring. It is still provider-independent: it does not start a worker, call GitHub, request live installation tokens, write Check Runs, or upload source code.
+
+Default behavior:
+
+- create short-lived GitHub App JWTs with RS256 signing, 60-second issued-at clock skew, and a 10-minute maximum expiration
+- plan installation-token requests for a selected repository ID only
+- use separate token scopes for worker checkout and Check Run publication
+- keep bearer credentials outside serializable request plans by using `runtime_bearer_app_jwt`
+- fix the worker command to `ai-saas-guard pr-risk --root <worker-checkout> --base <trusted-base-sha> --json`
+- cap worker timeout and output budgets
+- require compact JSON-only worker output
+- precompute cleanup plans for success, failure, timeout, and cancellation
+
+Privacy boundaries:
+
+- do not persist signing-key material, App JWTs, installation tokens, temporary checkout roots, checkout paths, raw source, raw diffs, secrets, customer payloads, or low-level worker errors
+- do not accept repository identity, token scope, or worker command from PR-authored text
+- keep local CLI usage independent from the hosted service
+
+The exported helpers are `createHostedGitHubAppJwt`, `planHostedGitHubInstallationTokenRequest`, and `planHostedProductionWorkerExecution`.
 
 ## Webhook Event Parser
 
