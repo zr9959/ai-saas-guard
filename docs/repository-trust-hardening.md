@@ -125,6 +125,6 @@ The repository also includes `.bestpractices.json` with conservative proposed an
 Current badge evidence:
 
 - `CONTRIBUTING.md` documents the pull request process, test expectations, rule-design requirements, release gate evidence, and public-safety constraints.
-- `README.md` and `README.zh-CN.md` document the problem, install path, CLI commands, privacy model, GitHub Action use, hosted boundaries, and trust-hardening controls.
+- `README.md` and `docs/README.zh-CN.md` document the problem, install path, CLI commands, privacy model, GitHub Action use, hosted boundaries, and trust-hardening controls.
 - `.bestpractices.json` records only repository-backed OpenSSF Best Practices proposed answers; unknown or future claims should stay out until they can be supported by public evidence.
 - `dynamic_analysis_enable_assertions` is intentionally still marked unmet because the production CLI does not yet have broad runtime assertion coverage beyond tests, property tests, and fuzzing.

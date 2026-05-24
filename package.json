@@ -1,6 +1,6 @@
 {
   "name": "ai-saas-guard",
-  "version": "0.27.1",
+  "version": "0.27.2",
   "description": "Repo-local launch-readiness scanner for AI-built SaaS apps.",
   "readmeFilename": "README.md",
   "type": "module",
@@ -81,8 +81,7 @@
     "dist",
     "examples",
     "hosted",
-    "README.md",
-    "README.zh-CN.md"
+    "README.md"
   ],
   "license": "MIT",
   "devDependencies": {

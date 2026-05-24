@@ -160,7 +160,7 @@ OpenSSF Best Practices:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current published release line: `v0.27.1`
+- Current published release line: `v0.27.2`
 - Next source candidate: none
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
@@ -173,7 +173,7 @@ Allowed in this public repository:
 - CLI source code
 - tests and intentionally vulnerable fixtures
 - public docs
-- English README and Chinese README; when `README.md` changes, review and update `README.zh-CN.md` in the same change
+- English README and Chinese README; when `README.md` changes, review and update `docs/README.zh-CN.md` in the same change
 - GitHub Action wrapper
 - examples that contain only inert fake data
 - release-quality process docs

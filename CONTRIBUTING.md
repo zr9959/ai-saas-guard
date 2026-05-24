@@ -7,7 +7,7 @@
 1. Open an issue or comment on an existing issue before large feature work.
 2. Keep pull requests focused. Separate scanner behavior, docs, workflow changes, and release work when practical.
 3. Include tests for behavior changes. New scanner rules need a vulnerable fixture, a safe fixture, and assertions for both.
-4. Update documentation when behavior, commands, outputs, or release expectations change. If `README.md` changes, review and update `README.zh-CN.md` in the same pull request.
+4. Update documentation when behavior, commands, outputs, or release expectations change. If `README.md` changes, review and update `docs/README.zh-CN.md` in the same pull request.
 5. Fill out the pull request template with release gate evidence and known limitations.
 
 ## Local Development
