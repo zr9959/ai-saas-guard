@@ -69,7 +69,7 @@ CLI 已发布到 npm：`ai-saas-guard@0.24.0`。GitHub Action 支持 `v0` 浮动
 | 当前版本 | `0.24.0` |
 | Action 标签 | `v0.24.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
-| 仓库可信度加固 | branch protection、Dependabot、CodeQL、private vulnerability reporting、secret scanning 和 push protection |
+| 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、private vulnerability reporting、secret scanning 和 push protection |
 | 运行时加固 | 单文件和总扫描文本预算、markdown evidence 转义、更严格的 hosted deployment 阻断 |
 | Hosted production adapters | GitHub App JWT 签名、installation-token 请求规划、有边界的 worker 执行和终态 cleanup 规划 |
 | Hosted app skeleton | Node/container HTTP ingress、health route、worker tick、in-memory provider adapters 和 deployment plan 校验 |
@@ -137,7 +137,9 @@ node dist/cli.js scan --root /path/to/your-saas
 
 ## 仓库可信度加固
 
-公开仓库的维护和发布控制见 [docs/repository-trust-hardening.md](docs/repository-trust-hardening.md)。当前已经配置 branch protection、required CI checks、Dependabot npm/GitHub Actions 更新、CodeQL SAST、private vulnerability reporting、secret scanning 和 push protection。
+公开仓库的维护和发布控制见 [docs/repository-trust-hardening.md](docs/repository-trust-hardening.md)。当前已经配置严格 branch protection、required CI checks、Dependabot npm/GitHub Actions 更新、CodeQL SAST、fast-check fuzz/property tests、private vulnerability reporting、secret scanning 和 push protection。
+
+当前 Scorecard 提升路线优先做真实控制，不做表面刷分：更严格的 review gate、可被检测到的 fuzzing、以及 OpenSSF Best Practices Badge 流程。仓库年龄、贡献者多样性、已 review 的 PR 历史这些分数只能随着真实维护逐步提升。
 
 ## PR 风险分流
 

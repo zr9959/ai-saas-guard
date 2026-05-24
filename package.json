@@ -66,6 +66,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test tests/*.test.mjs",
+    "test:fuzz": "npm run build && node --test tests/fuzz.test.mjs",
     "check": "npm run test"
   },
   "engines": {
@@ -82,6 +83,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20",
+    "fast-check": "^4.8.0",
     "typescript": "^5"
   }
 }

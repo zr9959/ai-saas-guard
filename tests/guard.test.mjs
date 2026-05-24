@@ -1459,6 +1459,35 @@ test("repository runs CodeQL SAST with least privilege", async () => {
   assert.doesNotMatch(workflow, /secrets\.|id-token:\s*write|contents:\s*write/i);
 });
 
+test("repository exposes Scorecard-detectable fuzzing", async () => {
+  const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+  const workflow = await readFile(resolve(packageRoot, ".github", "workflows", "ci.yml"), "utf8");
+  const fuzzTest = await readFile(resolve(packageRoot, "tests", "fuzz.test.mjs"), "utf8");
+  const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
+
+  assert.equal(packageJson.devDependencies["fast-check"], "^4.8.0");
+  assert.equal(packageJson.scripts["test:fuzz"], "npm run build && node --test tests/fuzz.test.mjs");
+  assert.match(workflow, /\n\s+fuzz:/);
+  assert.match(workflow, /npm run test:fuzz/);
+  assert.match(fuzzTest, /from "fast-check"/);
+  assert.match(fuzzTest, /fc\.assert/);
+  assert.match(fuzzTest, /fc\.(?:property|asyncProperty)/);
+  assert.match(governance, /fast-check/i);
+  assert.match(governance, /fuzz/i);
+});
+
+test("repository documents strict Scorecard branch protection controls", async () => {
+  const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
+
+  assert.match(governance, /administrator enforcement/i);
+  assert.match(governance, /stale review dismissal/i);
+  assert.match(governance, /CODEOWNERS review/i);
+  assert.match(governance, /last-push approval/i);
+  assert.match(governance, /two approving reviews/i);
+  assert.match(governance, /fuzz/);
+  assert.match(governance, /OpenSSF Best Practices Badge/i);
+});
+
 test("npm publish workflow uses token-free trusted publishing", async () => {
   const workflow = await readFile(resolve(packageRoot, ".github/workflows/npm-publish.yml"), "utf8");
   const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));

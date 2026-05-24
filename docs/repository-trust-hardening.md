@@ -10,7 +10,11 @@ The `main` branch uses branch protection with:
 
 - required status checks before merge
 - strict status check freshness
-- required pull request review for non-admin merges
+- administrator enforcement
+- stale review dismissal
+- CODEOWNERS review
+- last-push approval
+- two approving reviews
 - linear history
 - force pushes disabled
 - branch deletion disabled
@@ -18,10 +22,12 @@ The `main` branch uses branch protection with:
 Required status checks:
 
 - `test`
+- `fuzz`
 - `actionlint`
 - `zizmor`
+- `codeql`
 
-Maintainer admin bypass is not enforced so emergency release repair remains possible, but normal contribution flow should use pull requests and CI.
+Maintainer admin bypass is enforced for normal branch updates. Repository administrators can still update protection settings through GitHub admin APIs if emergency recovery is needed.
 
 ## Dependency Updates
 
@@ -52,6 +58,18 @@ The workflow:
 
 CodeQL is an additional SAST signal. It does not replace `ai-saas-guard`'s release gate, local tests, workflow checks, self-scan, dependency audit, package inspection, or human review.
 
+## Fuzzing
+
+The repository runs Scorecard-detectable fuzzing with `fast-check`.
+
+The fuzz tests cover:
+
+- markdown report escaping for attacker-controlled evidence
+- SARIF serialization for arbitrary finding text
+- generated secret redaction paths
+
+The dedicated `fuzz` CI job runs `npm run test:fuzz`. The regular `test` job also includes `tests/fuzz.test.mjs` because it runs the full Node test suite.
+
 ## Vulnerability Intake
 
 The repository has:
@@ -73,5 +91,10 @@ Every public release should keep these controls intact. If a release changes wor
 - `zizmor`
 - self-scan JSON and SARIF
 - dependency audit
+- fuzz/property tests
 - npm package inspection
 - packaged CLI smoke test
+
+## OpenSSF Best Practices Badge
+
+The OpenSSF Best Practices Badge is tracked as a separate public trust signal. The badge must be earned through the OpenSSF Best Practices web application and API; it cannot be truthfully completed by repository files alone.

@@ -76,7 +76,7 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Versioned Action tags | `v0.24.0`, `v0` |
 | npm package | `ai-saas-guard@0.24.0` |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
-| Repository trust hardening | Branch protection, Dependabot, CodeQL, private vulnerability reporting, secret scanning, and push protection |
+| Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, private vulnerability reporting, secret scanning, and push protection |
 | Runtime hardening | Per-file and total text scan caps, escaped markdown evidence, stricter hosted deployment blockers |
 | Hosted production adapters | GitHub App JWT signing, installation-token request planning, bounded worker execution, and terminal-state cleanup planning |
 | Hosted app skeleton | Node/container HTTP ingress, health route, worker tick, in-memory provider adapters, and deployment plan validation |
@@ -204,7 +204,9 @@ Use [docs/launch-readiness-checklist.md](docs/launch-readiness-checklist.md) whe
 
 ## Repository Trust Hardening
 
-See [docs/repository-trust-hardening.md](docs/repository-trust-hardening.md) for the public repository controls behind this release line: branch protection, required CI checks, Dependabot for npm and GitHub Actions, CodeQL SAST, private vulnerability reporting, secret scanning, and push protection.
+See [docs/repository-trust-hardening.md](docs/repository-trust-hardening.md) for the public repository controls behind this release line: strict branch protection, required CI checks, Dependabot for npm and GitHub Actions, CodeQL SAST, fast-check fuzz/property tests, private vulnerability reporting, secret scanning, and push protection.
+
+The current Scorecard improvement track focuses on real controls, not cosmetic score gaming: stricter review gates, detectable fuzzing, and the OpenSSF Best Practices Badge process. Some Scorecard items, such as repository age, contributor diversity, and reviewed PR history, improve only through time and normal public maintenance.
 
 ## Stripe Webhook Replay
 
