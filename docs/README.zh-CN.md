@@ -169,18 +169,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.31.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.31.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.32.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.32.0`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.31.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.31.0` |
+| npm CLI | `ai-saas-guard@0.32.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.32.0` |
 | 输出格式 | 短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.31.0` 增加可执行 hosted staging evidence：成功/失败 cleanup probes、log-boundary validation、更严格的 read-only checkout worker 边界，以及从 evidence bundle 直接评估 release gate |
-| Action 标签 | `v0.31.0`、`v0` |
+| 当前版本 | `0.32.0` 增加 deployed worker staging evidence：public HTTPS health validation、deployed 成功/失败 cleanup probes、log-boundary checks，以及针对 Node/container read-only checkout worker candidate 的 release-gate evaluation |
+| Action 标签 | `v0.32.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
@@ -349,6 +349,7 @@ GitHub Marketplace wrapper 决策见 [docs/github-marketplace-wrapper-decision.m
 - [docs/hosted-node-container-app.md](hosted-node-container-app.md)
 - [docs/hosted-staging-deployment.md](hosted-staging-deployment.md)
 - [docs/hosted-staging-harness.md](hosted-staging-harness.md)
+- [docs/hosted-deployed-worker-staging.md](hosted-deployed-worker-staging.md)
 - [docs/hosted-operational-release-gate.md](hosted-operational-release-gate.md)
 - [docs/hosted-uninstall-data-deletion.md](hosted-uninstall-data-deletion.md)
 - [docs/hosted-pricing-packaging.md](hosted-pricing-packaging.md)
@@ -366,6 +367,7 @@ GitHub Marketplace wrapper 决策见 [docs/github-marketplace-wrapper-decision.m
 - Hosted Node/container app skeleton：`ai-saas-guard/hosted/app` 导出 `createHostedHttpApp`、`createInMemoryHostedAppPlatform`、`createHostedNodeCheckoutAppPlatform` 和 `planHostedNodeContainerDeployment`，提供安全 `/healthz`、签名 `/github/webhook` ingress、单 job worker tick、测试用 in-memory provider adapters、真实 read-only checkout worker 组合入口、可见 timeout/output 安全预算，以及 secret manager、queue、compact report store、worker sandbox、GitHub Checks publisher 的部署引用校验；它本身仍然不部署或暴露公开 hosted 服务
 - Hosted staging deployment planner：`ai-saas-guard/hosted/staging` 导出 `planHostedProviderBinding`、`planHostedStagingDeployment` 和 `planHostedGitHubAppPromotion`，把真实 provider 引用、Node/container deployment plan、hosted operational release-gate evidence 和 GitHub App deployment planning 组合起来；缺少 queue、store、worker sandbox、Check Run publisher、logs、metrics、rollback 或 incident-response 引用时，会阻止 staging exposure 和 production promotion；它本身仍然不会调用云平台、创建 GitHub App 或暴露公开 hosted 服务
 - Hosted staging harness：`ai-saas-guard/hosted/staging-harness` 导出 `createFileBackedHostedStagingHarness`、`createHostedStagingHarnessEvidence`、`createHostedStagingReleaseEvidenceBundle`、`evaluateHostedStagingReleaseEvidenceBundle` 和 `validateHostedLogBoundary`，可以在本地用 file-backed queue、compact report、Check Run request 和 worker sandbox 跑通签名 webhook replay、worker tick 和 cleanup 校验，把 success/failure cleanup probes 与 log-boundary samples 转成 release-gate evidence，并直接执行 hosted release gate 判断；它只是 staging 演练工具，不会调用云平台、创建 GitHub App、写真实 Check Run 或暴露公开 hosted 服务
+- Deployed worker staging evidence：`ai-saas-guard/hosted/deployed-staging` 导出 `createHostedDeployedWorkerStagingEvidenceBundle` 和 `evaluateHostedDeployedWorkerStagingReleaseGate`，把 public HTTPS health、signed webhook replay、deployed worker cleanup、log-boundary samples 以及外部 CI/scan/rollback evidence 转成 hosted release gate evidence；它不会部署云资源，也不会宣称 production hosted exposure
 - Cloudflare hosted ingress：`hosted/cloudflare-worker` 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`，提供 `/healthz`、`/github/app/manifest-callback` 和签名 `/github/webhook` intake；Worker 已具备 compact pull request identity、file/category risk signal 和 Check Run metadata 路径；staging GitHub App ID 为 `3834787`，installation ID 为 `135085075`；真实 GitHub App webhook delivery 和 Check Run smoke 已通过；完整 source checkout worker deployment、monitoring、rollback 和 incident-response evidence 仍需要通过 hosted operational release gate
 - webhook event parser
 - check-run summary renderer

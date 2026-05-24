@@ -31,6 +31,8 @@ The hosted release gate still requires fresh deployed evidence for:
 
 Source-candidate executable evidence now exists in `ai-saas-guard/hosted/staging-harness`: `createHostedStagingReleaseEvidenceBundle` combines signed webhook replay, success and failure cleanup probes, safe worker failure reasons, and `validateHostedLogBoundary` samples into hosted release-gate evidence, then `evaluateHostedStagingReleaseEvidenceBundle` runs the same gate evaluator used by deployment planning. This improves local release readiness, but it is still not production hosted exposure and does not replace deployed worker, logging, metrics, rollback, incident-response, dependency, or container evidence.
 
+Deployed worker staging evidence now has its own helper in `ai-saas-guard/hosted/deployed-staging`: `createHostedDeployedWorkerStagingEvidenceBundle` accepts public HTTPS health, deployed webhook replay, worker cleanup, log-boundary, and external CI/scan/rollback evidence summaries, then `evaluateHostedDeployedWorkerStagingReleaseGate` evaluates the same hosted release gate. Use [hosted-deployed-worker-staging.md](hosted-deployed-worker-staging.md) before exposing a Node/container read-only checkout worker beyond staging.
+
 ## Read-Only Checkout Worker Evidence Checklist
 
 Before any hosted source checkout worker is exposed beyond staging, attach fresh evidence for each row below. The current Cloudflare ingress evidence above does not satisfy these rows because it publishes compact PR-risk signals without running a full source checkout scan worker.
