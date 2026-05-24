@@ -6,6 +6,8 @@ It does not announce a public hosted service. The module provides provider-indep
 
 The Node/container app skeleton in [hosted-node-container-app.md](hosted-node-container-app.md) composes this layer with HTTP ingress, worker tick, and provider adapter references.
 
+The staging deployment planner in [hosted-staging-deployment.md](hosted-staging-deployment.md) composes this layer with provider binding, release-gate evidence, and GitHub App promotion blockers.
+
 ## What Exists
 
 The package exports `ai-saas-guard/hosted/production-adapters` with:
@@ -104,6 +106,7 @@ The repository can now plan the production auth and worker boundary for the host
 - managed durable queue
 - compact report storage
 - real GitHub Checks API publisher
+- hosted staging deployment plan with provider references for logs, metrics, rollback, and incident response
 - monitoring and alerting
 - rollback and incident-response evidence
 - hosted operational release gate evidence from the deployed artifact

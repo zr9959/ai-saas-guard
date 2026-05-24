@@ -2,7 +2,7 @@
 
 This document collects pure hosted contracts that can be tested before any hosted GitHub App service is deployed. These contracts keep the hosted design inspectable, local-first, and implementation-ready without adding network calls, credentials, queues, workers, or GitHub API writes. They are no network calls contracts by design.
 
-The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`. The production adapter plans live in `src/hosted/production-adapters.ts` and are exported from `ai-saas-guard/hosted/production-adapters`. The Node/container app skeleton lives in `src/hosted/app.ts` and is exported from `ai-saas-guard/hosted/app`.
+The helpers live in `src/hosted/contracts.ts` and are exported from `ai-saas-guard/hosted/contracts`. The production adapter plans live in `src/hosted/production-adapters.ts` and are exported from `ai-saas-guard/hosted/production-adapters`. The Node/container app skeleton lives in `src/hosted/app.ts` and is exported from `ai-saas-guard/hosted/app`. The staging deployment planner lives in `src/hosted/staging.ts` and is exported from `ai-saas-guard/hosted/staging`.
 
 ## Pull Request Webhook Intake Planner
 
@@ -116,6 +116,27 @@ Privacy boundaries:
 - keep local CLI usage independent from the hosted service
 
 The exported helpers are `createHostedHttpApp`, `createInMemoryHostedAppPlatform`, and `planHostedNodeContainerDeployment`.
+
+## Staging Deployment Planner
+
+The staging deployment planner composes the provider-facing hosted pieces into one safe pre-production gate. It is still a pure planner only: it does not call a cloud provider, create a GitHub App, fetch repositories, write Check Runs, or expose a public service.
+
+Default behavior:
+
+- validate real provider references for secret manager, durable queue, compact report store, read-only worker sandbox, GitHub Checks publisher, redacted logs, metrics, rollback, and incident response
+- compose the Node/container deployment planner with the hosted operational release gate
+- compose the GitHub App deployment planner with the generated webhook URL
+- require fresh hosted release-gate evidence before staging exposure
+- require staging deployment, Check Run publication, and rollback verification before production GitHub App promotion
+- keep provider references prefix-based and provider-independent
+
+Privacy boundaries:
+
+- do not return signing-key material, webhook signing values, installation tokens, raw webhook payloads, untrusted PR text, raw source, raw diffs, secret values, customer payloads, or private URLs
+- block raw secret, raw source, raw diff, and customer payload inputs instead of serializing them
+- keep local CLI usage independent from the hosted service
+
+The exported helpers are `planHostedProviderBinding`, `planHostedStagingDeployment`, and `planHostedGitHubAppPromotion`.
 
 ## Webhook Event Parser
 

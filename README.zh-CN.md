@@ -55,7 +55,7 @@ AI 能很快把一个 SaaS 从想法做成可运行的产品。真正难的是�
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.21.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.21.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.22.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.22.0`。
 
 | 模块 | 状态 |
 | --- | --- |
@@ -66,12 +66,13 @@ CLI 已发布到 npm：`ai-saas-guard@0.21.0`。GitHub Action 支持 `v0` 浮动
 | Markdown PR summary | 已可用 |
 | GitHub Action | 已可用 |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖和 fail threshold |
-| 当前版本 | `0.21.0` |
-| Action 标签 | `v0.21.0`、`v0` |
+| 当前版本 | `0.22.0` |
+| Action 标签 | `v0.22.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 运行时加固 | 单文件和总扫描文本预算、markdown evidence 转义、更严格的 hosted deployment 阻断 |
 | Hosted production adapters | GitHub App JWT 签名、installation-token 请求规划、有边界的 worker 执行和终态 cleanup 规划 |
 | Hosted app skeleton | Node/container HTTP ingress、health route、worker tick、in-memory provider adapters 和 deployment plan 校验 |
+| Hosted staging deployment planner | provider binding、staging release-gate evidence、Node/container deployment 组合和 GitHub App promotion gating |
 
 ## 快速开始
 
@@ -253,6 +254,7 @@ jobs:
 - [docs/hosted-service-runtime.md](docs/hosted-service-runtime.md)
 - [docs/hosted-production-adapters.md](docs/hosted-production-adapters.md)
 - [docs/hosted-node-container-app.md](docs/hosted-node-container-app.md)
+- [docs/hosted-staging-deployment.md](docs/hosted-staging-deployment.md)
 - [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md)
 - [docs/hosted-uninstall-data-deletion.md](docs/hosted-uninstall-data-deletion.md)
 - [docs/hosted-pricing-packaging.md](docs/hosted-pricing-packaging.md)
@@ -267,6 +269,7 @@ jobs:
 - GitHub App deployment planner：`ai-saas-guard/hosted/github-app` 导出 `planHostedGitHubAppDeployment`，生成 first slice 最小权限 manifest，并在 release gate、公开 HTTPS URL、container digest、secret 引用、原始 secret 输入、permission 或 event 不安全时阻止创建
 - Hosted production adapter layer：`ai-saas-guard/hosted/production-adapters` 导出 `createHostedGitHubAppJwt`、`planHostedGitHubInstallationTokenRequest` 和 `planHostedProductionWorkerExecution`，用于 GitHub App RS256 JWT、selected-repository installation token 请求规划、worker/check-run 分离 token scope、固定只读 worker 命令、timeout/output 预算、compact JSON-only 输出，以及 success/failure/timeout/cancellation 的 cleanup 规划；它本身仍然不部署公开 hosted 服务
 - Hosted Node/container app skeleton：`ai-saas-guard/hosted/app` 导出 `createHostedHttpApp`、`createInMemoryHostedAppPlatform` 和 `planHostedNodeContainerDeployment`，提供安全 `/healthz`、签名 `/github/webhook` ingress、单 job worker tick、测试用 in-memory provider adapters，以及 secret manager、queue、compact report store、worker sandbox、GitHub Checks publisher 的部署引用校验；它本身仍然不部署或暴露公开 hosted 服务
+- Hosted staging deployment planner：`ai-saas-guard/hosted/staging` 导出 `planHostedProviderBinding`、`planHostedStagingDeployment` 和 `planHostedGitHubAppPromotion`，把真实 provider 引用、Node/container deployment plan、hosted operational release-gate evidence 和 GitHub App deployment planning 组合起来；缺少 queue、store、worker sandbox、Check Run publisher、logs、metrics、rollback 或 incident-response 引用时，会阻止 staging exposure 和 production promotion；它本身仍然不会调用云平台、创建 GitHub App 或暴露公开 hosted 服务
 - webhook event parser
 - check-run summary renderer
 - Check Run publication planner：要求 repository `checks: write`，只从 compact report 生成有长度上限的 Check Run payload，包含 review categories、优先 review 文件、verification steps 和本地 CLI 复现命令；MVP 不发 PR comment

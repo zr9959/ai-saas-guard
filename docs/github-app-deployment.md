@@ -65,6 +65,8 @@ The production adapter layer in [hosted-production-adapters.md](hosted-productio
 
 It returns only safe manifest fields, blocker IDs, environment metadata, container digest, secret reference names, and deployment steps.
 
+The staging deployment planner in [hosted-staging-deployment.md](hosted-staging-deployment.md) composes this GitHub App deployment planner with real provider references and hosted operational release-gate evidence. Production GitHub App promotion remains blocked until staging deployment, Check Run publication, and rollback verification are recorded.
+
 ## Deployment Steps
 
 When `readyToCreateGitHubApp` is true:
@@ -78,4 +80,4 @@ When `readyToCreateGitHubApp` is true:
 
 The repository can now produce and validate the deployment plan, but it cannot honestly create a live GitHub App until a public hosted webhook URL, container image digest, and secret manager references exist.
 
-The next deployment stage should wire the hosted service runtime, production adapters, and [Node/container app skeleton](hosted-node-container-app.md) to a real platform queue, compact report store, GitHub installation authentication, worker isolation layer, and Checks API publisher.
+The next deployment stage should wire the hosted service runtime, production adapters, [Node/container app skeleton](hosted-node-container-app.md), and [staging deployment planner](hosted-staging-deployment.md) to a real platform queue, compact report store, GitHub installation authentication, worker isolation layer, Checks API publisher, logs, metrics, rollback, and incident-response evidence.

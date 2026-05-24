@@ -61,10 +61,11 @@ Implemented surfaces:
 - hosted GitHub App deployment planner document and least-privilege manifest planner for required permissions, events, public HTTPS URLs, container digest, secret references, raw secret input blockers, and release-gate checks
 - hosted production adapter layer document and helpers for RS256 GitHub App JWT creation, selected-repository installation-token request planning, separate worker/check-run token scopes, fixed read-only worker execution, timeout/output budgets, and cleanup planning for success, failure, timeout, and cancellation
 - hosted Node/container app skeleton document and helpers for safe health and webhook HTTP ingress, one-job worker ticks, in-memory provider adapters, provider reference validation, and the chosen `node_container` roles `webhook-ingress` and `scan-worker`
+- hosted staging deployment planner document and helpers for provider binding, staging release-gate evidence, Node/container deployment composition, and production GitHub App promotion gating
 - resource caps for repository text collection, including per-file, total-file, and total-byte scan budgets to reduce worst-case memory use
 - hosted pre-implementation contracts document, hosted compact report fixture, and pure helpers for pull request webhook intake planning, durable scan queue upsert planning, worker read-only scan planning, Check Run publication planning, queue-safe pull request event parsing from trusted GitHub event fields, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, retention/deletion cleanup planning, and operational release gate evaluation
 - implementation-ready hosted GitHub App permission contract for required permissions, optional PR comment permissions, selected repository installation, and out-of-scope broad permissions
-- hosted GitHub App contract helpers and tests for webhook intake order, webhook verification, installation token scoping, durable scan queue idempotency, compact reports, retention limits, uninstall cleanup, repeated cleanup idempotency, scoped deletion planning, operational release gate blocking, provider-independent service runtime orchestration, GitHub App deployment planning, hosted production adapter planning, and Node/container app skeleton planning
+- hosted GitHub App contract helpers and tests for webhook intake order, webhook verification, installation token scoping, durable scan queue idempotency, compact reports, retention limits, uninstall cleanup, repeated cleanup idempotency, scoped deletion planning, operational release gate blocking, provider-independent service runtime orchestration, GitHub App deployment planning, hosted production adapter planning, Node/container app skeleton planning, and hosted staging deployment planning
 - GitHub issue templates for bug reports, false positives, false negatives, rule requests, and public-safe security reports
 - CODEOWNERS for source, tests, docs, workflows, Action, and package metadata
 - JSON output
@@ -135,7 +136,7 @@ CI:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current release line: `v0.21.0`
+- Current release line: `v0.22.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.

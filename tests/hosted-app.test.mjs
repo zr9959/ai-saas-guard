@@ -42,7 +42,7 @@ test("hosted app skeleton accepts signed webhooks and processes one worker tick 
   const payload = pullRequestPayload();
   const platform = createInMemoryHostedAppPlatform({
     signingKey,
-    scannerVersion: "0.21.0",
+    scannerVersion: "0.22.0",
     selectedRepositoryIdsByInstallation: { 123: [456] },
     now: () => "2026-05-24T14:00:00.000Z",
     scanRunner: async ({ plan }) => {
@@ -100,7 +100,7 @@ test("hosted app skeleton exposes safe health and rejects invalid routes before 
   const { createInMemoryHostedAppPlatform } = await loadHostedApp();
   const platform = createInMemoryHostedAppPlatform({
     signingKey,
-    scannerVersion: "0.21.0",
+    scannerVersion: "0.22.0",
     selectedRepositoryIdsByInstallation: { 123: [456] },
     scanRunner: async () => {
       throw new Error("worker should not run");

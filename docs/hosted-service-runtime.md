@@ -45,6 +45,8 @@ The production adapter layer in [hosted-production-adapters.md](hosted-productio
 
 The Node/container app skeleton in [hosted-node-container-app.md](hosted-node-container-app.md) now wraps this runtime with a safe `/healthz` route, signed `/github/webhook` ingress, a scan-worker tick, in-memory provider adapters for tests, and deployment-plan validation for real provider references.
 
+The staging deployment planner in [hosted-staging-deployment.md](hosted-staging-deployment.md) composes the runtime-facing provider references with hosted operational release-gate evidence and GitHub App promotion gating.
+
 ## Privacy
 
 The runtime intentionally returns safe planning and status objects only.
@@ -87,6 +89,7 @@ This runtime makes the hosted service implementation-ready inside the repository
 - compact report storage
 - production adapters wired to the platform secret manager and GitHub Checks API
 - Node/container app skeleton wired to real HTTP, queue, store, worker sandbox, and Check publisher infrastructure
+- staging deployment planner passed with real provider references and fresh release-gate evidence
 - container image and digest
 - live monitoring and rollback evidence
 - hosted operational release gate evidence from the deployed artifact

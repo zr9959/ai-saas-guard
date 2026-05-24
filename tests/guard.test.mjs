@@ -947,6 +947,35 @@ test("public docs define the hosted Node container app skeleton", async () => {
   assert.doesNotMatch(app, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs define hosted staging deployment planning", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const staging = await readFile(
+    resolve(packageRoot, "docs", "hosted-staging-deployment.md"),
+    "utf8"
+  );
+
+  assert.match(readme, /docs\/hosted-staging-deployment\.md/);
+  assert.match(staging, /Hosted Staging Deployment/i);
+  assert.match(staging, /ai-saas-guard\/hosted\/staging/);
+  assert.match(staging, /planHostedProviderBinding/);
+  assert.match(staging, /planHostedStagingDeployment/);
+  assert.match(staging, /planHostedGitHubAppPromotion/);
+  assert.match(staging, /secret-manager:/);
+  assert.match(staging, /queue:/);
+  assert.match(staging, /store:/);
+  assert.match(staging, /sandbox:/);
+  assert.match(staging, /github-checks:/);
+  assert.match(staging, /logs:/);
+  assert.match(staging, /metrics:/);
+  assert.match(staging, /rollback:/);
+  assert.match(staging, /runbook:/);
+  assert.match(staging, /webhook replay/i);
+  assert.match(staging, /Check Run publication/i);
+  assert.match(staging, /staging deployment, Check Run publication, and rollback verification/i);
+  assert.match(staging, /does not announce a public hosted service/i);
+  assert.doesNotMatch(staging, /client_secret|-----BEGIN|sk_(?:live|test)_|whsec_/i);
+});
+
 test("public docs define hosted GitHub App deployment planning", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
@@ -1393,6 +1422,10 @@ test("hosted contract helpers have an explicit npm subpath export", async () => 
   assert.deepEqual(packageJson.exports["./hosted/app"], {
     types: "./dist/hosted/app.d.ts",
     default: "./dist/hosted/app.js"
+  });
+  assert.deepEqual(packageJson.exports["./hosted/staging"], {
+    types: "./dist/hosted/staging.d.ts",
+    default: "./dist/hosted/staging.js"
   });
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "ai-saas-guard",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Repo-local launch-readiness scanner for AI-built SaaS apps.",
   "type": "module",
   "homepage": "https://github.com/zr9959/ai-saas-guard#readme",
@@ -49,6 +49,10 @@
     "./hosted/app": {
       "types": "./dist/hosted/app.d.ts",
       "default": "./dist/hosted/app.js"
+    },
+    "./hosted/staging": {
+      "types": "./dist/hosted/staging.d.ts",
+      "default": "./dist/hosted/staging.js"
     }
   },
   "bin": {
