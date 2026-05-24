@@ -1489,6 +1489,25 @@ test("public docs define the hosted staging harness", async () => {
   assert.doesNotMatch(harness, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs define deployed worker staging evidence without overclaiming hosted delivery", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs", "README.zh-CN.md"), "utf8");
+  const deployed = await readFile(resolve(packageRoot, "docs", "hosted-deployed-worker-staging.md"), "utf8");
+  const gate = await readFile(resolve(packageRoot, "docs", "hosted-operational-release-gate.md"), "utf8");
+
+  for (const document of [readme, zhReadme, gate]) {
+    assert.match(document, /hosted-deployed-worker-staging\.md/);
+  }
+  assert.match(deployed, /ai-saas-guard\/hosted\/deployed-staging/);
+  assert.match(deployed, /createHostedDeployedWorkerStagingEvidenceBundle/);
+  assert.match(deployed, /evaluateHostedDeployedWorkerStagingReleaseGate/);
+  assert.match(deployed, /deployed Node\/container read-only checkout worker/i);
+  assert.match(deployed, /public HTTPS health/i);
+  assert.match(deployed, /not production hosted exposure/i);
+  assert.match(deployed, /does not deploy cloud resources/i);
+  assert.doesNotMatch(deployed, /full hosted product|complete hosted scanner|certified secure/i);
+});
+
 test("public docs define hosted GitHub App deployment planning", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const design = await readFile(resolve(packageRoot, "docs", "github-app-design.md"), "utf8");
@@ -2207,6 +2226,10 @@ test("hosted contract helpers have an explicit npm subpath export", async () => 
   assert.deepEqual(packageJson.exports["./hosted/staging-harness"], {
     types: "./dist/hosted/staging-harness.d.ts",
     default: "./dist/hosted/staging-harness.js"
+  });
+  assert.deepEqual(packageJson.exports["./hosted/deployed-staging"], {
+    types: "./dist/hosted/deployed-staging.d.ts",
+    default: "./dist/hosted/deployed-staging.js"
   });
   assert.deepEqual(packageJson.exports["./hosted/worker"], {
     types: "./dist/hosted/worker.d.ts",
