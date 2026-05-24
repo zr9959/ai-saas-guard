@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  ai-saas-guard 是面向 AI 构建的 Next.js、Supabase、Stripe、Vercel 和 MCP SaaS 的本地优先上线 gate。它会优先指出 auth、billing、data access、secrets、MCP、deploy、CI 和“假成功”路径里最值得人工 review 的改动，让你在上线前知道该先看哪里。它本地运行、只读仓库、不上传代码。
+  面向 AI 构建的 Next.js、Supabase、Stripe、Vercel、GitHub Actions 和 MCP SaaS 的本地优先上线 gate。它聚焦 auth、billing、data access、secrets、MCP 和 deploy，把仓库里最容易出事的风险路径变成一份短 review 队列，让你在上线前或合并 PR 前知道该先看哪里。它本地运行、只读仓库、不上传代码。
 </p>
 
 <p align="center">
@@ -26,9 +26,11 @@
 
 ---
 
-## 它解决什么问题
+## 邀请真实用户前先看这里
 
-AI 能很快把一个 SaaS 做到“看起来能用”。真正危险的是上线后才暴露的信任边界问题：
+AI 能很快把一个 SaaS 做到“看起来能用”：能登录、能打开 checkout、dashboard 能加载、测试也是绿的。真正危险的是信任边界代码，它决定谁有权限、谁付了钱、谁能看哪些数据，以及服务失败时会不会被悄悄伪装成成功。
+
+这些问题通常会在真实用户来了以后才变痛：
 
 - 一个用户能看到或修改另一个客户的数据
 - Stripe webhook 因为未签名、重复、漏处理失败事件而错误开通权限
@@ -40,6 +42,22 @@ AI 能很快把一个 SaaS 做到“看起来能用”。真正危险的是上�
 - AI 生成的大 PR 把 auth、billing、data、deploy 或测试改动藏在“普通改动”里
 
 `ai-saas-guard` 是面向这个时刻的本地优先、review-first 上线预检工具。它不会证明你的应用绝对安全，也不是渗透测试、认证或完整安全审计。它的目标是给 founder、独立开发者、小团队和 reviewer 一份短而有证据的清单，告诉你上线或合并 PR 前最该先看哪里。
+
+## 60 秒本地检查
+
+无需全局安装，直接扫你的应用：
+
+```bash
+npx ai-saas-guard@latest scan --root /path/to/your-saas
+```
+
+如果是 AI 生成的大 PR：
+
+```bash
+npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --markdown
+```
+
+你会得到 rule ID、severity、文件证据、为什么重要、如何人工验证，以及具体修复方向。扫描是 deterministic、只读的，不调用 LLM。
 
 ## 输出长什么样
 
@@ -84,28 +102,6 @@ Verify: sign in as user A and user B; confirm neither can SELECT or UPDATE the o
 | 工具和 CI 权限是不是过大？ | MCP side-effect 分类、本地 policy/receipt 模板、GitHub Actions 权限、concurrency、checkout depth、Action pinning |
 | reviewer 能不能看懂 AI PR？ | `pr-risk` 对 auth、billing、RLS、deploy、API、storage、测试、silent-success、缺 spec context 和大型 diff 排序 |
 
-## 当前状态
-
-这个仓库是公开 GitHub 仓库。
-
-CLI 已发布到 npm：`ai-saas-guard@0.29.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.29.0`。
-
-| 模块 | 状态 |
-| --- | --- |
-| 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.29.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.29.0` |
-| 输出格式 | Terminal、JSON、SARIF 和 PR markdown |
-| 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
-| 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.29.0` hosted Node checkout platform 组合入口、Clerk unsafe metadata 规则、Prisma tenant-scope 规则、Vercel cron guard 规则、sample launch report 和 Marketplace wrapper 决策 |
-| Action 标签 | `v0.29.0`、`v0` |
-| npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
-| 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
-| Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
-| Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`；hosted operations evidence 见 [docs/hosted-operations-evidence.md](hosted-operations-evidence.md) |
-| OpenSSF Best Practices | 已获得 passing badge，项目 `12955`；`.bestpractices.json` 继续作为保守证据记录 |
-
 ## 快速开始
 
 无需全局安装，直接运行：
@@ -143,6 +139,28 @@ npm ci
 npm run build
 node dist/cli.js scan --root /path/to/your-saas
 ```
+
+## 当前状态
+
+这个仓库是公开 GitHub 仓库。
+
+CLI 已发布到 npm：`ai-saas-guard@0.29.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.29.0`。
+
+| 模块 | 状态 |
+| --- | --- |
+| 公开 GitHub 仓库 | 已可用 |
+| npm CLI | `ai-saas-guard@0.29.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.29.0` |
+| 输出格式 | Terminal、JSON、SARIF 和 PR markdown |
+| 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
+| 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
+| 当前版本 | `0.29.0` hosted Node checkout platform 组合入口、Clerk unsafe metadata 规则、Prisma tenant-scope 规则、Vercel cron guard 规则、sample launch report 和 Marketplace wrapper 决策 |
+| Action 标签 | `v0.29.0`、`v0` |
+| npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
+| 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
+| Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
+| Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`；hosted operations evidence 见 [docs/hosted-operations-evidence.md](hosted-operations-evidence.md) |
+| OpenSSF Best Practices | 已获得 passing badge，项目 `12955`；`.bestpractices.json` 继续作为保守证据记录 |
 
 ## 主要命令
 

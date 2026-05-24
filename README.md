@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  ai-saas-guard is a local-first launch gate for AI-built Next.js, Supabase, Stripe, Vercel, and MCP SaaS apps. It focuses on auth, billing, data access, secrets, MCP, and deploy decisions, plus CI and fake-success paths, so you know what to review before launch or merge. It runs locally, reads your repo only, and does not upload code.
+  A local-first launch gate for AI-built Next.js, Supabase, Stripe, Vercel, GitHub Actions, and MCP SaaS apps. It focuses on auth, billing, data access, secrets, MCP, and deploy paths, then turns risky files into a short review queue before launch or merge. It runs locally, reads your repo only, and does not upload code.
 </p>
 
 <p align="center">
@@ -27,9 +27,11 @@
 
 ---
 
-## The Launch Problem
+## Before You Invite Users
 
-AI can make a SaaS look finished while the real launch blockers sit in trust-boundary code. These are the failures that hurt after real users arrive:
+AI can make a SaaS look finished: login works, checkout opens, the dashboard loads, and tests are green. The launch risk is usually hidden in trust-boundary code that decides who gets access, who pays, what data they can see, and whether failures are visible.
+
+These are the failures that hurt after real users arrive:
 
 - one customer can see or change another customer's data
 - Stripe grants access from an unsigned, duplicated, missing, or failed webhook path
@@ -41,6 +43,22 @@ AI can make a SaaS look finished while the real launch blockers sit in trust-bou
 - a large AI PR hides auth, billing, data, deploy, or test changes inside harmless-looking work
 
 `ai-saas-guard` gives you a short local review queue for those risks. It does not prove the app is secure, certify a release, or replace human review. It tells founders, solo builders, small teams, and reviewers what deserves attention first.
+
+## 60-Second Local Check
+
+Run it against your app without installing anything globally:
+
+```bash
+npx ai-saas-guard@latest scan --root /path/to/your-saas
+```
+
+For an AI-heavy pull request:
+
+```bash
+npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --markdown
+```
+
+You get rule IDs, severity, file evidence, why it matters, how to verify it manually, and a concrete fix direction. The scanner is deterministic, read-only, and does not call an LLM.
 
 ## See The Output
 
@@ -84,28 +102,6 @@ One command returns a launch-readiness report with:
 | Will production behave like local? | Next/Vercel headers, env docs, public env inventory, image/request amplification hints, request ID logging, Vercel cron guard hints |
 | Are tools and CI overpowered? | MCP side-effect classes, local policy/receipt templates, GitHub Actions permissions, concurrency, checkout depth, action pinning |
 | Can reviewers trust the PR? | `pr-risk` ranking for auth, billing, RLS, deploy, API, storage, tests, silent-success paths, missing spec context, and large AI diffs |
-
-## Current Status
-
-This repository is public on GitHub.
-
-The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is available through versioned release tags. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag for controlled upgrades, or a reviewed commit SHA for stricter supply-chain pinning.
-
-| Area | Status |
-| --- | --- |
-| Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.29.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.29.0` |
-| Outputs | Terminal, JSON, SARIF, and PR-focused markdown |
-| Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
-| Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.29.0`, `v0` |
-| Current release | `0.29.0` hosted Node checkout platform composition, Clerk unsafe metadata rule, Prisma tenant-scope rule, Vercel cron guard rule, sample launch report, and Marketplace wrapper decision |
-| npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
-| Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
-| Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
-| Hosted GitHub App staging | Private App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard`; hosted operations evidence is in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
-| OpenSSF Best Practices | Passing badge, project `12955`; `.bestpractices.json` remains the conservative evidence record |
 
 ## Quick Start
 
@@ -156,6 +152,28 @@ node dist/cli.js check-stripe --root /path/to/your-saas
 node dist/cli.js check-mcp --root /path/to/your-saas
 node dist/cli.js check-actions --root /path/to/your-saas
 ```
+
+## Current Status
+
+This repository is public on GitHub.
+
+The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is available through versioned release tags. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag for controlled upgrades, or a reviewed commit SHA for stricter supply-chain pinning.
+
+| Area | Status |
+| --- | --- |
+| Public GitHub repository | Available |
+| npm CLI | `ai-saas-guard@0.29.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.29.0` |
+| Outputs | Terminal, JSON, SARIF, and PR-focused markdown |
+| Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
+| Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
+| Versioned Action tags | `v0.29.0`, `v0` |
+| Current release | `0.29.0` hosted Node checkout platform composition, Clerk unsafe metadata rule, Prisma tenant-scope rule, Vercel cron guard rule, sample launch report, and Marketplace wrapper decision |
+| npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
+| Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
+| Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
+| Hosted GitHub App staging | Private App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard`; hosted operations evidence is in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
+| OpenSSF Best Practices | Passing badge, project `12955`; `.bestpractices.json` remains the conservative evidence record |
 
 ## Example Finding
 
