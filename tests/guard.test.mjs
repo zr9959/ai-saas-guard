@@ -1044,6 +1044,7 @@ test("GitHub Action does not interpolate action inputs directly inside bash", as
   assert.match(action, /INPUT_OUTPUT:\s*\$\{\{\s*inputs\.output\s*\}\}/);
   assert.match(action, /INPUT_CONFIG:\s*\$\{\{\s*inputs\.config\s*\}\}/);
   assert.match(action, /run:\s+npm ci/);
+  assert.match(runStep[1], /set -euo pipefail/);
 });
 
 test("GitHub Action validates enumerated inputs before invoking the CLI", async () => {
@@ -1056,6 +1057,9 @@ test("GitHub Action validates enumerated inputs before invoking the CLI", async 
   assert.match(runStep[1], /case "\$\{INPUT_FAIL_ON\}" in[\s\S]*none\|critical\|high\|medium\|low\|info/);
   assert.match(runStep[1], /--markdown/);
   assert.match(runStep[1], /--config/);
+  assert.match(runStep[1], /Root path does not exist or is not a directory/);
+  assert.match(runStep[1], /Config file not found/);
+  assert.match(runStep[1], /mkdir -p -- "\$\(dirname -- "\$\{INPUT_OUTPUT\}"\)"/);
   assert.match(runStep[1], /exit 2/);
 });
 
@@ -1074,6 +1078,9 @@ test("public docs explain PR summary, SARIF, and the v0 Action tag", async () =>
   assert.match(readme, /paths/);
   assert.match(actionDocs, /PR summary/i);
   assert.match(actionDocs, /SARIF/i);
+  assert.match(actionDocs, /v0\.29\.0/);
+  assert.match(actionDocs, /fetch-depth:\s*0/);
+  assert.match(actionDocs, /does not upload source code/i);
   assert.match(actionDocs, /config:\s*\.ai-saas-guard\.json/);
   assert.match(actionDocs, /Use SARIF/i);
   assert.match(actionDocs, /Use markdown/i);

@@ -2,7 +2,9 @@
 
 `ai-saas-guard` ships as a composite GitHub Action for pull request and code scanning workflows.
 
-Use `zr9959/ai-saas-guard@v0` for the latest compatible pre-1.0 Action. Use a specific tag such as `v0.28.1` or a reviewed commit SHA when reproducibility is more important than automatic minor updates.
+Use `zr9959/ai-saas-guard@v0` for the latest compatible pre-1.0 Action. Use a specific tag such as `v0.29.0` or a reviewed commit SHA when reproducibility is more important than automatic minor updates.
+
+The Action runs the same local scanner inside the GitHub-hosted runner. It reads the checked-out repository, does not call an LLM, and does not upload source code. For `pr-risk`, always use `actions/checkout` with `fetch-depth: 0` so the base branch comparison is available.
 
 ## PR Summary
 

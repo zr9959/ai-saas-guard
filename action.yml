@@ -8,11 +8,11 @@ inputs:
     required: false
     default: scan
   root:
-    description: Repository path to scan.
+    description: "Repository path to scan. Usually github.workspace."
     required: false
     default: ${{ github.workspace }}
   format:
-    description: "Output format: terminal, json, sarif, or markdown."
+    description: "Output format: terminal, json, sarif, or markdown. Use markdown for PR summaries and sarif for code scanning."
     required: false
     default: terminal
   fail-on:
@@ -20,15 +20,15 @@ inputs:
     required: false
     default: none
   base:
-    description: Base ref for pr-risk.
+    description: "Base ref for pr-risk. Use origin/main with actions/checkout fetch-depth: 0."
     required: false
     default: ""
   config:
-    description: Optional ai-saas-guard JSON config path.
+    description: "Optional ai-saas-guard JSON config path, relative to the workflow workspace or root."
     required: false
     default: ""
   output:
-    description: Optional path to write output while also keeping the command exit code.
+    description: "Optional path to write output while also keeping the command exit code."
     required: false
     default: ""
 
@@ -56,7 +56,7 @@ runs:
         INPUT_CONFIG: ${{ inputs.config }}
         INPUT_OUTPUT: ${{ inputs.output }}
       run: |
-        set -o pipefail
+        set -euo pipefail
 
         case "${INPUT_COMMAND}" in
           scan|check-supabase|check-stripe|check-mcp|check-actions|pr-risk) ;;
@@ -82,6 +82,16 @@ runs:
             ;;
         esac
 
+        if [ ! -d "${INPUT_ROOT}" ]; then
+          echo "Root path does not exist or is not a directory: ${INPUT_ROOT}" >&2
+          exit 2
+        fi
+
+        if [ -n "${INPUT_CONFIG}" ] && [ ! -f "${INPUT_CONFIG}" ] && [ ! -f "${INPUT_ROOT%/}/${INPUT_CONFIG}" ]; then
+          echo "Config file not found: ${INPUT_CONFIG}" >&2
+          exit 2
+        fi
+
         args=("${INPUT_COMMAND}" "--root" "${INPUT_ROOT}")
 
         if [ "${INPUT_FORMAT}" = "json" ]; then
@@ -105,6 +115,7 @@ runs:
         fi
 
         if [ -n "${INPUT_OUTPUT}" ]; then
+          mkdir -p -- "$(dirname -- "${INPUT_OUTPUT}")"
           node "${GITHUB_ACTION_PATH}/dist/cli.js" "${args[@]}" | tee -- "${INPUT_OUTPUT}"
         else
           node "${GITHUB_ACTION_PATH}/dist/cli.js" "${args[@]}"
