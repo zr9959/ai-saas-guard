@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
 const signingKey = "hosted-app-test-signing-key";
@@ -94,6 +97,129 @@ test("hosted app skeleton accepts signed webhooks and processes one worker tick 
   assert.equal(serialized.includes("rawDiff"), false);
   assert.equal(serialized.includes("redacted"), false);
   assert.equal(serialized.includes("person@example.test"), false);
+});
+
+test("hosted node checkout platform wires signed webhooks to the concrete read-only checkout worker", async () => {
+  const checkoutRoot = await mkdtemp(join(tmpdir(), "ai-saas-guard-hosted-app-"));
+  try {
+    const app = await loadHostedApp();
+    assert.equal(typeof app.createHostedNodeCheckoutAppPlatform, "function");
+    const payload = pullRequestPayload();
+    const commands = [];
+    const platform = app.createHostedNodeCheckoutAppPlatform({
+      signingKey,
+      scannerVersion: "0.29.0",
+      selectedRepositoryIdsByInstallation: { 123: [456] },
+      checkoutRoot,
+      now: () => "2026-05-24T14:10:00.000Z",
+      installationTokenProvider: async ({ plan, queueRecord }) => {
+        assert.equal(plan.installationTokenScope.repositoryId, 456);
+        assert.equal(queueRecord.key, "123:456:7:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.29.0");
+        return "ghs_do_not_echo";
+      },
+      commandRunner: async (command) => {
+        commands.push(command);
+        assert.equal(command.shell, false);
+        assert.ok(command.timeoutMs <= 600_000);
+        assert.ok(command.maxOutputBytes <= 1_048_576);
+        assert.equal(JSON.stringify(command).includes("ghs_do_not_echo"), false);
+
+        if (command.stage === "cli_scan") {
+          return {
+            stdout: JSON.stringify({
+              summary: { critical: 0, high: 1, medium: 0, low: 0, info: 0, total: 1 },
+              findings: [
+                {
+                  ruleId: "launch.silent-success.catch-default-success",
+                  severity: "high",
+                  evidence: [
+                    {
+                      file: "app/api/billing/route.ts",
+                      line: 17,
+                      snippet: "return { success: true }"
+                    }
+                  ]
+                }
+              ]
+            })
+          };
+        }
+
+        return { stdout: "" };
+      }
+    });
+
+    const webhook = platform.app.handleHttpRequest({
+      method: "POST",
+      path: "/github/webhook",
+      headers: {
+        "x-hub-signature-256": signatureFor(payload),
+        "x-github-delivery": "delivery-checkout"
+      },
+      body: payload
+    });
+    const worker = await platform.app.runWorkerTick();
+    const serialized = JSON.stringify({ webhook, worker, platform });
+
+    assert.equal(webhook.status, 202);
+    assert.equal(jsonBody(webhook).queuedWorker, true);
+    assert.equal(worker.processed, true);
+    assert.equal(worker.status, "completed");
+    assert.deepEqual(
+      commands.map((command) => command.stage),
+      ["git_init", "git_remote_add", "git_fetch_head", "git_fetch_base", "git_checkout", "cli_scan"]
+    );
+    assert.equal(commands[1].args.at(-1), "https://github.com/owner/repo.git");
+    assert.deepEqual(platform.adapters.compactReportStore.records[0].report.ruleIds, [
+      "launch.silent-success.catch-default-success"
+    ]);
+    assert.equal(platform.adapters.checkRunPublisher.requests.length, 1);
+    assert.deepEqual(await readdir(checkoutRoot), []);
+    assert.equal(serialized.includes("evil/repo"), false);
+    assert.equal(serialized.includes("token=contents:write"), false);
+    assert.equal(serialized.includes("rm -rf"), false);
+    assert.equal(serialized.includes("ghs_do_not_echo"), false);
+    assert.equal(serialized.includes("success: true"), false);
+  } finally {
+    await rm(checkoutRoot, { recursive: true, force: true });
+  }
+});
+
+test("hosted node checkout platform exposes clamped production safety budgets without private material", async () => {
+  const checkoutRoot = await mkdtemp(join(tmpdir(), "ai-saas-guard-hosted-app-safety-"));
+  try {
+    const app = await loadHostedApp();
+    const platform = app.createHostedNodeCheckoutAppPlatform({
+      signingKey,
+      scannerVersion: "0.29.0",
+      selectedRepositoryIdsByInstallation: { 123: [456] },
+      checkoutRoot,
+      timeoutMs: 60 * 60 * 1000,
+      maxOutputBytes: 50 * 1024 * 1024,
+      installationTokenProvider: async () => "ghs_do_not_echo"
+    });
+    const serialized = JSON.stringify(platform);
+
+    assert.deepEqual(platform.workerSafety, {
+      commandSource: "trusted_runtime_plan",
+      timeoutMs: 600_000,
+      maxOutputBytes: 1_048_576,
+      shell: "disabled",
+      cliNetworkAccess: "disabled",
+      writeMode: "read_only",
+      compactJsonOnly: true,
+      cleanupRequired: true,
+      returnsCheckoutPath: false,
+      persistsRawSource: false,
+      persistsRawDiffs: false,
+      persistsSecrets: false,
+      persistsCustomerPayloads: false
+    });
+    assert.equal(serialized.includes(checkoutRoot), false);
+    assert.equal(serialized.includes("ghs_do_not_echo"), false);
+  } finally {
+    await rm(checkoutRoot, { recursive: true, force: true });
+  }
 });
 
 test("hosted app skeleton exposes safe health and rejects invalid routes before side effects", async () => {

@@ -12,6 +12,16 @@ import {
   type HostedServiceWebhookResult,
   type HostedServiceWorkerResult
 } from "./service.js";
+import {
+  createHostedReadOnlyCheckoutScanRunner,
+  type HostedInstallationTokenProvider,
+  type HostedReadOnlyCheckoutCommandRunner
+} from "./worker.js";
+import {
+  HOSTED_WORKER_DEFAULT_TIMEOUT_MS,
+  HOSTED_WORKER_MAX_OUTPUT_BYTES,
+  HOSTED_WORKER_MAX_TIMEOUT_MS
+} from "./production-adapters.js";
 
 export const HOSTED_NODE_CONTAINER_PLATFORM = "node_container";
 export const HOSTED_NODE_CONTAINER_ROLES = ["webhook-ingress", "scan-worker"] as const;
@@ -90,6 +100,23 @@ export interface InMemoryHostedAppPlatformOptions {
   now?: () => string;
 }
 
+export interface HostedNodeCheckoutAppPlatformOptions {
+  signingKey: string | Buffer;
+  scannerVersion: string;
+  selectedRepositoryIdsByInstallation: RepositoryIdSource;
+  removedRepositoryIdsByInstallation?: RepositoryIdSource;
+  checkoutRoot?: string;
+  githubCloneBaseUrl?: string;
+  gitCommand?: string;
+  cliCommand?: string;
+  fetchDepth?: number;
+  timeoutMs?: number;
+  maxOutputBytes?: number;
+  installationTokenProvider: HostedInstallationTokenProvider;
+  commandRunner?: HostedReadOnlyCheckoutCommandRunner;
+  now?: () => string;
+}
+
 export interface InMemoryHostedAppPlatform {
   app: HostedHttpApp;
   adapters: {
@@ -99,6 +126,27 @@ export interface InMemoryHostedAppPlatform {
   };
   platform: typeof HOSTED_NODE_CONTAINER_PLATFORM;
   roles: typeof HOSTED_NODE_CONTAINER_ROLES;
+}
+
+export interface HostedNodeCheckoutAppPlatform extends InMemoryHostedAppPlatform {
+  checkoutWorker: "read_only_checkout";
+  workerSafety: HostedNodeCheckoutWorkerSafety;
+}
+
+export interface HostedNodeCheckoutWorkerSafety {
+  commandSource: "trusted_runtime_plan";
+  timeoutMs: number;
+  maxOutputBytes: number;
+  shell: "disabled";
+  cliNetworkAccess: "disabled";
+  writeMode: "read_only";
+  compactJsonOnly: true;
+  cleanupRequired: true;
+  returnsCheckoutPath: false;
+  persistsRawSource: false;
+  persistsRawDiffs: false;
+  persistsSecrets: false;
+  persistsCustomerPayloads: false;
 }
 
 export interface HostedNodeContainerDeploymentSecretRefs {
@@ -234,6 +282,43 @@ export function createInMemoryHostedAppPlatform(
   };
 }
 
+export function createHostedNodeCheckoutAppPlatform(
+  options: HostedNodeCheckoutAppPlatformOptions
+): HostedNodeCheckoutAppPlatform {
+  const adapters = createInMemoryHostedServiceAdapters();
+  const scanRunner = createHostedReadOnlyCheckoutScanRunner({
+    checkoutRoot: options.checkoutRoot,
+    githubCloneBaseUrl: options.githubCloneBaseUrl,
+    gitCommand: options.gitCommand,
+    cliCommand: options.cliCommand,
+    fetchDepth: options.fetchDepth,
+    timeoutMs: options.timeoutMs,
+    maxOutputBytes: options.maxOutputBytes,
+    installationTokenProvider: options.installationTokenProvider,
+    commandRunner: options.commandRunner
+  });
+  const runtime = createHostedServiceRuntime({
+    signingKey: options.signingKey,
+    scannerVersion: options.scannerVersion,
+    selectedRepositoryIdsByInstallation: options.selectedRepositoryIdsByInstallation,
+    removedRepositoryIdsByInstallation: options.removedRepositoryIdsByInstallation,
+    queue: adapters.queue,
+    compactReportStore: adapters.compactReportStore,
+    checkRunPublisher: adapters.checkRunPublisher,
+    scanRunner,
+    now: options.now
+  });
+
+  return {
+    app: createHostedHttpApp({ runtime }),
+    adapters,
+    platform: HOSTED_NODE_CONTAINER_PLATFORM,
+    roles: HOSTED_NODE_CONTAINER_ROLES,
+    checkoutWorker: "read_only_checkout",
+    workerSafety: hostedNodeCheckoutWorkerSafety(options)
+  };
+}
+
 export function planHostedNodeContainerDeployment(
   input: HostedNodeContainerDeploymentInput
 ): HostedNodeContainerDeploymentPlan {
@@ -366,6 +451,46 @@ function appResponsePrivacy(): HostedAppResponsePrivacy {
     includesPrivateCheckoutPath: false,
     includesInstallationToken: false
   };
+}
+
+function hostedNodeCheckoutWorkerSafety(
+  options: Pick<HostedNodeCheckoutAppPlatformOptions, "timeoutMs" | "maxOutputBytes">
+): HostedNodeCheckoutWorkerSafety {
+  return {
+    commandSource: "trusted_runtime_plan",
+    timeoutMs: clampPositiveInteger(
+      options.timeoutMs,
+      HOSTED_WORKER_DEFAULT_TIMEOUT_MS,
+      HOSTED_WORKER_MAX_TIMEOUT_MS
+    ),
+    maxOutputBytes: clampPositiveInteger(
+      options.maxOutputBytes,
+      HOSTED_WORKER_MAX_OUTPUT_BYTES,
+      HOSTED_WORKER_MAX_OUTPUT_BYTES
+    ),
+    shell: "disabled",
+    cliNetworkAccess: "disabled",
+    writeMode: "read_only",
+    compactJsonOnly: true,
+    cleanupRequired: true,
+    returnsCheckoutPath: false,
+    persistsRawSource: false,
+    persistsRawDiffs: false,
+    persistsSecrets: false,
+    persistsCustomerPayloads: false
+  };
+}
+
+function clampPositiveInteger(
+  value: number | undefined,
+  fallback: number,
+  maximum: number
+): number {
+  if (value === undefined || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(maximum, Math.max(1, Math.floor(value)));
 }
 
 function headerValue(

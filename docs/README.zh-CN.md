@@ -32,6 +32,7 @@ AI 能很快把一个 SaaS 做到“看起来能用”。真正危险的是上�
 
 - 一个用户能看到或修改另一个客户的数据
 - Stripe webhook 因为未签名、重复、漏处理失败事件而错误开通权限
+- Clerk 或 Prisma 代码把用户可改 metadata、未按租户约束的查询当成可信权限依据
 - 真实服务失败后，AI 生成的代码仍然返回“成功”或 demo 数据
 - secret 被 env 配置或 `NEXT_PUBLIC_*` 暴露出去
 - MCP 工具、GitHub workflow 或 deploy job 拿到了过大的权限
@@ -42,7 +43,7 @@ AI 能很快把一个 SaaS 做到“看起来能用”。真正危险的是上�
 
 ## 输出长什么样
 
-报告是给上线前或合并 AI 大 PR 前快速阅读的：
+报告是给上线前或合并 AI 大 PR 前快速阅读的。更完整的可复制样例见 [docs/sample-launch-report.md](sample-launch-report.md)。
 
 ```text
 Launch Gate: review before launch
@@ -76,9 +77,10 @@ Verify: sign in as user A and user B; confirm neither can SELECT or UPDATE the o
 | 上线问题 | ai-saas-guard 会检查什么 |
 | --- | --- |
 | 用户是否只能访问自己的数据？ | Supabase RLS、tenant/owner predicate、storage policy、API ownership 提示、双账号验证建议 |
+| auth metadata 是否可信？ | Clerk unsafe metadata 是否被用于 role、plan、tenant membership 或 entitlement |
 | 付费权限是否会正确开通和撤销？ | Stripe webhook 签名、raw body、幂等、entitlement 路径、失败/取消/更新/退款覆盖 |
 | 集成失败时会不会明显失败？ | silent-success fallback、吞错、hardcoded success、production mock/demo data、跳过或占位测试 |
-| 生产环境是否真的等于本地成功？ | Next/Vercel headers、env 文档、public env 盘点、image/request 放大风险、request ID logging |
+| 生产环境是否真的等于本地成功？ | Next/Vercel headers、env 文档、public env 盘点、image/request 放大风险、request ID logging、Vercel cron guard 提示 |
 | 工具和 CI 权限是不是过大？ | MCP side-effect 分类、本地 policy/receipt 模板、GitHub Actions 权限、concurrency、checkout depth、Action pinning |
 | reviewer 能不能看懂 AI PR？ | `pr-risk` 对 auth、billing、RLS、deploy、API、storage、测试、silent-success、缺 spec context 和大型 diff 排序 |
 
@@ -161,9 +163,9 @@ node dist/cli.js scan --root /path/to/your-saas
 | Stripe | webhook 缺失、未验证签名、raw body 签名风险、缺幂等、缺失败/取消/退款/更新处理 |
 | Supabase | 敏感表没启用 RLS、policy 过宽、缺少 ownership filter、`WITH CHECK` 过弱、storage object policy 过宽 |
 | Silent success | 捕获错误后返回假成功、敏感路径里的 hardcoded fallback、production 路径引入 mock/demo data、临时绕过 auth/webhook/ownership、跳过或占位测试 |
-| API routes | 有 auth 但缺少明显 ownership guard，敏感 mutation route 缺少 rate-limit 提示 |
+| API routes | 有 auth 但缺少明显 ownership guard、Clerk unsafe metadata、Prisma tenant-scope gap，敏感 mutation route 缺少 rate-limit 提示 |
 | MCP | 明文 secret、非 localhost 绑定、过宽文件系统权限、shell 工具、raw SQL 工具、side-effect 分类、本地 policy/receipt 模板 |
-| Next/Vercel deploy | Next static export 和 API route 冲突、Edge runtime 使用 Node-only API、security headers 缺失、server env 文档缺失、public env 盘点、image/request 放大风险、request ID logging 缺失 |
+| Next/Vercel deploy | Next static export 和 API route 冲突、Edge runtime 使用 Node-only API、security headers 缺失、server env 文档缺失、public env 盘点、image/request 放大风险、request ID logging 缺失、Vercel cron route guard 缺失 |
 | GitHub Actions | workflow 权限过宽、PR workflow 缺 concurrency cancel、docs-only 改动跑全量 CI、secret/tool version 缺 fail-fast、`pr-risk` checkout 太浅、Action 未 pin SHA |
 | PR risk | auth、billing、RLS、env、deploy、API、storage、silent-success、测试删除、缺 spec/context、大型混合 diff |
 
@@ -250,6 +252,8 @@ jobs:
 
 更多 GitHub Action 示例请看 [docs/github-action.md](github-action.md)。
 
+GitHub Marketplace wrapper 决策见 [docs/github-marketplace-wrapper-decision.md](github-marketplace-wrapper-decision.md)。当前决策是继续保持单一产品仓库，暂不创建单独 listing wrapper。
+
 ## 项目配置
 
 在仓库根目录添加 `.ai-saas-guard.json` 可以调整规则：
@@ -316,7 +320,7 @@ jobs:
 - hosted service runtime：`ai-saas-guard/hosted/service` 导出 `createHostedServiceRuntime`，把签名 webhook intake、幂等 queue upsert、read-only worker 编排、compact report 存储、Check Run 发布 adapter 和 worker cleanup 串成可测试的服务核心；它本身不部署公开 hosted 环境
 - GitHub App deployment planner：`ai-saas-guard/hosted/github-app` 导出 `planHostedGitHubAppDeployment`，生成 first slice 最小权限 manifest，并在 release gate、公开 HTTPS URL、container digest、secret 引用、原始 secret 输入、permission 或 event 不安全时阻止创建
 - Hosted production adapter layer：`ai-saas-guard/hosted/production-adapters` 导出 `createHostedGitHubAppJwt`、`planHostedGitHubInstallationTokenRequest` 和 `planHostedProductionWorkerExecution`，用于 GitHub App RS256 JWT、selected-repository installation token 请求规划、worker/check-run 分离 token scope、固定只读 worker 命令、timeout/output 预算、compact JSON-only 输出，以及 success/failure/timeout/cancellation 的 cleanup 规划；它本身仍然不部署公开 hosted 服务
-- Hosted Node/container app skeleton：`ai-saas-guard/hosted/app` 导出 `createHostedHttpApp`、`createInMemoryHostedAppPlatform` 和 `planHostedNodeContainerDeployment`，提供安全 `/healthz`、签名 `/github/webhook` ingress、单 job worker tick、测试用 in-memory provider adapters，以及 secret manager、queue、compact report store、worker sandbox、GitHub Checks publisher 的部署引用校验；它本身仍然不部署或暴露公开 hosted 服务
+- Hosted Node/container app skeleton：`ai-saas-guard/hosted/app` 导出 `createHostedHttpApp`、`createInMemoryHostedAppPlatform`、`createHostedNodeCheckoutAppPlatform` 和 `planHostedNodeContainerDeployment`，提供安全 `/healthz`、签名 `/github/webhook` ingress、单 job worker tick、测试用 in-memory provider adapters、真实 read-only checkout worker 组合入口、可见 timeout/output 安全预算，以及 secret manager、queue、compact report store、worker sandbox、GitHub Checks publisher 的部署引用校验；它本身仍然不部署或暴露公开 hosted 服务
 - Hosted staging deployment planner：`ai-saas-guard/hosted/staging` 导出 `planHostedProviderBinding`、`planHostedStagingDeployment` 和 `planHostedGitHubAppPromotion`，把真实 provider 引用、Node/container deployment plan、hosted operational release-gate evidence 和 GitHub App deployment planning 组合起来；缺少 queue、store、worker sandbox、Check Run publisher、logs、metrics、rollback 或 incident-response 引用时，会阻止 staging exposure 和 production promotion；它本身仍然不会调用云平台、创建 GitHub App 或暴露公开 hosted 服务
 - Hosted staging harness：`ai-saas-guard/hosted/staging-harness` 导出 `createFileBackedHostedStagingHarness` 和 `createHostedStagingHarnessEvidence`，可以在本地用 file-backed queue、compact report、Check Run request 和 worker sandbox 跑通签名 webhook replay、worker tick 和 cleanup 校验；它只是 staging 演练工具，不会调用云平台、创建 GitHub App、写真实 Check Run 或暴露公开 hosted 服务
 - Cloudflare hosted ingress：`hosted/cloudflare-worker` 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`，提供 `/healthz`、`/github/app/manifest-callback` 和签名 `/github/webhook` intake；Worker 已具备 compact pull request identity、file/category risk signal 和 Check Run metadata 路径；staging GitHub App ID 为 `3834787`，installation ID 为 `135085075`；真实 GitHub App webhook delivery 和 Check Run smoke 已通过；完整 source checkout worker deployment、monitoring、rollback 和 incident-response evidence 仍需要通过 hosted operational release gate

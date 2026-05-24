@@ -87,6 +87,8 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 | --- | --- | --- |
 | `api.route.missing-rate-limit` | medium | Login, checkout, upload, AI, and webhook routes are common abuse targets. |
 | `api.route.auth-without-ownership` | high | Login checks do not prove resource ownership checks. |
+| `auth.clerk.unsafe-metadata` | high | Clerk unsafe metadata is user-writable and should not hold roles, plans, tenant membership, or entitlements. |
+| `data.prisma.tenant-scope-missing` | high | Authenticated Prisma reads or mutations on tenant-like resources need tenant, owner, organization, or workspace predicates. |
 | `deploy.next.static-export-api-risk` | medium | Static export can conflict with runtime API assumptions. |
 | `deploy.edge-runtime-node-api` | medium | Edge runtime can break Node-only dependencies. |
 | `deploy.env.example-missing` | low | Missing env docs cause local-success, production-failure deploys. |
@@ -96,6 +98,7 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 | `deploy.next.image-cost-risk` | medium | Broad remote image patterns or user-controlled image sources can amplify deploy cost and trust risk. |
 | `deploy.next.request-amplification` | low | High-cardinality dynamic route prefetching can create unexpected production request volume. |
 | `deploy.observability.missing-request-id` | low | Billing, webhook, and tenant incidents are hard to debug without traceable request IDs. |
+| `deploy.vercel.cron-missing-guard` | medium | Scheduled billing, tenant, or cleanup jobs need a secret guard, idempotency, and request tracing before launch. |
 
 ## MCP
 

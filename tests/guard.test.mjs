@@ -44,6 +44,8 @@ const expectedRuleIds = [
   "actions.unpinned-action",
   "api.route.auth-without-ownership",
   "api.route.missing-rate-limit",
+  "auth.clerk.unsafe-metadata",
+  "data.prisma.tenant-scope-missing",
   "deploy.edge-runtime-node-api",
   "deploy.env.example-missing",
   "deploy.env.public-inventory",
@@ -53,6 +55,7 @@ const expectedRuleIds = [
   "deploy.next.request-amplification",
   "deploy.next.static-export-api-risk",
   "deploy.observability.missing-request-id",
+  "deploy.vercel.cron-missing-guard",
   "mcp.config.broad-filesystem",
   "mcp.config.insecure-http",
   "mcp.config.invalid-json",
@@ -442,6 +445,45 @@ test("Next and Vercel launch preflight accepts documented env, scoped images, he
         "deploy.next.image-cost-risk",
         "deploy.next.request-amplification",
         "deploy.observability.missing-request-id"
+      ].includes(ruleId)
+    ),
+    []
+  );
+});
+
+test("launch-specific SaaS rules flag Clerk unsafe metadata, Prisma tenant gaps, and unguarded Vercel cron", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "launch-rules-risk")
+  });
+  const ruleIds = findingRuleIds(report);
+
+  assert.ok(ruleIds.includes("auth.clerk.unsafe-metadata"));
+  assert.ok(ruleIds.includes("data.prisma.tenant-scope-missing"));
+  assert.ok(ruleIds.includes("deploy.vercel.cron-missing-guard"));
+  assert.ok(
+    report.findings
+      .filter((finding) =>
+        [
+          "auth.clerk.unsafe-metadata",
+          "data.prisma.tenant-scope-missing",
+          "deploy.vercel.cron-missing-guard"
+        ].includes(finding.ruleId)
+      )
+      .every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix && finding.evidence[0]?.file)
+  );
+});
+
+test("launch-specific SaaS rules accept private Clerk metadata, tenant-scoped Prisma, and guarded Vercel cron", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "launch-rules-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) =>
+      [
+        "auth.clerk.unsafe-metadata",
+        "data.prisma.tenant-scope-missing",
+        "deploy.vercel.cron-missing-guard"
       ].includes(ruleId)
     ),
     []
@@ -1077,6 +1119,35 @@ test("public README keeps an updated Chinese translation entry point", async () 
   assert.match(zhReadme, /不上传代码/);
   assert.match(releaseGate, /README\.zh-CN\.md/);
   assert.doesNotMatch(zhReadme, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
+test("public docs include a copy-paste sample launch report", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
+  const sampleReport = await readFile(resolve(packageRoot, "docs", "sample-launch-report.md"), "utf8");
+
+  assert.match(readme, /docs\/sample-launch-report\.md/);
+  assert.match(zhReadme, /sample-launch-report\.md/);
+  assert.match(sampleReport, /Launch Gate: review before launch/);
+  assert.match(sampleReport, /Rule: auth\.clerk\.unsafe-metadata/);
+  assert.match(sampleReport, /Rule: data\.prisma\.tenant-scope-missing/);
+  assert.match(sampleReport, /Rule: deploy\.vercel\.cron-missing-guard/);
+  assert.doesNotMatch(sampleReport, /full audit|certification|pentest/i);
+});
+
+test("public docs record the GitHub Marketplace wrapper decision", async () => {
+  const decision = await readFile(
+    resolve(packageRoot, "docs", "github-marketplace-wrapper-decision.md"),
+    "utf8"
+  );
+
+  assert.match(decision, /Decision: do not create a separate Marketplace wrapper repository now/i);
+  assert.match(decision, /single product/i);
+  assert.match(decision, /single action metadata file/i);
+  assert.match(decision, /must not contain workflow files/i);
+  assert.match(decision, /Revisit/i);
+  assert.match(decision, /https:\/\/docs\.github\.com\/en\/actions\/how-tos\/create-and-publish-actions\/publish-in-github-marketplace/);
+  assert.doesNotMatch(decision, /certification|full audit|pentest/i);
 });
 
 test("public docs include a Stripe webhook replay cookbook", async () => {
