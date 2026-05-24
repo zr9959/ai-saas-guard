@@ -102,7 +102,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
           suggestedVerification:
             "Send a request without a valid Stripe signature and confirm the handler rejects it before changing entitlement state.",
           suggestedFix:
-            "Read the raw request body, call `stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)`, and reject invalid signatures."
+            "In Next.js route handlers, read the payload with `await req.text()`, read the `stripe-signature` header, call `stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)`, and return 400 before any entitlement mutation when verification fails."
         })
       );
     }
@@ -118,7 +118,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
           suggestedVerification:
             "Replay a signed test webhook through the deployed route and confirm signature verification succeeds only with the raw body.",
           suggestedFix:
-            "Use `await req.text()` in Next.js route handlers or equivalent raw-body middleware before calling `constructEvent`."
+            "Use `await req.text()` in Next.js route handlers or equivalent raw-body middleware, pass that exact body into `constructEvent`, and reject bad signatures before any billing state change."
         })
       );
     }

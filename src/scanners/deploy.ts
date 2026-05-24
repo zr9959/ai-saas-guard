@@ -158,7 +158,7 @@ export async function scanDeployConfig(input: ScanInput): Promise<Finding[]> {
         suggestedVerification:
           "Run a production build or deploy preview and inspect response headers for auth, billing, and API pages.",
         suggestedFix:
-          "Add `headers()` in `next.config` or middleware for headers such as `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, and an appropriate CSP."
+          "Add `headers()` in `next.config` or middleware for `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy` on auth, billing, and API surfaces."
       })
     );
   }

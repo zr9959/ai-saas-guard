@@ -6,13 +6,14 @@ import { checkActions, checkMcp, checkStripe, checkSupabase, classifyPrRisk, run
 import { formatJsonReport } from "./report/json.js";
 import { formatMarkdownReport } from "./report/markdown.js";
 import { formatSarifReport } from "./report/sarif.js";
+import { formatSummaryReport } from "./report/summary.js";
 import { formatTerminalReport } from "./report/terminal.js";
 import type { BaseReport, CommandName, Severity } from "./types.js";
 
 interface ParsedArgs {
   command?: CommandName | "help";
   rootDir: string;
-  format: "terminal" | "json" | "sarif" | "markdown";
+  format: "terminal" | "json" | "sarif" | "markdown" | "summary";
   base?: string;
   failOn?: Severity | "none";
   configPath?: string;
@@ -99,10 +100,15 @@ function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
 
+    if (arg === "--summary") {
+      result.format = "summary";
+      continue;
+    }
+
     if (arg === "--format") {
       const value = argv[index + 1];
-      if (value !== "terminal" && value !== "json" && value !== "sarif" && value !== "markdown") {
-        throw new Error("--format requires terminal, json, sarif, or markdown");
+      if (value !== "terminal" && value !== "json" && value !== "sarif" && value !== "markdown" && value !== "summary") {
+        throw new Error("--format requires terminal, json, sarif, markdown, or summary");
       }
       result.format = value;
       index += 1;
@@ -172,6 +178,7 @@ function formatReport(report: BaseReport, format: ParsedArgs["format"]): string 
   if (format === "json") return formatJsonReport(report);
   if (format === "sarif") return formatSarifReport(report);
   if (format === "markdown") return formatMarkdownReport(report);
+  if (format === "summary") return `${formatSummaryReport(report)}\n`;
   return `${formatTerminalReport(report)}\n`;
 }
 
@@ -201,13 +208,13 @@ function helpText(): string {
 Repo-local launch-readiness scanner for AI-built SaaS apps.
 
 Usage:
-  ai-saas-guard scan [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard demo [--json|--markdown]
-  ai-saas-guard check-supabase [--root <repo>] [--config <file>] [--doctor] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard check-stripe [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard check-mcp [--root <repo>] [--config <file>] [--policy-template] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard check-actions [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard pr-risk [--root <repo>] [--config <file>] [--base <branch>] [--json|--sarif|--markdown] [--fail-on <severity>]
+  ai-saas-guard scan [--root <repo>] [--config <file>] [--json|--sarif|--summary] [--fail-on <severity>]
+  ai-saas-guard demo [--json|--markdown|--summary]
+  ai-saas-guard check-supabase [--root <repo>] [--config <file>] [--doctor] [--json|--sarif|--summary] [--fail-on <severity>]
+  ai-saas-guard check-stripe [--root <repo>] [--config <file>] [--json|--sarif|--summary] [--fail-on <severity>]
+  ai-saas-guard check-mcp [--root <repo>] [--config <file>] [--policy-template] [--json|--sarif|--summary] [--fail-on <severity>]
+  ai-saas-guard check-actions [--root <repo>] [--config <file>] [--json|--sarif|--summary] [--fail-on <severity>]
+  ai-saas-guard pr-risk [--root <repo>] [--config <file>] [--base <branch>] [--json|--sarif|--markdown|--summary] [--fail-on <severity>]
 
 Defaults:
   - read-only
@@ -217,6 +224,7 @@ Defaults:
   - terminal output by default, JSON with --json
   - SARIF output for GitHub code scanning with --sarif
   - PR-focused markdown summary with --markdown
+  - first-run launch summary with --summary
   - project config auto-loaded from .ai-saas-guard.json when present
 `;
 }

@@ -3,7 +3,31 @@
 This is a synthetic, public-safe example of the kind of review queue `ai-saas-guard` produces. Paths, snippets, and checks are intentionally small so a founder or reviewer can understand the output before running the tool.
 
 ```text
-Launch Gate: review before launch
+ai-saas-guard scan summary
+Findings: 6 findings: 0 critical, 3 high, 3 medium, 0 low, 0 info
+Launch gate: review required: high-risk launch paths need manual verification before launch
+
+Top risks:
+- HIGH stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:12 - Stripe webhook does not verify the Stripe signature
+- HIGH auth.clerk.unsafe-metadata at app/api/auth/profile/route.ts:8 - Clerk unsafe metadata is used as authorization input
+- HIGH data.prisma.tenant-scope-missing at app/api/projects/[projectId]/route.ts:9 - Prisma query lacks an obvious tenant or owner predicate
+
+Manual proof to run next:
+- Replay a webhook with an invalid signature and confirm the route rejects it.
+- Try changing the same metadata as a normal signed-in user and confirm it cannot grant admin, paid plan, tenant, workspace, or entitlement access.
+- Create this resource as Tenant/User A, then attempt the same update with Tenant/User B.
+
+Next steps
+- Fix critical and high trust-boundary findings first: auth/session, billing/webhook, tenant data, and silent-success paths.
+- Run the manual proof steps above in staging and confirm each risky path fails closed.
+
+Full report:
+  Rerun without --summary, or use --json, --sarif, or --markdown where supported.
+```
+
+The full terminal report expands each finding:
+
+```text
 6 findings: 3 high, 3 medium
 
 HIGH stripe.webhook.missing-signature
@@ -11,7 +35,7 @@ Rule: stripe.webhook.missing-signature
 File: app/api/stripe/webhook/route.ts:12
 Why: Billing access can be granted from a webhook path that does not verify Stripe signatures.
 Verify: Replay a webhook with an invalid signature and confirm the route rejects it.
-Fix direction: Read the raw body, call stripe.webhooks.constructEvent, and keep entitlement changes idempotent.
+Fix direction: In Next.js route handlers, read the payload with `await req.text()`, read the `stripe-signature` header, call `stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)`, and return 400 before any entitlement mutation when verification fails.
 
 HIGH auth.clerk.unsafe-metadata
 Rule: auth.clerk.unsafe-metadata
@@ -32,7 +56,7 @@ Rule: supabase.rls.tenant-predicate-missing
 File: supabase/migrations/20260524_projects.sql:22
 Why: Multi-tenant tables need tenant, workspace, organization, owner, or membership predicates.
 Verify: Sign in as user A and user B; confirm neither can SELECT, INSERT, UPDATE, or DELETE the other's rows.
-Fix direction: Add tenant or membership predicates and rerun a two-account staging check.
+Fix direction: Tie every policy to tenant/workspace/organization membership or owner columns, and mirror the same tenant scope in `WITH CHECK` for INSERT and UPDATE.
 
 MEDIUM deploy.vercel.cron-missing-guard
 Rule: deploy.vercel.cron-missing-guard
@@ -46,7 +70,7 @@ Rule: silent-success.swallowed-error
 File: app/api/billing/checkout/route.ts:31
 Why: Swallowed provider, auth, billing, or data errors can make a launch path look successful when it failed.
 Verify: Force the upstream provider call to fail and confirm the route returns an error or disclosed degraded mode.
-Fix direction: Log the failure, return an explicit error status, and avoid granting access after the failed dependency.
+Fix direction: Log the failure with a request id, return a 4xx/5xx error or explicit degraded-mode response, and do not grant entitlement, change ownership, or mutate tenant data after the failed dependency.
 
 Next steps
 - Fix critical and high trust-boundary findings first: auth/session, billing/webhook, tenant data, and silent-success paths.

@@ -53,7 +53,7 @@ function scanSwallowedErrors(filePath: string, content: string): Finding[] {
           suggestedVerification:
             "Force the upstream API, auth provider, billing provider, or database call to fail and confirm the route returns an error or disclosed degraded mode, not a fake success.",
           suggestedFix:
-            "Log the failure, return an explicit error status or degraded response, and avoid granting access or mutating state after the failed dependency."
+            "Log the failure with a request id, return a 4xx/5xx error or explicit degraded-mode response, and do not grant entitlement, change ownership, or mutate tenant data after the failed dependency."
         })
       );
     }
@@ -71,7 +71,7 @@ function scanSwallowedErrors(filePath: string, content: string): Finding[] {
         suggestedVerification:
           "Make the promise reject in a local test and confirm callers receive an error or disclosed degraded mode.",
         suggestedFix:
-          "Propagate the error or return an explicit failure response with logging and no entitlement or ownership side effect."
+          "Propagate the error or return an explicit failure response with request-id logging, and keep entitlement, ownership, and tenant mutations behind the successful dependency path."
       })
     );
   }
@@ -138,7 +138,7 @@ function scanHardcodedFallbacks(filePath: string, content: string): Finding[] {
         suggestedVerification:
           "Disable the real upstream provider and confirm the route does not return hardcoded active subscriptions, successful auth, or generated sample data.",
         suggestedFix:
-          "Replace hardcoded success fallbacks with explicit error/degraded responses and a launch checklist item for real provider verification."
+          "Replace hardcoded success fallbacks with explicit error/degraded responses, request-id logging, and a staging check that proves real provider failure cannot grant access."
       })
     );
   }

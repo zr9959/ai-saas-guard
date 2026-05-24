@@ -48,13 +48,13 @@ AI 能很快把一个 SaaS 做到“看起来能用”：能登录、能打开 c
 不用 clone 仓库，先看公开 demo 输出：
 
 ```bash
-npx ai-saas-guard@latest demo
+npx ai-saas-guard@latest demo --summary
 ```
 
 无需全局安装，直接扫你的应用：
 
 ```bash
-npx ai-saas-guard@latest scan --root /path/to/your-saas
+npx ai-saas-guard@latest scan --root /path/to/your-saas --summary
 ```
 
 如果是 AI 生成的大 PR：
@@ -63,39 +63,36 @@ npx ai-saas-guard@latest scan --root /path/to/your-saas
 npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --markdown
 ```
 
-你会得到 rule ID、severity、文件证据、为什么重要、如何人工验证，以及具体修复方向。扫描是 deterministic、只读的，不调用 LLM。
+`--summary` 会先给上线判断、前三个风险、人工验证和下一步。去掉 `--summary` 后会看到每个 finding 的 rule ID、severity、文件证据、为什么重要、如何人工验证，以及具体修复方向。扫描是 deterministic、只读的，不调用 LLM。
 
 ## 先试公开 demo
 
 如果你还不想先扫自己的私有仓库，可以先跑公开 fixture：
 
 ```bash
-npx ai-saas-guard@latest demo
+npx ai-saas-guard@latest demo --summary
 ```
 
-demo 命令使用包内公开 fixture：`examples/demo-risky-saas` 当前会故意触发 19 个 finding，覆盖 Stripe、Supabase、silent-success、Next/Vercel deploy 提示和 GitHub Actions；`examples/demo-safe-saas` 在同类风险面上使用更安全的静态写法，当前返回 0 个 finding。想本地查看 fixture 文件时再看 [demo-quickstart.md](demo-quickstart.md)。
+demo 命令使用包内公开 fixture：`examples/demo-risky-saas` 当前会故意触发 19 个 finding，覆盖 Stripe、Supabase、silent-success、Next/Vercel deploy 提示和 GitHub Actions；`examples/demo-safe-saas` 在同类风险面上使用更安全的静态写法，当前返回 0 个 finding。去掉 `--summary` 可看完整报告；想本地查看 fixture 文件时再看 [demo-quickstart.md](demo-quickstart.md)。
 
 ## 输出长什么样
 
 报告是给上线前或合并 AI 大 PR 前快速阅读的。更完整的可复制样例见 [docs/sample-launch-report.md](sample-launch-report.md)。
 
 ```text
-Launch Gate: review before launch
-19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info
+ai-saas-guard scan summary
+Findings: 19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info
+Launch gate: blocked: critical launch-readiness findings need review before inviting users
 
-CRITICAL stripe.webhook.missing-signature
-File: app/api/stripe/webhook/route.ts
-Why: billing access can be granted from a webhook path that does not verify Stripe signatures.
-Verify: replay a webhook with an invalid signature and confirm the route rejects it.
-Fix: read the raw body, call stripe.webhooks.constructEvent, and make event handling idempotent.
+Top risks:
+- CRITICAL stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:1 - Stripe webhook does not verify the Stripe signature
+- CRITICAL supabase.rls.broad-policy at supabase/migrations/001_accounts.sql:10 - Broad Supabase RLS policy on public.accounts
+- HIGH silent-success.swallowed-error at app/api/billing/checkout/route.ts:4 - Catch block may turn upstream failure into success
 
-HIGH silent-success.swallowed-error
-File: app/api/billing/checkout/route.ts
-Verify: force the upstream billing call to fail and confirm the route returns an error, not fake success.
-
-MEDIUM deploy.next.missing-security-headers
-File: app/api/billing/checkout/route.ts
-Verify: inspect production response headers for auth, billing, and API pages.
+Manual proof to run next:
+- Send a request without a valid Stripe signature and confirm the handler rejects it before changing entitlement state.
+- Run the generated two-account IDOR test and confirm User B cannot read, update, or delete User A resources.
+- Force the upstream billing call to fail and confirm the route returns an error, not fake success.
 
 Next steps
 - 先修 critical/high 的信任边界 finding。
@@ -112,7 +109,7 @@ Next steps
 - 说明它为什么会影响 AI 构建的 SaaS 上线
 - 给出可以人工复现的验证步骤
 - 给出实际修复方向，不只是一句泛泛建议
-- 支持 terminal、JSON、SARIF 和 PR markdown，方便本地或 CI 使用
+- 支持短 `--summary`、terminal、JSON、SARIF 和 PR markdown，方便本地或 CI 使用
 
 ## 它能帮你抓住哪些问题
 
@@ -131,8 +128,8 @@ Next steps
 无需全局安装，直接运行：
 
 ```bash
-npx ai-saas-guard@latest demo
-npx ai-saas-guard@latest scan --root /path/to/your-saas
+npx ai-saas-guard@latest demo --summary
+npx ai-saas-guard@latest scan --root /path/to/your-saas --summary
 ```
 
 运行专项检查：
@@ -147,9 +144,10 @@ npx ai-saas-guard@latest check-mcp --root /path/to/your-saas --policy-template
 npx ai-saas-guard@latest check-actions --root /path/to/your-saas
 ```
 
-机器可读输出：
+短输出和机器可读输出：
 
 ```bash
+npx ai-saas-guard@latest scan --root /path/to/your-saas --summary
 npx ai-saas-guard@latest scan --root /path/to/your-saas --json
 npx ai-saas-guard@latest scan --root /path/to/your-saas --sarif > ai-saas-guard.sarif
 npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --markdown > ai-saas-guard-pr.md
@@ -169,18 +167,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.30.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.30.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.30.1`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.30.1`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.30.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.30.0` |
-| 输出格式 | Terminal、JSON、SARIF 和 PR markdown |
+| npm CLI | `ai-saas-guard@0.30.1` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.30.1` |
+| 输出格式 | 短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.30.0` 增加 `ai-saas-guard demo`、human-readable 报告里的 Next steps、更有针对性的 quickstart 反馈模板，并刷新首次试用文档 |
-| Action 标签 | `v0.30.0`、`v0` |
+| 当前版本 | `0.30.1` 增加首次使用的 `--summary` 输出，并强化 Stripe、Supabase、silent-success、Next/Vercel finding 的具体修复方向 |
+| Action 标签 | `v0.30.1`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |

@@ -69,7 +69,7 @@ body:
     id: version
     attributes:
       label: Version or Action tag
-      placeholder: ai-saas-guard@0.30.0 or zr9959/ai-saas-guard@v0
+      placeholder: ai-saas-guard@0.30.1 or zr9959/ai-saas-guard@v0
     validations:
       required: false
   - type: checkboxes

@@ -20,6 +20,7 @@ import {
 } from "../dist/index.js";
 import { collectTextFiles } from "../dist/utils/files.js";
 import { formatMarkdownReport } from "../dist/report/markdown.js";
+import { formatSummaryReport } from "../dist/report/summary.js";
 import { formatTerminalReport } from "../dist/report/terminal.js";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
@@ -216,6 +217,14 @@ test("reports start with a launch gate and next manual proof", () => {
   assert.match(markdown, /### Manual Proof To Run Next/);
   assert.match(markdown, /### Next Steps/);
   assert.match(markdown, /Fix critical and high trust-boundary findings first/i);
+
+  const summary = formatSummaryReport(report);
+  assert.match(summary, /^ai-saas-guard scan summary/m);
+  assert.match(summary, /Launch gate: review required/);
+  assert.match(summary, /Top risks:/);
+  assert.match(summary, /Manual proof to run next:/);
+  assert.match(summary, /Next steps:/);
+  assert.doesNotMatch(summary, /Evidence:/);
 });
 
 test("rule catalog contains metadata for every published rule", () => {
@@ -249,6 +258,10 @@ test("vulnerable Stripe webhook reports missing signature, idempotency, and crit
   assert.ok(report.handledEvents.includes("checkout.session.completed"));
   assert.ok(report.testCommands.some((command) => command.includes("stripe trigger invoice.payment_failed")));
   assert.ok(report.testCommands.some((command) => command.includes("stripe trigger invoice.payment_action_required")));
+  assert.match(
+    report.findings.find((finding) => finding.ruleId === "stripe.webhook.missing-signature")?.suggestedFix ?? "",
+    /await req\.text\(\).*stripe-signature.*constructEvent.*400/is
+  );
 });
 
 test("safe Stripe webhook recognizes signature verification and billing failure handlers", async () => {
@@ -306,6 +319,10 @@ test("broad Supabase policy is reported with concrete RLS evidence", async () =>
   assert.ok(findingRuleIds(report).includes("supabase.rls.broad-policy"));
   assert.ok(report.riskyPolicies.some((policy) => policy.policyName.includes("public projects")));
   assert.ok(report.manualAuthorizationTest.some((step) => step.includes("User B")));
+  assert.match(
+    report.findings.find((finding) => finding.ruleId === "supabase.rls.broad-policy")?.suggestedFix ?? "",
+    /auth\.uid\(\).*WITH CHECK.*two-account/is
+  );
 });
 
 test("safe Supabase policy avoids broad policy and missing ownership findings", async () => {
@@ -340,6 +357,7 @@ test("Supabase scanner flags weak WITH CHECK ownership mistakes", async () => {
   assert.ok(weakWithCheckFindings.some((finding) => finding.title.includes("members insert documents")));
   assert.ok(weakWithCheckFindings.every((finding) => finding.evidence[0]?.file.endsWith("001_policies.sql")));
   assert.ok(report.riskyPolicies.some((policy) => policy.reason.includes("WITH CHECK")));
+  assert.ok(weakWithCheckFindings.every((finding) => /auth\.uid\(\).*WITH CHECK.*membership/is.test(finding.suggestedFix)));
 });
 
 test("Supabase scanner flags public storage object write policies", async () => {
@@ -379,6 +397,10 @@ test("silent-success guard flags fake success, mock data, bypasses, and weakened
     report.findings
       .filter((finding) => finding.ruleId.startsWith("silent-success."))
       .every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix && finding.evidence[0]?.file)
+  );
+  assert.match(
+    report.findings.find((finding) => finding.ruleId === "silent-success.swallowed-error")?.suggestedFix ?? "",
+    /request id.*4xx\/5xx.*do not grant entitlement/is
   );
 });
 
@@ -434,6 +456,10 @@ test("Next and Vercel launch preflight reports headers, env, image, request, and
   assert.ok(ruleIds.includes("deploy.next.image-cost-risk"));
   assert.ok(ruleIds.includes("deploy.next.request-amplification"));
   assert.ok(ruleIds.includes("deploy.observability.missing-request-id"));
+  assert.match(
+    report.findings.find((finding) => finding.ruleId === "deploy.next.missing-security-headers")?.suggestedFix ?? "",
+    /headers\(\).*Content-Security-Policy.*X-Frame-Options/is
+  );
 });
 
 test("Next and Vercel launch preflight accepts documented env, scoped images, headers, and request IDs", async () => {
@@ -854,6 +880,34 @@ test("CLI demo shows packaged risky and safe examples without a target repo", as
   assert.equal(report.demos.risky.summary.total, 19);
   assert.equal(report.demos.safe.summary.total, 0);
   assert.ok(report.demos.risky.findings.some((finding) => finding.ruleId === "stripe.webhook.missing-signature"));
+
+  const summary = await runCli(["demo", "--summary"]);
+  assert.equal(summary.code, 0);
+  assert.match(summary.stdout, /^ai-saas-guard demo summary/m);
+  assert.match(summary.stdout, /Risky demo: 19 findings/i);
+  assert.match(summary.stdout, /Safe demo: 0 findings/i);
+  assert.match(summary.stdout, /Top risks:/);
+  assert.match(summary.stdout, /Manual proof to run next:/);
+  assert.doesNotMatch(summary.stdout, /Evidence:/);
+});
+
+test("CLI summary output keeps the first run focused on top risks", async () => {
+  const summary = await runCli([
+    "scan",
+    "--root",
+    resolve(fixtureRoot, "vulnerable-stripe"),
+    "--summary"
+  ]);
+
+  assert.equal(summary.code, 0);
+  assert.match(summary.stdout, /^ai-saas-guard scan summary/m);
+  assert.match(summary.stdout, /Launch gate:/);
+  assert.match(summary.stdout, /Top risks:/);
+  assert.match(summary.stdout, /Manual proof to run next:/);
+  assert.match(summary.stdout, /Next steps:/);
+  assert.match(summary.stdout, /Full report:/);
+  assert.doesNotMatch(summary.stdout, /^4\./m);
+  assert.doesNotMatch(summary.stdout, /Evidence:/);
 });
 
 test("CLI --fail-on exits non-zero only because findings meet the threshold", async () => {
@@ -1160,7 +1214,9 @@ test("public docs include a copy-paste sample launch report", async () => {
 
   assert.match(readme, /docs\/sample-launch-report\.md/);
   assert.match(zhReadme, /sample-launch-report\.md/);
-  assert.match(sampleReport, /Launch Gate: review before launch/);
+  assert.match(sampleReport, /ai-saas-guard scan summary/);
+  assert.match(sampleReport, /Top risks:/);
+  assert.match(sampleReport, /Manual proof to run next:/);
   assert.match(sampleReport, /Rule: auth\.clerk\.unsafe-metadata/);
   assert.match(sampleReport, /Rule: data\.prisma\.tenant-scope-missing/);
   assert.match(sampleReport, /Rule: deploy\.vercel\.cron-missing-guard/);
@@ -1856,7 +1912,7 @@ test("repository exposes security-safe GitHub issue templates", async () => {
   assert.match(quickstart, /Was the finding useful/i);
   assert.match(quickstart, /Confusing output/i);
   assert.match(quickstart, /Version or Action tag/i);
-  assert.match(quickstart, /ai-saas-guard@0\.30\.0 or zr9959\/ai-saas-guard@v0/i);
+  assert.match(quickstart, /ai-saas-guard@0\.30\.1 or zr9959\/ai-saas-guard@v0/i);
 });
 
 test("repository exposes CODEOWNERS for public maintenance boundaries", async () => {

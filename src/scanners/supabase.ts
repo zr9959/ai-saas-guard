@@ -91,7 +91,7 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
             suggestedVerification:
               "Run the generated two-account IDOR test and confirm User B cannot read, update, or delete User A resources.",
             suggestedFix:
-              "Replace broad predicates with ownership checks such as `auth.uid() = user_id` or a tenant membership join."
+              "Replace broad predicates with ownership checks such as `auth.uid() = user_id`; for writes, mirror the same scope in `WITH CHECK`, and rerun the two-account cross-tenant verification."
           })
         );
       }
@@ -115,7 +115,7 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
             suggestedVerification:
               "Create the same resource as User A and attempt to read, update, and delete it with User B's session.",
             suggestedFix:
-              "Reference `auth.uid()` and a stable ownership or membership column in every sensitive table policy."
+              "Reference `auth.uid()` and a stable owner column, or join through a tenant/workspace membership table, in every sensitive table policy."
           })
         );
       }
@@ -138,7 +138,7 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
             suggestedVerification:
               "As User A, try inserting or updating a row with User B's owner, organization, workspace, or tenant ID and confirm the database rejects it.",
             suggestedFix:
-              "Add a `WITH CHECK` predicate tied to `auth.uid()` and the same owner, tenant, or membership relationship used by the read policy."
+              "Use `auth.uid()` in a `WITH CHECK` predicate tied to the same owner, tenant, or membership relationship used by the read policy."
           })
         );
       }
@@ -249,7 +249,7 @@ function buildDoctorFindings(
           suggestedVerification:
             "As User A, try INSERT, UPDATE, and DELETE on an owned row; then repeat as User B and confirm only the intended operations pass.",
           suggestedFix:
-            "Add scoped INSERT/UPDATE/DELETE policies with `WITH CHECK` predicates where the product supports writes."
+            "Add scoped INSERT/UPDATE/DELETE policies with `WITH CHECK` predicates tied to `auth.uid()` or tenant membership where the product supports writes."
         })
       );
     }
@@ -266,7 +266,7 @@ function buildDoctorFindings(
           suggestedVerification:
             "Create rows in two tenants and confirm User A cannot SELECT, INSERT, UPDATE, or DELETE User B's tenant rows.",
           suggestedFix:
-            "Tie every policy to tenant/workspace/organization membership or owner columns and mirror the same scope in `WITH CHECK`."
+            "Tie every policy to tenant/workspace/organization membership or owner columns, and mirror the same tenant scope in `WITH CHECK` for INSERT and UPDATE."
         })
       );
     }
@@ -287,7 +287,7 @@ function buildDoctorFindings(
           suggestedVerification:
             "Try the INSERT/UPDATE/DELETE path with an anonymous client and with User B's session; expected result is denial unless explicitly intended.",
           suggestedFix:
-            "Grant write policies to authenticated roles only and require owner or tenant `WITH CHECK` predicates."
+            "Grant write policies to authenticated roles only and require owner or tenant `WITH CHECK` predicates tied to `auth.uid()` or membership."
         })
       );
     }
