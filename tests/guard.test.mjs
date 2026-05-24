@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import {
+  checkActions,
   checkMcp,
   checkStripe,
   checkSupabase,
@@ -34,24 +35,45 @@ function findingRuleIds(report) {
 }
 
 const expectedRuleIds = [
+  "actions.checkout.fetch-depth",
+  "actions.docs-only-full-ci",
+  "actions.permissions.too-broad",
+  "actions.pr-missing-concurrency",
+  "actions.secrets-missing-failfast",
+  "actions.unpinned-action",
   "api.route.auth-without-ownership",
   "api.route.missing-rate-limit",
   "deploy.edge-runtime-node-api",
   "deploy.env.example-missing",
+  "deploy.env.public-inventory",
+  "deploy.env.server-undocumented",
+  "deploy.next.image-cost-risk",
+  "deploy.next.missing-security-headers",
+  "deploy.next.request-amplification",
   "deploy.next.static-export-api-risk",
+  "deploy.observability.missing-request-id",
   "mcp.config.broad-filesystem",
   "mcp.config.insecure-http",
   "mcp.config.invalid-json",
   "mcp.config.loose-permissions",
   "mcp.config.non-local-bind",
   "mcp.config.plaintext-secret",
+  "mcp.tool.missing-policy-boundary",
+  "mcp.tool.missing-scope",
+  "mcp.tool.missing-side-effect-classification",
   "mcp.tool.raw-sql",
   "mcp.tool.shell",
   "next.env.public-secret",
   "pr-risk.diff-unavailable",
   "pr-risk.no-diff",
   "pr-risk.sensitive-surface",
+  "pr-risk.trust-boundary-missing-spec",
   "secrets.detected",
+  "silent-success.hardcoded-fallback",
+  "silent-success.production-mock-data",
+  "silent-success.swallowed-error",
+  "silent-success.temporary-bypass",
+  "silent-success.weakened-test",
   "stripe.webhook.missing-critical-event",
   "stripe.webhook.missing-idempotency",
   "stripe.webhook.missing-route",
@@ -60,9 +82,14 @@ const expectedRuleIds = [
   "stripe.webhook.public-secret",
   "stripe.webhook.raw-body-risk",
   "supabase.rls.broad-policy",
+  "supabase.rls.enabled-no-policy",
   "supabase.rls.missing-ownership-filter",
   "supabase.rls.not-enabled",
+  "supabase.rls.public-write-policy",
+  "supabase.rls.tenant-predicate-missing",
+  "supabase.rls.uid-column-mismatch",
   "supabase.rls.weak-with-check",
+  "supabase.rls.write-policy-missing",
   "supabase.storage.public-bucket",
   "supabase.table.missing-owner-column"
 ];
@@ -284,6 +311,97 @@ test("Supabase scanner accepts scoped storage object policies", async () => {
   assert.deepEqual(report.findings, []);
 });
 
+test("silent-success guard flags fake success, mock data, bypasses, and weakened tests", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "silent-success-risk")
+  });
+  const ruleIds = findingRuleIds(report);
+
+  assert.ok(ruleIds.includes("silent-success.swallowed-error"));
+  assert.ok(ruleIds.includes("silent-success.production-mock-data"));
+  assert.ok(ruleIds.includes("silent-success.hardcoded-fallback"));
+  assert.ok(ruleIds.includes("silent-success.weakened-test"));
+  assert.ok(ruleIds.includes("silent-success.temporary-bypass"));
+  assert.ok(
+    report.findings
+      .filter((finding) => finding.ruleId.startsWith("silent-success."))
+      .every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix && finding.evidence[0]?.file)
+  );
+});
+
+test("silent-success guard accepts explicit error handling and real assertions", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "silent-success-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId.startsWith("silent-success.")),
+    []
+  );
+});
+
+test("Supabase RLS doctor reports static debugging gaps and SQL cookbook steps", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "supabase-doctor-risk"),
+    doctor: true
+  });
+  const ruleIds = findingRuleIds(report);
+
+  assert.ok(ruleIds.includes("supabase.rls.enabled-no-policy"));
+  assert.ok(ruleIds.includes("supabase.rls.write-policy-missing"));
+  assert.ok(ruleIds.includes("supabase.rls.public-write-policy"));
+  assert.ok(ruleIds.includes("supabase.rls.uid-column-mismatch"));
+  assert.ok(ruleIds.includes("supabase.rls.tenant-predicate-missing"));
+  assert.ok(report.doctor.sqlCookbook.some((line) => /set local role authenticated/i.test(line)));
+  assert.ok(report.doctor.twoAccountVerificationSteps.some((step) => /User A/i.test(step) && /User B/i.test(step)));
+});
+
+test("Supabase RLS doctor accepts complete scoped policies", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "supabase-doctor-safe"),
+    doctor: true
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId.startsWith("supabase.rls.") && ruleId.includes("policy")),
+    []
+  );
+  assert.ok(report.doctor.twoAccountVerificationSteps.length > 0);
+});
+
+test("Next and Vercel launch preflight reports headers, env, image, request, and logging risks", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "next-vercel-risk")
+  });
+  const ruleIds = findingRuleIds(report);
+
+  assert.ok(ruleIds.includes("deploy.next.missing-security-headers"));
+  assert.ok(ruleIds.includes("deploy.env.server-undocumented"));
+  assert.ok(ruleIds.includes("deploy.env.public-inventory"));
+  assert.ok(ruleIds.includes("deploy.next.image-cost-risk"));
+  assert.ok(ruleIds.includes("deploy.next.request-amplification"));
+  assert.ok(ruleIds.includes("deploy.observability.missing-request-id"));
+});
+
+test("Next and Vercel launch preflight accepts documented env, scoped images, headers, and request IDs", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "next-vercel-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) =>
+      [
+        "deploy.next.missing-security-headers",
+        "deploy.env.server-undocumented",
+        "deploy.next.image-cost-risk",
+        "deploy.next.request-amplification",
+        "deploy.observability.missing-request-id"
+      ].includes(ruleId)
+    ),
+    []
+  );
+});
+
 test("repo scan reports leaked env secrets and risky NEXT_PUBLIC secret exposure", async () => {
   const report = await scanRepository({
     rootDir: resolve(fixtureRoot, "leaked-env")
@@ -308,6 +426,57 @@ test("unsafe MCP config reports secret-bearing, shell, database, and non-localho
   assert.ok(findingRuleIds(report).includes("mcp.config.plaintext-secret"));
 });
 
+test("MCP policy template classifies tool side effects and flags missing boundaries", async () => {
+  const report = await checkMcp({
+    rootDir: resolve(fixtureRoot, "mcp-policy-risk"),
+    policyTemplate: true
+  });
+  const ruleIds = findingRuleIds(report);
+
+  assert.ok(ruleIds.includes("mcp.tool.missing-side-effect-classification"));
+  assert.ok(ruleIds.includes("mcp.tool.missing-policy-boundary"));
+  assert.ok(ruleIds.includes("mcp.tool.missing-scope"));
+  assert.ok(report.policyTemplate.servers.some((server) => server.sideEffects.includes("filesystem-write")));
+  assert.ok(report.policyTemplate.receiptFormat.includes("normalizedArgumentDigest"));
+  assert.ok(report.policyTemplate.localPolicyTemplate.includes("decision: deny"));
+});
+
+test("MCP policy template accepts tools with explicit side effects and local scopes", async () => {
+  const report = await checkMcp({
+    rootDir: resolve(fixtureRoot, "mcp-policy-safe"),
+    policyTemplate: true
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId.startsWith("mcp.tool.missing-")),
+    []
+  );
+  assert.ok(report.policyTemplate.servers.some((server) => server.sideEffects.includes("filesystem-read")));
+});
+
+test("GitHub Actions hygiene check reports launch-relevant workflow risks", async () => {
+  const report = await checkActions({
+    rootDir: resolve(fixtureRoot, "actions-hygiene-risk")
+  });
+  const ruleIds = findingRuleIds(report);
+
+  assert.equal(report.command, "check-actions");
+  assert.ok(ruleIds.includes("actions.permissions.too-broad"));
+  assert.ok(ruleIds.includes("actions.pr-missing-concurrency"));
+  assert.ok(ruleIds.includes("actions.docs-only-full-ci"));
+  assert.ok(ruleIds.includes("actions.secrets-missing-failfast"));
+  assert.ok(ruleIds.includes("actions.checkout.fetch-depth"));
+  assert.ok(ruleIds.includes("actions.unpinned-action"));
+});
+
+test("GitHub Actions hygiene check accepts bounded PR workflows", async () => {
+  const report = await checkActions({
+    rootDir: resolve(fixtureRoot, "actions-hygiene-safe")
+  });
+
+  assert.deepEqual(report.findings, []);
+});
+
 test("risky PR diff prioritizes auth, billing, RLS, env, and weakened tests", async () => {
   const diffText = await readFile(resolve(fixtureRoot, "risky-pr.diff"), "utf8");
   const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
@@ -320,6 +489,29 @@ test("risky PR diff prioritizes auth, billing, RLS, env, and weakened tests", as
   assert.ok(report.categories.includes("tests removed or weakened"));
   assert.ok(report.topRiskyFiles[0].path.includes("app/api"));
   assert.ok(report.requiredTests.some((item) => item.includes("two-account")));
+});
+
+test("pr-risk flags trust-boundary diffs without nearby spec updates and raises silent-success review", async () => {
+  const diffText = await readFile(resolve(fixtureRoot, "pr-risk-trust-risk.diff"), "utf8");
+  const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
+  const ruleIds = findingRuleIds(report);
+
+  assert.ok(ruleIds.includes("pr-risk.trust-boundary-missing-spec"));
+  assert.ok(report.categories.includes("silent-success/fake-green"));
+  assert.ok(report.reviewChecklist.some((item) => /What changed at the trust boundary/i.test(item)));
+  assert.ok(report.reviewChecklist.some((item) => /Why this auth\/session\/payment\/data access decision/i.test(item)));
+  assert.ok(report.reviewChecklist.some((item) => /What manual test proves it/i.test(item)));
+  assert.ok(report.suggestedSplit.some((item) => /auth/i.test(item)));
+  assert.ok(report.suggestedSplit.some((item) => /billing/i.test(item)));
+  assert.ok(report.suggestedSplit.some((item) => /data access/i.test(item)));
+});
+
+test("pr-risk accepts trust-boundary diffs with corresponding spec context", async () => {
+  const diffText = await readFile(resolve(fixtureRoot, "pr-risk-trust-safe.diff"), "utf8");
+  const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
+
+  assert.ok(report.categories.includes("auth/session"));
+  assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
 });
 
 test("pr-risk avoids auth and billing false positives in workflow hardening diffs", async () => {
@@ -499,6 +691,37 @@ test("CLI can emit a PR-focused markdown summary for pr-risk", async () => {
   assert.match(stdout, /### Required verification/m);
   assert.match(stdout, /### Suggested PR split/m);
   assert.doesNotMatch(stdout, /LGTM|ship it|looks good/i);
+});
+
+test("CLI supports Supabase doctor, MCP policy template, and Actions hygiene commands", async () => {
+  const supabase = await runCli([
+    "check-supabase",
+    "--root",
+    resolve(fixtureRoot, "supabase-doctor-risk"),
+    "--doctor",
+    "--json"
+  ]);
+  assert.equal(supabase.code, 0);
+  assert.ok(JSON.parse(supabase.stdout).doctor.sqlCookbook.length > 0);
+
+  const mcp = await runCli([
+    "check-mcp",
+    "--root",
+    resolve(fixtureRoot, "mcp-policy-risk"),
+    "--policy-template",
+    "--json"
+  ]);
+  assert.equal(mcp.code, 0);
+  assert.ok(JSON.parse(mcp.stdout).policyTemplate.receiptFormat.includes("normalizedArgumentDigest"));
+
+  const actions = await runCli([
+    "check-actions",
+    "--root",
+    resolve(fixtureRoot, "actions-hygiene-risk"),
+    "--json"
+  ]);
+  assert.equal(actions.code, 0);
+  assert.equal(JSON.parse(actions.stdout).command, "check-actions");
 });
 
 test("CLI --fail-on exits non-zero only because findings meet the threshold", async () => {
@@ -721,7 +944,7 @@ test("GitHub Action validates enumerated inputs before invoking the CLI", async 
   const runStep = action.match(/- name: Run ai-saas-guard[\s\S]*?run:\s*\|([\s\S]*)/);
 
   assert.ok(runStep, "expected action.yml to contain the Run ai-saas-guard step");
-  assert.match(runStep[1], /case "\$\{INPUT_COMMAND\}" in[\s\S]*scan\|check-supabase\|check-stripe\|check-mcp\|pr-risk/);
+  assert.match(runStep[1], /case "\$\{INPUT_COMMAND\}" in[\s\S]*scan\|check-supabase\|check-stripe\|check-mcp\|check-actions\|pr-risk/);
   assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif\|markdown/);
   assert.match(runStep[1], /case "\$\{INPUT_FAIL_ON\}" in[\s\S]*none\|critical\|high\|medium\|low\|info/);
   assert.match(runStep[1], /--markdown/);

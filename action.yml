@@ -4,7 +4,7 @@ author: ai-saas-guard
 
 inputs:
   command:
-    description: "Command to run: scan, check-supabase, check-stripe, check-mcp, or pr-risk."
+    description: "Command to run: scan, check-supabase, check-stripe, check-mcp, check-actions, or pr-risk."
     required: false
     default: scan
   root:
@@ -59,7 +59,7 @@ runs:
         set -o pipefail
 
         case "${INPUT_COMMAND}" in
-          scan|check-supabase|check-stripe|check-mcp|pr-risk) ;;
+          scan|check-supabase|check-stripe|check-mcp|check-actions|pr-risk) ;;
           *)
             echo "Invalid command input: ${INPUT_COMMAND}" >&2
             exit 2

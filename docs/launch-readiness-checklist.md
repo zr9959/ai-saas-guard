@@ -11,9 +11,10 @@ Run from the app repository:
 ```bash
 npx ai-saas-guard@latest scan --root .
 npx ai-saas-guard@latest pr-risk --root . --base origin/main
-npx ai-saas-guard@latest check-supabase --root .
+npx ai-saas-guard@latest check-supabase --root . --doctor
 npx ai-saas-guard@latest check-stripe --root .
-npx ai-saas-guard@latest check-mcp --root .
+npx ai-saas-guard@latest check-mcp --root . --policy-template
+npx ai-saas-guard@latest check-actions --root .
 ```
 
 Treat every finding as a review queue item. The tool is read-only and local-first, so it can show where to inspect, but it cannot confirm production settings, account ownership, live Stripe dashboard state, or every possible authorization path.
@@ -123,6 +124,8 @@ Launch blocker examples:
 
 Use `check-mcp` findings as the starting inventory, then manually inspect any tool that can read secrets or change state.
 
+Use `check-mcp --policy-template` when a repo has MCP tools that need a local allow/deny policy and tool-call receipt format before launch. The template is static and transparent; it is not a runtime firewall.
+
 ## Supabase And Storage
 
 For Supabase apps, launch only after the data model has an ownership story.
@@ -137,6 +140,22 @@ Check:
 
 Manual verification should still use the two-account flow above. Scanner findings can point to weak policies, but the actual product workflow determines whether access is correctly isolated.
 
+Use `check-supabase --doctor` when RLS behavior is confusing. It outputs static debugging hints, two-account/cross-tenant verification steps, and a SQL cookbook prompt for staging. It does not connect to Supabase.
+
+## Silent Success Checks
+
+AI-generated code can make broken launch paths look green.
+
+Check:
+
+- Catch blocks in auth, billing, AI, Supabase, and mutation routes return visible errors or disclosed degraded mode.
+- Production routes do not import fixtures, mocks, demo data, or sample responses.
+- Stripe, Supabase, OpenAI, payment, and auth paths do not grant access from hardcoded fallback data.
+- Tests are not skipped, TODO-only, empty, or truthy-only placeholders.
+- Temporary bypasses for auth, rate limits, webhooks, validation, or ownership are removed before launch.
+
+Manual verification: force the upstream provider, database, or auth call to fail and confirm the user sees a failure path, no entitlement is granted, and no cross-tenant mutation succeeds.
+
 ## Secrets, Env, And Deploy
 
 Before launch:
@@ -146,6 +165,7 @@ Before launch:
 - Confirm `NEXT_PUBLIC_*` variables contain only values that are safe for browsers.
 - Check `.env.example` or deploy docs include required production variables without revealing secret values.
 - Confirm Vercel, Netlify, or other deploy settings match runtime expectations: API routes are not accidentally static, and Node-only libraries are not deployed to incompatible Edge runtimes.
+- Confirm Next/Vercel security headers, request ID logging, image remote patterns, and high-cardinality route prefetch behavior are deliberate.
 
 ## CI And PR Review
 
@@ -155,6 +175,7 @@ Minimum repository workflow:
 - `ai-saas-guard pr-risk` runs with enough git history to compare against the base branch.
 - SARIF or markdown output is used when reviewers need scan results in GitHub.
 - Large AI-generated pull requests are split when they combine UI, auth, database, billing, and deploy changes.
+- GitHub Actions use least-privilege permissions, cancel stale PR runs, avoid full CI for docs-only edits when possible, fail fast on missing secrets, and checkout enough history for `pr-risk`.
 
 Review the first files named by `pr-risk` before reviewing cosmetic changes. If a base ref is missing, fix checkout depth or fetch history before trusting the PR risk result.
 

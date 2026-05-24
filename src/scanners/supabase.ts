@@ -2,7 +2,7 @@ import type { Finding, SupabasePolicyRisk, SupabaseReport } from "../types.js";
 import type { ScanInput } from "../context.js";
 import { resolveScanContext } from "../context.js";
 import { createReport, finding, uniqueFindings } from "../report/findings.js";
-import { lineAt, lineNumberForIndex } from "../utils/files.js";
+import { lineAt, lineNumberForIndex, type TextFile } from "../utils/files.js";
 
 const sensitiveTablePattern =
   /\b(user|account|profile|team|tenant|project|order|subscription|invoice|customer|organization|member|message|document|file|workspace)s?\b/i;
@@ -26,7 +26,11 @@ interface PolicyInfo {
   line: number;
 }
 
-export async function checkSupabase(input: ScanInput): Promise<SupabaseReport> {
+interface ScannedPolicy extends PolicyInfo {
+  file: string;
+}
+
+export async function checkSupabase(input: ScanInput, options: { doctor?: boolean } = {}): Promise<SupabaseReport> {
   const context = await resolveScanContext(input);
   const files = context.getFiles((file) => {
     const path = file.path.toLowerCase();
@@ -36,6 +40,7 @@ export async function checkSupabase(input: ScanInput): Promise<SupabaseReport> {
   const tables: TableInfo[] = [];
   const rlsEnabledTables = new Set<string>();
   const riskyPolicies: SupabasePolicyRisk[] = [];
+  const policies: ScannedPolicy[] = [];
 
   for (const file of files) {
     for (const match of file.content.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?([a-zA-Z0-9_."]+)\s*\(([\s\S]*?)\)\s*;/gi)) {
@@ -55,6 +60,7 @@ export async function checkSupabase(input: ScanInput): Promise<SupabaseReport> {
     }
 
     for (const policy of parsePolicies(file.content)) {
+      policies.push({ ...policy, file: file.path });
       const { name: policyName, tableName, line } = policy;
       const predicates = [policy.usingPredicate, policy.withCheckPredicate].filter((value): value is string => Boolean(value));
 
@@ -180,6 +186,9 @@ export async function checkSupabase(input: ScanInput): Promise<SupabaseReport> {
     }
   }
 
+  findings.push(...buildDoctorFindings(files, tables, rlsEnabledTables, policies));
+  const doctor = buildDoctorReport(options.doctor ?? true);
+
   return createReport<SupabaseReport>("check-supabase", context.rootDir, uniqueFindings(findings), {
     riskyTables: [...new Set(tables.filter((table) => table.sensitive && !rlsEnabledTables.has(table.name)).map((table) => table.name))],
     riskyPolicies,
@@ -189,8 +198,210 @@ export async function checkSupabase(input: ScanInput): Promise<SupabaseReport> {
       "Try reading the resource with User B's session; expected result is denial.",
       "Try updating and deleting the resource with User B's session; expected result is denial.",
       "Repeat for tenant/member resources and storage objects, not only top-level tables."
-    ]
+    ],
+    doctor
   });
+}
+
+function buildDoctorFindings(
+  files: readonly TextFile[],
+  tables: TableInfo[],
+  rlsEnabledTables: Set<string>,
+  policies: ScannedPolicy[]
+): Finding[] {
+  const findings: Finding[] = [];
+  const policiesByTable = new Map<string, ScannedPolicy[]>();
+  for (const policy of policies) {
+    const list = policiesByTable.get(policy.tableName) ?? [];
+    list.push(policy);
+    policiesByTable.set(policy.tableName, list);
+  }
+
+  for (const table of tables) {
+    const tablePolicies = policiesByTable.get(table.name) ?? [];
+    const content = files.find((file) => file.path === table.file)?.content ?? "";
+
+    if (rlsEnabledTables.has(table.name) && tablePolicies.length === 0) {
+      findings.push(
+        finding({
+          ruleId: "supabase.rls.enabled-no-policy",
+          title: `RLS is enabled on ${table.name} but no policies were found`,
+          severity: "high",
+          evidence: [{ file: table.file, line: table.line, snippet: lineAt(content, table.line) }],
+          why: "Supabase RLS with no policies fails closed in confusing ways; builders often see empty results and cannot tell whether auth, data, or policy logic is wrong.",
+          suggestedVerification:
+            "Run the two-account RLS doctor SQL probes and confirm expected SELECT/INSERT/UPDATE/DELETE behavior for this table.",
+          suggestedFix:
+            "Add explicit SELECT and write policies for the intended owner or tenant relationship, or document that the table is intentionally inaccessible."
+        })
+      );
+    }
+
+    if (hasOperation(tablePolicies, "select") && !hasAnyOperation(tablePolicies, ["insert", "update", "delete", "all"]) && table.sensitive) {
+      const policy = tablePolicies.find((candidate) => candidate.operation === "select") ?? tablePolicies[0];
+      findings.push(
+        finding({
+          ruleId: "supabase.rls.write-policy-missing",
+          title: `Table ${table.name} has SELECT policy but no common write policy`,
+          severity: "medium",
+          evidence: [{ file: policy.file, line: policy.line, snippet: lineAt(files.find((file) => file.path === policy.file)?.content ?? "", policy.line) }],
+          why: "A common RLS launch failure is reads working while inserts, updates, or deletes silently fail because write policies are missing.",
+          suggestedVerification:
+            "As User A, try INSERT, UPDATE, and DELETE on an owned row; then repeat as User B and confirm only the intended operations pass.",
+          suggestedFix:
+            "Add scoped INSERT/UPDATE/DELETE policies with `WITH CHECK` predicates where the product supports writes."
+        })
+      );
+    }
+
+    if (isTenantLikeTable(table) && tablePolicies.length > 0 && !tablePolicies.some((policy) => hasTenantPredicate(policy, table))) {
+      const policy = tablePolicies[0];
+      findings.push(
+        finding({
+          ruleId: "supabase.rls.tenant-predicate-missing",
+          title: `Tenant-like table ${table.name} lacks an obvious tenant or membership predicate`,
+          severity: "high",
+          evidence: [{ file: policy.file, line: policy.line, snippet: lineAt(files.find((file) => file.path === policy.file)?.content ?? "", policy.line) }],
+          why: "Multi-tenant tables need tenant, workspace, organization, project, client, owner, or membership predicates, not just generic login checks.",
+          suggestedVerification:
+            "Create rows in two tenants and confirm User A cannot SELECT, INSERT, UPDATE, or DELETE User B's tenant rows.",
+          suggestedFix:
+            "Tie every policy to tenant/workspace/organization membership or owner columns and mirror the same scope in `WITH CHECK`."
+        })
+      );
+    }
+  }
+
+  for (const policy of policies) {
+    const predicate = [policy.usingPredicate, policy.withCheckPredicate].filter(Boolean).join(" ");
+    const fileContent = files.find((file) => file.path === policy.file)?.content ?? "";
+
+    if (isWriteOperation(policy.operation) && /\bto\s+public\b/i.test(policy.statement)) {
+      findings.push(
+        finding({
+          ruleId: "supabase.rls.public-write-policy",
+          title: `Write policy "${policy.name}" is granted to public`,
+          severity: "high",
+          evidence: [{ file: policy.file, line: policy.line, snippet: lineAt(fileContent, policy.line) }],
+          why: "Public write policies can allow anonymous or unintended clients to insert or mutate data when predicates are incomplete or misunderstood.",
+          suggestedVerification:
+            "Try the INSERT/UPDATE/DELETE path with an anonymous client and with User B's session; expected result is denial unless explicitly intended.",
+          suggestedFix:
+            "Grant write policies to authenticated roles only and require owner or tenant `WITH CHECK` predicates."
+        })
+      );
+    }
+
+    const mismatch = findAuthUidColumnMismatch(predicate, tables.find((table) => table.name === policy.tableName));
+    if (mismatch) {
+      findings.push(
+        finding({
+          ruleId: "supabase.rls.uid-column-mismatch",
+          title: `Policy "${policy.name}" compares auth.uid() to suspicious column ${mismatch.column}`,
+          severity: "medium",
+          evidence: [{ file: policy.file, line: policy.line, snippet: lineAt(fileContent, policy.line) }],
+          why: "`auth.uid()` is a UUID. Comparing it to email, name, text, or unexpected owner fields commonly causes silent empty RLS results.",
+          suggestedVerification:
+            "Run a policy probe with User A's JWT and confirm the compared column has the same UUID identity semantics as `auth.uid()`.",
+          suggestedFix:
+            "Compare `auth.uid()` to a UUID owner/user column, or cast and document the claim mapping if using a custom JWT claim."
+        })
+      );
+    }
+  }
+
+  return findings;
+}
+
+function buildDoctorReport(enabled: boolean) {
+  const base = {
+    staticChecks: [
+      "RLS enabled with no policies",
+      "SELECT policy without common write policies",
+      "Public-role write policies",
+      "`auth.uid()` compared to suspicious owner/user columns",
+      "Tenant-like tables missing tenant/owner/member predicates"
+    ],
+    twoAccountVerificationSteps: [
+      "Create User A and User B with separate tenants, organizations, or workspaces.",
+      "Create rows as User A, then attempt SELECT, INSERT, UPDATE, and DELETE with User B's authenticated session.",
+      "Repeat the same probes for storage objects and join-table membership paths.",
+      "Expected result: User B cannot read or mutate User A resources, and User A cannot write rows into another tenant."
+    ],
+    sqlCookbook: [
+      "-- Run in a transaction against a disposable staging database.",
+      "begin;",
+      "set local role authenticated;",
+      "-- Set User A JWT claims, then SELECT/INSERT/UPDATE/DELETE rows owned by User A.",
+      "-- Switch to User B JWT claims and repeat against User A row IDs.",
+      "-- Example Supabase helpers differ by setup; verify `request.jwt.claim.sub` maps to auth.uid().",
+      "rollback;"
+    ]
+  };
+
+  if (enabled) return base;
+  return {
+    staticChecks: [],
+    twoAccountVerificationSteps: [],
+    sqlCookbook: []
+  };
+}
+
+function hasOperation(policies: ScannedPolicy[], operation: PolicyInfo["operation"]): boolean {
+  return policies.some((policy) => policy.operation === operation || policy.operation === "all");
+}
+
+function hasAnyOperation(policies: ScannedPolicy[], operations: PolicyInfo["operation"][]): boolean {
+  return policies.some((policy) => operations.includes(policy.operation));
+}
+
+function isWriteOperation(operation: PolicyInfo["operation"]): boolean {
+  return operation === "insert" || operation === "update" || operation === "delete" || operation === "all";
+}
+
+function isTenantLikeTable(table: TableInfo): boolean {
+  return /(tenant|organization|org|workspace|client|project)/i.test(`${table.name}\n${table.columns}`);
+}
+
+function hasTenantPredicate(policy: ScannedPolicy, table: TableInfo): boolean {
+  const predicate = [policy.usingPredicate, policy.withCheckPredicate].filter(Boolean).join(" ");
+  const tableText = `${table.name}\n${table.columns}`;
+  const hasTenantColumn = /(tenant_id|organization_id|org_id|workspace_id|client_id|project_id)/i.test(tableText);
+  if (hasTenantColumn) {
+    if (/\bmembers?\b|_members\b/i.test(table.name) && /\bauth\.uid\s*\(/i.test(predicate) && /\buser_id\b/i.test(predicate)) return true;
+    return /\b(tenant_id|organization_id|org_id|workspace_id|client_id|project_id|memberships?|organization_members|workspace_members|tenant_members)\b/i.test(predicate);
+  }
+  if (/\b(tenant_id|organization_id|org_id|workspace_id|client_id|project_id|owner_id|user_id|memberships?|organization_members|workspace_members)\b/i.test(predicate)) {
+    return true;
+  }
+  if (/\bauth\.uid\s*\(/i.test(predicate) && /\b(user_id|owner_id|created_by)\b/i.test(table.columns.toLowerCase())) return true;
+  return false;
+}
+
+function findAuthUidColumnMismatch(predicate: string, table: TableInfo | undefined): { column: string } | undefined {
+  if (!table || !/\bauth\.uid\s*\(/i.test(predicate)) return undefined;
+  const columns = parseColumnTypes(table.columns);
+  const comparisonPattern = /auth\.uid\s*\(\s*\)(?:::text)?\s*=\s*([a-zA-Z_][a-zA-Z0-9_]*)|([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*auth\.uid\s*\(\s*\)(?:::text)?/gi;
+
+  for (const match of predicate.matchAll(comparisonPattern)) {
+    const column = (match[1] ?? match[2] ?? "").toLowerCase();
+    if (!column) continue;
+    const type = columns.get(column);
+    if (type && !/\buuid\b/i.test(type)) return { column };
+    if (!/(^|_)(user|owner|created_by|member|account|profile)(_id)?$|^(user_id|owner_id|created_by|id)$/i.test(column)) return { column };
+  }
+
+  return undefined;
+}
+
+function parseColumnTypes(columns: string): Map<string, string> {
+  const result = new Map<string, string>();
+  for (const line of columns.split(/\r?\n/)) {
+    const match = /^\s*"?([a-zA-Z_][a-zA-Z0-9_]*)"?\s+([a-zA-Z0-9_]+)/.exec(line);
+    if (!match) continue;
+    result.set(match[1].toLowerCase(), match[2].toLowerCase());
+  }
+  return result;
 }
 
 function normalizeSqlIdentifier(value: string): string {

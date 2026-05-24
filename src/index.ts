@@ -2,6 +2,7 @@ export { scanRepository } from "./commands/scan.js";
 export { checkStripe } from "./commands/checkStripe.js";
 export { checkSupabase } from "./commands/checkSupabase.js";
 export { checkMcp } from "./commands/checkMcp.js";
+export { checkActions } from "./commands/checkActions.js";
 export { classifyPrRisk } from "./commands/prRisk.js";
 export { applyGuardConfig, defaultConfigFileName, loadGuardConfig } from "./config.js";
 export { createScanContext } from "./context.js";
@@ -11,12 +12,18 @@ export type {
   CommandName,
   Evidence,
   Finding,
+  ActionsReport,
+  McpOptions,
+  McpPolicyTemplate,
   McpReport,
   McpServerInventory,
+  McpSideEffect,
   PrRiskFile,
   PrRiskReport,
   ScanOptions,
   StripeReport,
+  SupabaseOptions,
+  SupabaseDoctorReport,
   SupabaseReport
 } from "./types.js";
 export type { ScanContext, ScanInput } from "./context.js";

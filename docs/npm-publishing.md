@@ -5,7 +5,8 @@
 ## Current State
 
 - Package name: `ai-saas-guard`
-- Current version: `0.25.0`
+- Current published version: `0.25.0`
+- Next source candidate: `0.26.0`
 - npm registry state: published at <https://www.npmjs.com/package/ai-saas-guard>
 - First npm-published version: `0.1.1`
 - GitHub Release: `v0.25.0`
@@ -17,7 +18,7 @@
 
 Use GitHub Actions with npm Trusted Publisher/OIDC:
 
-1. Create and review a release tag such as `v0.25.0`.
+1. Create and review a release tag such as `v0.26.0`.
 2. Publish from the GitHub Release or run the `Publish npm` workflow manually with `ref` set to that tag.
 3. Keep `permissions.id-token: write` in the workflow so npm can exchange the GitHub Actions OIDC identity for a short-lived publish credential.
 4. Run `npm publish --access public` from the workflow. Trusted publishing automatically generates provenance for this public package from this public repository.

@@ -2,7 +2,7 @@
 
 import { resolve } from "node:path";
 import { applyGuardConfig, loadGuardConfig } from "./config.js";
-import { checkMcp, checkStripe, checkSupabase, classifyPrRisk, scanRepository } from "./index.js";
+import { checkActions, checkMcp, checkStripe, checkSupabase, classifyPrRisk, scanRepository } from "./index.js";
 import { formatJsonReport } from "./report/json.js";
 import { formatMarkdownReport } from "./report/markdown.js";
 import { formatSarifReport } from "./report/sarif.js";
@@ -16,6 +16,8 @@ interface ParsedArgs {
   base?: string;
   failOn?: Severity | "none";
   configPath?: string;
+  doctor?: boolean;
+  policyTemplate?: boolean;
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -32,13 +34,16 @@ async function main(argv: string[]): Promise<number> {
       report = await scanRepository({ rootDir: args.rootDir });
       break;
     case "check-supabase":
-      report = await checkSupabase({ rootDir: args.rootDir });
+      report = await checkSupabase({ rootDir: args.rootDir, doctor: args.doctor });
       break;
     case "check-stripe":
       report = await checkStripe({ rootDir: args.rootDir });
       break;
     case "check-mcp":
-      report = await checkMcp({ rootDir: args.rootDir });
+      report = await checkMcp({ rootDir: args.rootDir, policyTemplate: args.policyTemplate });
+      break;
+    case "check-actions":
+      report = await checkActions({ rootDir: args.rootDir });
       break;
     case "pr-risk":
       report = await classifyPrRisk({ rootDir: args.rootDir, base: args.base });
@@ -130,6 +135,16 @@ function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
 
+    if (arg === "--doctor") {
+      result.doctor = true;
+      continue;
+    }
+
+    if (arg === "--policy-template") {
+      result.policyTemplate = true;
+      continue;
+    }
+
     if (arg === "-h" || arg === "--help") {
       result.command = "help";
       continue;
@@ -181,9 +196,10 @@ Repo-local launch-readiness scanner for AI-built SaaS apps.
 
 Usage:
   ai-saas-guard scan [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard check-supabase [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
+  ai-saas-guard check-supabase [--root <repo>] [--config <file>] [--doctor] [--json|--sarif] [--fail-on <severity>]
   ai-saas-guard check-stripe [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
-  ai-saas-guard check-mcp [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
+  ai-saas-guard check-mcp [--root <repo>] [--config <file>] [--policy-template] [--json|--sarif] [--fail-on <severity>]
+  ai-saas-guard check-actions [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
   ai-saas-guard pr-risk [--root <repo>] [--config <file>] [--base <branch>] [--json|--sarif|--markdown] [--fail-on <severity>]
 
 Defaults:

@@ -1,0 +1,14 @@
+{
+  "suppressions": [
+    {
+      "ruleId": "actions.docs-only-full-ci",
+      "paths": [".github/workflows/ci.yml"],
+      "reason": "Intentional: README and docs are covered by tests and release-gate assertions, so docs-only PRs should still run CI."
+    },
+    {
+      "ruleId": "actions.docs-only-full-ci",
+      "paths": [".github/workflows/codeql.yml"],
+      "reason": "Intentional: CodeQL runs on pull requests and scheduled analysis for repository-wide static coverage."
+    }
+  ]
+}

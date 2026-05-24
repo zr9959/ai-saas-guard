@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ops": {
+      "command": "node",
+      "args": ["ops-server.js"],
+      "tools": ["shell.exec", "filesystem.write", "db.query"]
+    }
+  }
+}

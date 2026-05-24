@@ -52,6 +52,20 @@ The Action auto-loads `.ai-saas-guard.json` from `root` when the file exists. Us
 
 Project config can disable noisy rules, override severity by rule ID, apply path-specific `suppressions`, and set a default `failOn` threshold. A workflow `fail-on` input overrides the config threshold for that run.
 
+## Actions Hygiene
+
+Use `check-actions` when you want the Action to inspect workflow hygiene that directly affects AI-built SaaS launch readiness: broad permissions, stale PR runs, docs-only full CI, missing fail-fast secret checks, shallow `pr-risk` checkouts, and unpinned Action refs.
+
+```yaml
+      - uses: zr9959/ai-saas-guard@v0
+        with:
+          command: check-actions
+          root: ${{ github.workspace }}
+          fail-on: high
+```
+
+This is intentionally narrow. It does not replace actionlint, zizmor, Scorecard, or a CI cost dashboard.
+
 ## SARIF Upload
 
 Use SARIF when you want findings to appear in GitHub code scanning alerts.

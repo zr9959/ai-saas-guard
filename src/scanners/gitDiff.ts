@@ -14,6 +14,7 @@ const categoryWeights: Record<PrRiskCategory, number> = {
   "env/secrets/deploy": 24,
   "permissions/storage": 20,
   "tests removed or weakened": 28,
+  "silent-success/fake-green": 30,
   "large AI-generated/refactor-like diff": 18
 };
 
@@ -62,6 +63,25 @@ export async function classifyPrRisk(options: PrRiskOptions): Promise<PrRiskRepo
         suggestedFix: "Split unrelated UI/refactor work away from trust-boundary changes and add focused tests before merge."
       })
     );
+  }
+
+  const hasSpecContextUpdate = files.some((file) => isSpecContextFile(file.path));
+  if (!hasSpecContextUpdate) {
+    for (const file of topRiskyFiles.filter((candidate) => candidate.categories.some(isTrustBoundaryCategory)).slice(0, 5)) {
+      findings.push(
+        finding({
+          ruleId: "pr-risk.trust-boundary-missing-spec",
+          title: `Trust-boundary change lacks nearby spec context: ${file.path}`,
+          severity: file.score >= 70 ? "medium" : "low",
+          evidence: [{ file: file.path, match: file.categories.join(", ") }],
+          why: "AI-generated code can change auth, session, payment, data access, deploy, or tool boundaries without explaining the product decision reviewers need to validate.",
+          suggestedVerification:
+            "Ask the reviewer checklist questions: what changed at the trust boundary, why this decision, and what manual test proves it?",
+          suggestedFix:
+            "Add or update a nearby docs/spec/context note before merge, or split the trust-boundary change into a smaller PR with explicit rationale."
+        })
+      );
+    }
   }
 
   if (diffText.trim().length === 0 && diffResult.diagnostics.length === 0) {
@@ -238,8 +258,11 @@ function finalizeDiffFile(file: PrRiskFile & { lines: string[] }): PrRiskFile {
     if (isPermissionSurface(file.path) || /^\s*(grant|revoke)\b/im.test(changedText)) categories.add("permissions/storage");
   }
 
-  if (isRemovedOrWeakenedTest(file.path, file.lines)) {
+    if (isRemovedOrWeakenedTest(file.path, file.lines)) {
     categories.add("tests removed or weakened");
+  }
+  if (hasSilentSuccessChange(file.path, changedText)) {
+    categories.add("silent-success/fake-green");
   }
   if (file.added + file.removed > 400 || /(^|\/)(__generated__|generated)(\/|\.|-|$)/i.test(file.path)) {
     categories.add("large AI-generated/refactor-like diff");
@@ -256,6 +279,23 @@ function finalizeDiffFile(file: PrRiskFile & { lines: string[] }): PrRiskFile {
 
 function isGitHubAutomationFile(filePath: string): boolean {
   return filePath === "action.yml" || filePath === "action.yaml" || filePath.startsWith(".github/workflows/") || filePath.startsWith(".github/actions/");
+}
+
+function isSpecContextFile(filePath: string): boolean {
+  return /^(docs|specs)\//i.test(filePath) || /^(\.claude|\.cursor)\//i.test(filePath) || /(^|\/)(AGENTS|CLAUDE)\.md$/i.test(filePath);
+}
+
+function isTrustBoundaryCategory(category: PrRiskCategory): boolean {
+  return [
+    "auth/session",
+    "billing/subscription",
+    "database schema/migration",
+    "RLS/policy",
+    "API contract",
+    "env/secrets/deploy",
+    "permissions/storage",
+    "silent-success/fake-green"
+  ].includes(category);
 }
 
 function isTestFile(filePath: string): boolean {
@@ -304,13 +344,36 @@ function isRemovedOrWeakenedTest(filePath: string, lines: string[]): boolean {
   );
 }
 
+function hasSilentSuccessChange(filePath: string, changedText: string): boolean {
+  const sensitive =
+    isTestFile(filePath) ||
+    isApiSurface(filePath) ||
+    isAuthSurface(filePath) ||
+    isBillingSurface(filePath) ||
+    isRlsSurface(filePath) ||
+    /\b(stripe|supabase|openai|payment|billing|auth|session|webhook|entitlement)\b/i.test(`${filePath}\n${changedText}`);
+  if (!sensitive) return false;
+  return (
+    /catch\s*(?:\([^)]*\))?\s*\{[\s\S]{0,300}(success\s*:\s*true|ok\s*:\s*true|return\s+(?:\{\s*\}|\[\s*\]|null|true)|user\s*:\s*null)/i.test(changedText) ||
+    /\.(?:catch)\s*\([^)]*=>\s*(?:\{\s*\}|\[\s*\]|null|true|\{\s*(?:success|ok)\s*:\s*true)/i.test(changedText) ||
+    /\b(test|describe|it)\.skip\s*\(|TODO\s*:?\s*(test|auth|verify)|toBeTruthy\s*\(\s*\)|temporary\s+bypass|skip\s+(auth|verification|validation|ownership|webhook)|disable\s+(auth|verification|validation)/i.test(changedText) ||
+    /\b(mock|fixture|fixtures|demo|sample|fallback)\b[\s\S]{0,180}\b(success\s*:\s*true|ok\s*:\s*true|subscription|entitlement|auth)\b/i.test(changedText)
+  );
+}
+
 function buildReviewChecklist(categories: PrRiskCategory[]): string[] {
-  const checklist = ["Review the top risky files before cosmetic or refactor files."];
+  const checklist = [
+    "Review the top risky files before cosmetic or refactor files.",
+    "What changed at the trust boundary?",
+    "Why this auth/session/payment/data access decision?",
+    "What manual test proves it?"
+  ];
   if (categories.includes("auth/session")) checklist.push("Confirm every changed resource query is scoped by current user, owner, tenant, or membership.");
   if (categories.includes("billing/subscription")) checklist.push("Confirm Stripe webhooks verify signatures, handle failure/cancel/update paths, and are idempotent.");
   if (categories.includes("RLS/policy")) checklist.push("Inspect every changed policy for `USING (true)` and missing `auth.uid()` ownership checks.");
   if (categories.includes("env/secrets/deploy")) checklist.push("Check env/deploy changes for public secrets, missing production vars, and runtime mismatches.");
   if (categories.includes("tests removed or weakened")) checklist.push("Require reviewer explanation for removed or weakened tests before merge.");
+  if (categories.includes("silent-success/fake-green")) checklist.push("Force upstream failure and confirm the PR does not return fake success, sample data, or placeholder green tests.");
   return checklist;
 }
 
@@ -318,7 +381,9 @@ function buildSplitPlan(categories: PrRiskCategory[]): string[] {
   const splitPlan = [];
   if (categories.includes("auth/session") || categories.includes("RLS/policy")) splitPlan.push("Split auth/RLS policy changes into a dedicated PR with two-account authorization evidence.");
   if (categories.includes("billing/subscription")) splitPlan.push("Split Stripe/billing changes into a dedicated PR with webhook replay evidence.");
+  if (categories.includes("database schema/migration") || categories.includes("API contract") || categories.includes("permissions/storage")) splitPlan.push("Split data access and API contract changes into a dedicated PR with ownership and tenant evidence.");
   if (categories.includes("env/secrets/deploy")) splitPlan.push("Split deploy/env changes into a small PR reviewed with production configuration owners.");
+  if (categories.includes("large AI-generated/refactor-like diff")) splitPlan.push("Split UI-only refactors away from auth, billing, data access, and deploy changes.");
   if (splitPlan.length === 0) splitPlan.push("No split required by current heuristic; keep review focused on listed risky files.");
   return splitPlan;
 }
@@ -330,5 +395,6 @@ function buildRequiredTests(categories: PrRiskCategory[]): string[] {
   if (categories.includes("API contract")) tests.push("Add or update API tests for changed status codes, request shape, and response shape.");
   if (categories.includes("env/secrets/deploy")) tests.push("Run production build and verify required env vars exist in CI/Vercel.");
   if (categories.includes("tests removed or weakened")) tests.push("Replace removed coverage with an equivalent regression test or document why it is obsolete.");
+  if (categories.includes("silent-success/fake-green")) tests.push("Force the upstream provider or database to fail and confirm the changed path fails visibly without granting access or returning sample data.");
   return tests;
 }

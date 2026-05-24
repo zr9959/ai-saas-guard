@@ -6,7 +6,12 @@ import { createReport, finding, uniqueFindings } from "../report/findings.js";
 import { lineAt, redactSecret } from "../utils/files.js";
 import { hasSecretLikeValue } from "./secrets.js";
 
-export async function checkMcp(input: ScanInput): Promise<McpReport> {
+interface ToolEntry {
+  name: string;
+  config?: Record<string, unknown>;
+}
+
+export async function checkMcp(input: ScanInput, options: { policyTemplate?: boolean } = {}): Promise<McpReport> {
   const context = await resolveScanContext(input);
   const files = context.getFiles((file) => isMcpConfigPath(file.path));
   const findings: Finding[] = [];
@@ -34,8 +39,9 @@ export async function checkMcp(input: ScanInput): Promise<McpReport> {
     const rawServers = extractServers(parsed);
     for (const [name, config] of Object.entries(rawServers)) {
       const serverText = JSON.stringify(config);
-      const tools = extractTools(config);
-      const sideEffects = classifySideEffects(config, tools);
+      const toolEntries = extractToolEntries(config);
+      const tools = toolEntries.map((tool) => tool.name);
+      const sideEffects = classifySideEffects(config, toolEntries);
       const server: McpServerInventory = {
         name,
         configPath: file.path,
@@ -134,6 +140,54 @@ export async function checkMcp(input: ScanInput): Promise<McpReport> {
         );
       }
 
+      if (toolEntries.length > 0 && hasToolsWithoutExplicitSideEffect(toolEntries)) {
+        findings.push(
+          finding({
+            ruleId: "mcp.tool.missing-side-effect-classification",
+            title: `MCP server ${name} has tools without explicit side-effect classification`,
+            severity: "medium",
+            evidence: [{ file: file.path }],
+            why: "A local MCP policy is hard to review when tools do not declare whether they read files, write files, run shell commands, call networks, or touch databases.",
+            suggestedVerification:
+              "Inventory each tool and classify it as read-only, filesystem-read, filesystem-write, shell, network, database, or unknown.",
+            suggestedFix:
+              "Add side-effect metadata to the local MCP config or companion policy file before enabling the tools for launch work."
+          })
+        );
+      }
+
+      if (hasHighRiskSideEffects(sideEffects) && !hasPolicyBoundary(config)) {
+        findings.push(
+          finding({
+            ruleId: "mcp.tool.missing-policy-boundary",
+            title: `High-risk MCP server ${name} lacks an obvious local policy boundary`,
+            severity: "high",
+            evidence: [{ file: file.path }],
+            why: "Shell, filesystem-write, database, network, or unknown tools need a visible allow/deny boundary so prompt injection cannot silently escalate tool calls.",
+            suggestedVerification:
+              "Try a denied shell/filesystem/database action and confirm the local policy blocks it before execution.",
+            suggestedFix:
+              "Add a repo-local allow/deny policy with default deny for high-risk tools and documented reasons for allowed scopes."
+          })
+        );
+      }
+
+      if (hasScopedToolNeed(sideEffects) && !hasToolScope(config)) {
+        findings.push(
+          finding({
+            ruleId: "mcp.tool.missing-scope",
+            title: `MCP server ${name} exposes scoped tools without allowlists or scopes`,
+            severity: "high",
+            evidence: [{ file: file.path }],
+            why: "Shell, filesystem, and database MCP tools should be constrained to specific commands, paths, queries, or non-production credentials.",
+            suggestedVerification:
+              "List the exact commands, paths, and database resources this server can access, then test at least one denied command/path/query.",
+            suggestedFix:
+              "Add `allowPaths`, command allowlists, database scopes, or read-only credentials for these tools."
+          })
+        );
+      }
+
       const mode = await fileMode(file.absolutePath);
       if (mode !== undefined && (mode & 0o077) !== 0) {
         findings.push(
@@ -153,7 +207,8 @@ export async function checkMcp(input: ScanInput): Promise<McpReport> {
 
   return createReport<McpReport>("check-mcp", context.rootDir, uniqueFindings(findings), {
     servers,
-    tools: [...new Set(servers.flatMap((server) => server.tools))].sort()
+    tools: [...new Set(servers.flatMap((server) => server.tools))].sort(),
+    ...(options.policyTemplate ? { policyTemplate: buildPolicyTemplate(servers) } : {})
   });
 }
 
@@ -168,27 +223,116 @@ function extractServers(parsed: unknown): Record<string, unknown> {
   return candidates && typeof candidates === "object" ? (candidates as Record<string, unknown>) : {};
 }
 
-function extractTools(config: unknown): string[] {
+function extractToolEntries(config: unknown): ToolEntry[] {
   if (!config || typeof config !== "object") return [];
   const record = config as Record<string, unknown>;
   const tools = record.tools;
-  if (Array.isArray(tools)) return tools.map((tool) => String(tool));
-  if (tools && typeof tools === "object") return Object.keys(tools);
+  if (Array.isArray(tools)) return tools.map((tool) => ({ name: String(tool) }));
+  if (tools && typeof tools === "object") {
+    return Object.entries(tools as Record<string, unknown>).map(([name, value]) => ({
+      name,
+      config: value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
+    }));
+  }
   return [];
 }
 
-function classifySideEffects(config: unknown, tools: string[]): McpSideEffect[] {
+function classifySideEffects(config: unknown, tools: ToolEntry[]): McpSideEffect[] {
   const text = JSON.stringify(config).toLowerCase();
   const sideEffects = new Set<McpSideEffect>();
+  const toolNames = tools.map((tool) => tool.name);
+  const explicitClasses = tools
+    .map((tool) => stringValue(tool.config?.sideEffectClass ?? tool.config?.side_effect_class))
+    .filter((value): value is McpSideEffect => typeof value === "string" && isMcpSideEffect(value));
 
-  if (/write|delete|mutate|filesystem\.write|allowpaths/.test(text)) sideEffects.add("write");
+  for (const sideEffect of explicitClasses) {
+    sideEffects.add(sideEffect);
+  }
+
+  if (/filesystem\.write|\bwrite\b|\bdelete\b|\bmutate\b/.test(text)) sideEffects.add("filesystem-write");
+  if (/filesystem\.read|\bread\b|allowpaths|path/.test(text)) sideEffects.add("filesystem-read");
   if (/http|url|fetch|browser|network/.test(text)) sideEffects.add("network");
-  if (/shell|exec|bash|zsh|terminal|command/.test(text) || tools.some((tool) => /shell|exec|terminal/i.test(tool))) sideEffects.add("shell");
+  if (/shell|exec|bash|zsh|terminal|command/.test(text) || toolNames.some((tool) => /shell|exec|terminal/i.test(tool))) sideEffects.add("shell");
   if (/sql|database|postgres|mysql|sqlite|supabase|database_url/.test(text)) sideEffects.add("database");
   if (/(secret|token|api[_-]?key|password|database_url)/i.test(text) && hasSecretLikeValue(text)) sideEffects.add("secret-bearing");
+  if (toolNames.length > 0 && sideEffects.size === 0) sideEffects.add("unknown");
   if (sideEffects.size === 0) sideEffects.add("read-only");
 
   return [...sideEffects];
+}
+
+function hasToolsWithoutExplicitSideEffect(tools: ToolEntry[]): boolean {
+  return tools.some((tool) => !stringValue(tool.config?.sideEffectClass ?? tool.config?.side_effect_class));
+}
+
+function hasHighRiskSideEffects(sideEffects: McpSideEffect[]): boolean {
+  return sideEffects.some((sideEffect) =>
+    ["filesystem-write", "write", "shell", "database", "network", "unknown"].includes(sideEffect)
+  );
+}
+
+function hasScopedToolNeed(sideEffects: McpSideEffect[]): boolean {
+  return sideEffects.some((sideEffect) =>
+    ["filesystem-read", "filesystem-write", "write", "shell", "database"].includes(sideEffect)
+  );
+}
+
+function hasPolicyBoundary(config: unknown): boolean {
+  const text = JSON.stringify(config).toLowerCase();
+  return /\b(policy|allow|deny|approval|required|confirm)\b/.test(text);
+}
+
+function hasToolScope(config: unknown): boolean {
+  const text = JSON.stringify(config).toLowerCase();
+  return /\b(allowpaths|allowedpaths|allow_paths|scope|scopes|readonly|read-only|commands|allowlist|allowedcommands|allowedqueries|schemas?)\b/.test(text);
+}
+
+function buildPolicyTemplate(servers: McpServerInventory[]): NonNullable<McpReport["policyTemplate"]> {
+  return {
+    servers: servers.map((server) => ({
+      name: server.name,
+      configPath: server.configPath,
+      tools: server.tools,
+      sideEffects: server.sideEffects
+    })),
+    localPolicyTemplate: [
+      "version: 1",
+      "defaultDecision: deny",
+      "rules:",
+      "  - match: { sideEffectClass: read-only }",
+      "    decision: allow",
+      "    reason: local read-only launch review",
+      "  - match: { sideEffectClass: filesystem-read, pathPrefix: ./ }",
+      "    decision: allow",
+      "    reason: repo-local read scope",
+      "  - match: { sideEffectClass: shell }",
+      "decision: deny",
+      "    reason: shell tools require explicit human approval before launch work"
+    ],
+    receiptFormat: [
+      "serverToolIdentity",
+      "normalizedArgumentDigest",
+      "sideEffectClass",
+      "redactionStatus",
+      "decision",
+      "reason",
+      "replayDeterminismNote"
+    ]
+  };
+}
+
+function isMcpSideEffect(value: string): value is McpSideEffect {
+  return (
+    value === "read-only" ||
+    value === "filesystem-read" ||
+    value === "filesystem-write" ||
+    value === "write" ||
+    value === "network" ||
+    value === "shell" ||
+    value === "database" ||
+    value === "secret-bearing" ||
+    value === "unknown"
+  );
 }
 
 function stringValue(value: unknown): string | undefined {

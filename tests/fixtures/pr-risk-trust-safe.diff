@@ -1,0 +1,21 @@
+diff --git a/docs/auth-session-design.md b/docs/auth-session-design.md
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/docs/auth-session-design.md
+@@ -0,0 +1,5 @@
++# Auth Session Decision
++
++Session reads must fail closed.
++Manual proof: User B cannot read User A resources.
++Billing changes remain in a separate PR.
+diff --git a/app/api/auth/session/route.ts b/app/api/auth/session/route.ts
+index 2222222..3333333 100644
+--- a/app/api/auth/session/route.ts
++++ b/app/api/auth/session/route.ts
+@@ -1,5 +1,6 @@
+ export async function GET(request: Request) {
+   const session = await getSession(request);
++  if (!session.user) return new Response("unauthorized", { status: 401 });
+   return Response.json({ user: session.user });
+ }

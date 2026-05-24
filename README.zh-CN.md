@@ -36,6 +36,8 @@ AI 能很快把一个 SaaS 从想法做成可运行的产品。真正难的是�
 - Stripe webhook 会不会重复开通权限、漏处理付款失败，或者信任未签名请求？
 - `NEXT_PUBLIC_*` 里是不是不小心暴露了 secret？
 - MCP 工具是不是拿到了 shell、数据库或过宽的文件系统权限？
+- AI 生成的错误处理会不会在真实服务失败后仍然返回“成功”或 demo 数据？
+- Next/Vercel 上线前是不是缺 security headers、env 文档、请求日志或高请求量风险提示？
 - AI 生成的大 PR 里，是不是把 auth、billing 或 deploy 改动藏在 UI 调整中？
 
 `ai-saas-guard` 是面向这个时刻的本地优先、review-first 上线预检工具。它不会证明你的应用绝对安全，也不是渗透测试、认证或完整安全审计。它的目标是给 founder、独立开发者、小团队和 reviewer 一份短而有证据的清单，告诉你上线或合并 PR 前最该先看哪里。
@@ -76,6 +78,7 @@ CLI 已发布到 npm：`ai-saas-guard@0.25.0`。GitHub Action 支持 `v0` 浮动
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖和 fail threshold |
 | 当前版本 | `0.25.0` |
 | Action 标签 | `v0.25.0`、`v0` |
+| 下一版源码候选 | `0.26.0`，包含 launch-risk expansion；完成 release gate 和 GitHub release 前尚未发布 |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | 运行时加固 | 单文件和总扫描文本预算、markdown evidence 转义、1 MiB hosted webhook payload 上限、更严格的 hosted deployment 阻断 |
@@ -101,8 +104,11 @@ npx ai-saas-guard@latest scan --root /path/to/your-saas
 ```bash
 npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main
 npx ai-saas-guard@latest check-supabase --root /path/to/your-saas
+npx ai-saas-guard@latest check-supabase --root /path/to/your-saas --doctor
 npx ai-saas-guard@latest check-stripe --root /path/to/your-saas
 npx ai-saas-guard@latest check-mcp --root /path/to/your-saas
+npx ai-saas-guard@latest check-mcp --root /path/to/your-saas --policy-template
+npx ai-saas-guard@latest check-actions --root /path/to/your-saas
 ```
 
 机器可读输出：
@@ -129,9 +135,10 @@ node dist/cli.js scan --root /path/to/your-saas
 | --- | --- |
 | `scan` | 对 secrets、Stripe、Supabase、MCP、API routes、deploy config 做整体上线预检 |
 | `pr-risk` | 分析当前 git diff 或指定 base branch diff，判断哪些文件和风险面应该先 review |
-| `check-supabase` | 检查 migration 和 policy 文件里的 RLS、ownership、storage policy 风险 |
+| `check-supabase` | 检查 migration 和 policy 文件里的 RLS、ownership、storage policy 风险；`--doctor` 输出静态 RLS 调试步骤和 SQL cookbook |
 | `check-stripe` | 检查 webhook 签名、raw body、幂等、订阅生命周期和 entitlement 更新路径 |
-| `check-mcp` | 检查 MCP 配置里的 secret、非 localhost 绑定、shell/db/filesystem 等副作用 |
+| `check-mcp` | 检查 MCP 配置里的 secret、非 localhost 绑定、shell/db/filesystem 等副作用；`--policy-template` 输出本地 allow/deny policy 和 tool-call receipt 格式 |
+| `check-actions` | 检查和 AI-built SaaS 上线有关的 GitHub Actions hygiene |
 
 ## 它会检查什么
 
@@ -140,10 +147,12 @@ node dist/cli.js scan --root /path/to/your-saas
 | Secrets 和 env | 类似密钥的字符串、危险的 `NEXT_PUBLIC_*` 暴露 |
 | Stripe | webhook 缺失、未验证签名、raw body 签名风险、缺幂等、缺失败/取消/退款/更新处理 |
 | Supabase | 敏感表没启用 RLS、policy 过宽、缺少 ownership filter、`WITH CHECK` 过弱、storage object policy 过宽 |
+| Silent success | 捕获错误后返回假成功、敏感路径里的 hardcoded fallback、production 路径引入 mock/demo data、临时绕过 auth/webhook/ownership、跳过或占位测试 |
 | API routes | 有 auth 但缺少明显 ownership guard，敏感 mutation route 缺少 rate-limit 提示 |
-| MCP | 明文 secret、非 localhost 绑定、过宽文件系统权限、shell 工具、raw SQL 工具 |
-| Deploy config | Next static export 和 API route 冲突、Edge runtime 使用 Node-only API、关键 env 文档缺失 |
-| PR risk | auth、billing、RLS、env、deploy、API、storage、测试删除、大型混合 diff |
+| MCP | 明文 secret、非 localhost 绑定、过宽文件系统权限、shell 工具、raw SQL 工具、side-effect 分类、本地 policy/receipt 模板 |
+| Next/Vercel deploy | Next static export 和 API route 冲突、Edge runtime 使用 Node-only API、security headers 缺失、server env 文档缺失、public env 盘点、image/request 放大风险、request ID logging 缺失 |
+| GitHub Actions | workflow 权限过宽、PR workflow 缺 concurrency cancel、docs-only 改动跑全量 CI、secret/tool version 缺 fail-fast、`pr-risk` checkout 太浅、Action 未 pin SHA |
+| PR risk | auth、billing、RLS、env、deploy、API、storage、silent-success、测试删除、缺 spec/context、大型混合 diff |
 
 完整规则请看 [docs/rules.md](docs/rules.md)。
 
