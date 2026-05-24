@@ -418,8 +418,11 @@ test("npm package excludes macOS AppleDouble metadata files", async () => {
     const npmIgnore = await readFile(resolve(packageRoot, ".npmignore"), "utf8");
 
     assert.match(npmIgnore, /\*\*\/\._\*/);
+    assert.match(npmIgnore, /\*\*\/\.wrangler/);
     assert.ok(packedPaths.includes("README.zh-CN.md"));
+    assert.ok(packedPaths.includes("hosted/cloudflare-worker/README.md"));
     assert.ok(!packedPaths.some((filePath) => filePath.startsWith("._") || filePath.includes("/._")));
+    assert.ok(!packedPaths.some((filePath) => filePath.startsWith(".wrangler") || filePath.includes("/.wrangler/")));
   } finally {
     await rm(appleDoubleFile, { force: true });
   }
@@ -1501,7 +1504,7 @@ test("repository documents signed release provenance assets", async () => {
   }
 });
 
-test("repository exposes OpenSSF Best Practices badge preparation", async () => {
+test("repository exposes OpenSSF Best Practices passing badge evidence", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
   const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
@@ -1534,12 +1537,46 @@ test("repository exposes OpenSSF Best Practices badge preparation", async () => 
   assert.match(contributing, /npm test/);
   assert.match(contributing, /release-quality-knowledge-base\.md/);
   assert.match(contributing, /No real API keys/i);
+  assert.match(readme, /https:\/\/www\.bestpractices\.dev\/projects\/12955/);
+  assert.match(readme, /OpenSSF Best Practices/);
   assert.match(readme, /CONTRIBUTING\.md/);
   assert.match(readme, /\.bestpractices\.json/);
+  assert.match(zhReadme, /https:\/\/www\.bestpractices\.dev\/projects\/12955/);
+  assert.match(zhReadme, /OpenSSF Best Practices/);
   assert.match(zhReadme, /CONTRIBUTING\.md/);
   assert.match(zhReadme, /\.bestpractices\.json/);
+  assert.match(governance, /https:\/\/www\.bestpractices\.dev\/projects\/12955/);
+  assert.match(governance, /Passing achieved on 2026-05-24/);
   assert.match(governance, /\.bestpractices\.json/);
   assert.doesNotMatch(contributing, /sk_(?:live|test)_[A-Za-z0-9]+|whsec_[A-Za-z0-9]+/);
+});
+
+test("public docs describe the live Cloudflare hosted ingress without overclaiming scans", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const handoff = await readFile(resolve(packageRoot, "docs", "project-handoff.md"), "utf8");
+  const deployment = await readFile(resolve(packageRoot, "docs", "github-app-deployment.md"), "utf8");
+  const cloudflareReadme = await readFile(
+    resolve(packageRoot, "hosted", "cloudflare-worker", "README.md"),
+    "utf8"
+  );
+
+  for (const document of [readme, zhReadme, handoff, deployment, cloudflareReadme]) {
+    assert.match(document, /https:\/\/ai-saas-guard-hosted\.zr9959\.workers\.dev/);
+    assert.match(document, /ai-saas-guard-hosted/);
+    assert.match(document, /3834787/);
+    assert.match(document, /sign|签名/i);
+    assert.match(document, /Check Run|check run/i);
+  }
+
+  assert.match(cloudflareReadme, /\/github\/app\/manifest-callback/);
+  assert.match(cloudflareReadme, /1 MiB/);
+  assert.match(cloudflareReadme, /shouldCreateCheckRun/);
+  assert.match(cloudflareReadme, /not yet the complete scan worker/i);
+  assert.doesNotMatch(
+    `${readme}\n${zhReadme}\n${handoff}\n${cloudflareReadme}`,
+    /full hosted product|complete hosted scanner/i
+  );
 });
 
 test("npm publish workflow uses token-free trusted publishing", async () => {

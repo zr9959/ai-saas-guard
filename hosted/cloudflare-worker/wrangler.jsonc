@@ -1,0 +1,21 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+  "name": "ai-saas-guard-hosted",
+  "main": "src/index.js",
+  "compatibility_date": "2026-05-24",
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "SCANNER_VERSION": "0.24.0",
+    "GITHUB_APP_ID": "3834787",
+    "GITHUB_APP_SLUG": "ai-saas-guard-hosted",
+    "GITHUB_APP_INSTALLATION_ID": "135085075"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "HOSTED_EVENTS",
+      "id": "fa5344fbd7944de6a776bf8731d58460"
+    }
+  ]
+}

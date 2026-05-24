@@ -112,10 +112,17 @@ Every public release should keep these controls intact. If a release changes wor
 
 The OpenSSF Best Practices Badge is tracked as a separate public trust signal. The badge must be earned through the OpenSSF Best Practices web application and API; it cannot be truthfully completed by repository files alone.
 
-The repository includes `.bestpractices.json` with conservative proposed answers backed by public repository evidence. The file helps the OpenSSF Best Practices app prefill answers during maintainer review, but it does not create a public badge record by itself.
+The repository has earned the OpenSSF Best Practices passing badge:
 
-Current badge preparation evidence:
+- Project page: https://www.bestpractices.dev/projects/12955
+- Badge API: https://www.bestpractices.dev/projects/12955/badge.json
+- Passing achieved on 2026-05-24.
+
+The repository also includes `.bestpractices.json` with conservative proposed answers backed by public repository evidence. The file remains the evidence record for future maintainer review, but the public badge state is the OpenSSF project record above.
+
+Current badge evidence:
 
 - `CONTRIBUTING.md` documents the pull request process, test expectations, rule-design requirements, release gate evidence, and public-safety constraints.
 - `README.md` and `README.zh-CN.md` document the problem, install path, CLI commands, privacy model, GitHub Action use, hosted boundaries, and trust-hardening controls.
 - `.bestpractices.json` records only repository-backed OpenSSF Best Practices proposed answers; unknown or future claims should stay out until they can be supported by public evidence.
+- `dynamic_analysis_enable_assertions` is intentionally still marked unmet because the production CLI does not yet have broad runtime assertion coverage beyond tests, property tests, and fuzzing.
