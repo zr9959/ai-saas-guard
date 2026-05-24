@@ -5,11 +5,11 @@
 ## Current State
 
 - Package name: `ai-saas-guard`
-- Current published version: `0.25.0`
-- Next source candidate: `0.26.0`
+- Current published version: `0.26.0`
+- Next source candidate: none
 - npm registry state: published at <https://www.npmjs.com/package/ai-saas-guard>
 - First npm-published version: `0.1.1`
-- GitHub Release: `v0.25.0`
+- GitHub Release: `v0.26.0`
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions, `zr9959/ai-saas-guard`, workflow `npm-publish.yml`, allowed action `npm publish`
 - Long-lived npm publish token: not required
