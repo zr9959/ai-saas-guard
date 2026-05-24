@@ -46,6 +46,12 @@ These are the failures that hurt after real users arrive:
 
 ## 60-Second Local Check
 
+See the public demo output without cloning a repo:
+
+```bash
+npx ai-saas-guard@latest demo
+```
+
 Run it against your app without installing anything globally:
 
 ```bash
@@ -65,13 +71,10 @@ You get rule IDs, severity, file evidence, why it matters, how to verify it manu
 Want to see the report before scanning your own repo?
 
 ```bash
-git clone https://github.com/zr9959/ai-saas-guard.git
-cd ai-saas-guard
-npx ai-saas-guard@latest scan --root examples/demo-risky-saas
-npx ai-saas-guard@latest scan --root examples/demo-safe-saas
+npx ai-saas-guard@latest demo
 ```
 
-The risky demo currently returns 19 intentional findings across Stripe, Supabase, silent-success paths, Next/Vercel deploy hints, and GitHub Actions. The safe demo returns 0 findings for the same broad surfaces with safer static patterns. See [docs/demo-quickstart.md](docs/demo-quickstart.md).
+The demo command uses packaged public fixtures: `examples/demo-risky-saas` currently returns 19 intentional findings across Stripe, Supabase, silent-success paths, Next/Vercel deploy hints, and GitHub Actions; `examples/demo-safe-saas` returns 0 findings for the same broad surfaces with safer static patterns. See [docs/demo-quickstart.md](docs/demo-quickstart.md) if you want to inspect the fixture files locally.
 
 ## See The Output
 
@@ -94,6 +97,10 @@ Verify: force the upstream billing call to fail and confirm the route returns an
 MEDIUM deploy.next.missing-security-headers
 File: app/api/billing/checkout/route.ts
 Verify: inspect production response headers for auth, billing, and API pages.
+
+Next steps
+- Fix critical and high trust-boundary findings first.
+- Run the manual proof steps in staging and confirm each risky path fails closed.
 ```
 
 ## What You Get
@@ -125,6 +132,7 @@ One command returns a launch-readiness report with:
 Run the published CLI without installing it globally:
 
 ```bash
+npx ai-saas-guard@latest demo
 npx ai-saas-guard@latest scan --root /path/to/your-saas
 ```
 
@@ -179,13 +187,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.29.2` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.29.2` |
+| npm CLI | `ai-saas-guard@0.30.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.30.0` |
 | Outputs | Terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.29.2`, `v0` |
-| Current release | `0.29.2` publishes public risky/safe demo fixtures, a demo quickstart, quickstart feedback template, and refreshed first-run README guidance |
+| Versioned Action tags | `v0.30.0`, `v0` |
+| Current release | `0.30.0` adds `ai-saas-guard demo`, Next steps in human-readable reports, a more targeted quickstart feedback template, and refreshed first-run docs |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
@@ -352,7 +360,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.29.2` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.30.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard

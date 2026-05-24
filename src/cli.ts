@@ -2,7 +2,7 @@
 
 import { resolve } from "node:path";
 import { applyGuardConfig, loadGuardConfig } from "./config.js";
-import { checkActions, checkMcp, checkStripe, checkSupabase, classifyPrRisk, scanRepository } from "./index.js";
+import { checkActions, checkMcp, checkStripe, checkSupabase, classifyPrRisk, runShowcase, scanRepository } from "./index.js";
 import { formatJsonReport } from "./report/json.js";
 import { formatMarkdownReport } from "./report/markdown.js";
 import { formatSarifReport } from "./report/sarif.js";
@@ -24,6 +24,12 @@ async function main(argv: string[]): Promise<number> {
   const args = parseArgs(argv);
   if (!args.command || args.command === "help") {
     process.stdout.write(helpText());
+    return 0;
+  }
+
+  if (args.command === "demo") {
+    const report = await runShowcase();
+    process.stdout.write(formatReport(report, args.format));
     return 0;
   }
 
@@ -196,6 +202,7 @@ Repo-local launch-readiness scanner for AI-built SaaS apps.
 
 Usage:
   ai-saas-guard scan [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
+  ai-saas-guard demo [--json|--markdown]
   ai-saas-guard check-supabase [--root <repo>] [--config <file>] [--doctor] [--json|--sarif] [--fail-on <severity>]
   ai-saas-guard check-stripe [--root <repo>] [--config <file>] [--json|--sarif] [--fail-on <severity>]
   ai-saas-guard check-mcp [--root <repo>] [--config <file>] [--policy-template] [--json|--sarif] [--fail-on <severity>]
@@ -206,6 +213,7 @@ Defaults:
   - read-only
   - no network calls
   - no account or login required
+  - demo uses packaged public fixtures and ignores project config/fail thresholds
   - terminal output by default, JSON with --json
   - SARIF output for GitHub code scanning with --sarif
   - PR-focused markdown summary with --markdown

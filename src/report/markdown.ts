@@ -1,9 +1,36 @@
-import type { ActionsReport, BaseReport, Evidence, Finding, McpReport, PrRiskReport, SupabaseReport } from "../types.js";
-import { launchGateVerdict, manualProofSteps, reviewFirst } from "./launchGate.js";
+import type { ActionsReport, BaseReport, Evidence, Finding, McpReport, PrRiskReport, ShowcaseReport, SupabaseReport } from "../types.js";
+import { launchGateVerdict, manualProofSteps, nextSteps, reviewFirst } from "./launchGate.js";
 
 export function formatMarkdownReport(report: BaseReport): string {
+  if (report.command === "demo") return `${formatDemoMarkdown(report as ShowcaseReport)}\n`;
   if (report.command === "pr-risk") return `${formatPrRiskMarkdown(report as PrRiskReport)}\n`;
   return `${formatGenericMarkdown(report)}\n`;
+}
+
+function formatDemoMarkdown(report: ShowcaseReport): string {
+  const lines: string[] = [];
+  lines.push("## ai-saas-guard demo");
+  lines.push("");
+  lines.push("Synthetic public demo for the local-first launch gate. This is not a pentest, full audit, or certification.");
+  lines.push("");
+  lines.push(`- Risky demo: ${escapeMarkdownInline(summaryText(report.demos.risky))}`);
+  lines.push(`- Safe demo: ${escapeMarkdownInline(summaryText(report.demos.safe))}`);
+  lines.push("");
+  lines.push("### Review First");
+  appendList(lines, reviewFirst(report.demos.risky.findings).map(escapeMarkdownInline));
+  lines.push("");
+  lines.push("### Manual Proof To Run Next");
+  appendList(lines, manualProofSteps(report.demos.risky.findings).map(escapeMarkdownInline));
+  lines.push("");
+  lines.push("### Next Steps");
+  appendList(lines, report.nextSteps.map(escapeMarkdownInline));
+  lines.push("");
+  lines.push("Run against your app:");
+  lines.push("");
+  lines.push("```bash");
+  lines.push("npx ai-saas-guard@latest scan --root /path/to/your-saas");
+  lines.push("```");
+  return lines.join("\n");
 }
 
 function formatPrRiskMarkdown(report: PrRiskReport): string {
@@ -82,6 +109,9 @@ function appendLaunchQueue(lines: string[], findings: Finding[]): void {
   lines.push("");
   lines.push("### Manual Proof To Run Next");
   appendList(lines, manualProofSteps(findings).map(escapeMarkdownInline));
+  lines.push("");
+  lines.push("### Next Steps");
+  appendList(lines, nextSteps(findings).map(escapeMarkdownInline));
 }
 
 function appendFindings(lines: string[], findings: Finding[]): void {
@@ -154,4 +184,9 @@ function escapeMarkdownTableCell(value: string): string {
 
 function escapeMarkdownInline(value: string): string {
   return value.replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
+}
+
+function summaryText(report: BaseReport): string {
+  if (report.summary.total === 0) return "0 findings";
+  return `${report.summary.total} findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low, ${report.summary.info} info`;
 }
