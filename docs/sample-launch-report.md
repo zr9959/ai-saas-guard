@@ -47,6 +47,11 @@ File: app/api/billing/checkout/route.ts:31
 Why: Swallowed provider, auth, billing, or data errors can make a launch path look successful when it failed.
 Verify: Force the upstream provider call to fail and confirm the route returns an error or disclosed degraded mode.
 Fix direction: Log the failure, return an explicit error status, and avoid granting access after the failed dependency.
+
+Next steps
+- Fix critical and high trust-boundary findings first: auth/session, billing/webhook, tenant data, and silent-success paths.
+- Run the manual proof steps above in staging and confirm each risky path fails closed.
+- Treat low and info deploy/CI hygiene hints as cleanup after critical, high, and medium launch paths are understood.
 ```
 
 ## How To Read It

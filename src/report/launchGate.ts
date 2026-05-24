@@ -38,3 +38,30 @@ export function manualProofSteps(findings: Finding[], limit = 3): string[] {
 
   return steps;
 }
+
+export function nextSteps(findings: Finding[]): string[] {
+  if (findings.length === 0) {
+    return [
+      "Keep this report with the launch checklist, then run a two-account auth/data-access check and a deploy-preview smoke before inviting real users."
+    ];
+  }
+
+  const steps: string[] = [];
+  const hasCriticalOrHigh = findings.some((finding) => finding.severity === "critical" || finding.severity === "high");
+  const hasMedium = findings.some((finding) => finding.severity === "medium");
+  const hasLowNoise = findings.some((finding) => finding.severity === "low" || finding.severity === "info");
+
+  if (hasCriticalOrHigh) {
+    steps.push("Fix critical and high trust-boundary findings first: auth/session, billing/webhook, tenant data, and silent-success paths.");
+  } else if (hasMedium) {
+    steps.push("Verify medium-risk launch findings with the owning developer before production traffic.");
+  }
+
+  steps.push("Run the manual proof steps above in staging and confirm each risky path fails closed.");
+
+  if (hasLowNoise) {
+    steps.push("Treat low and info deploy/CI hygiene hints as cleanup after critical, high, and medium launch paths are understood.");
+  }
+
+  return steps;
+}

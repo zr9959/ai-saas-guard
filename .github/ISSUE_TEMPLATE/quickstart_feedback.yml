@@ -15,11 +15,39 @@ body:
       label: Entry point
       options:
         - README 60-second local check
+        - npx demo command
         - Risky demo fixture
         - Safe demo fixture
         - npm CLI
         - GitHub Action
         - Chinese README
+    validations:
+      required: true
+  - type: dropdown
+    id: stack
+    attributes:
+      label: Framework or stack
+      options:
+        - Next.js + Supabase + Stripe
+        - Next.js + Supabase
+        - Next.js + Stripe
+        - Vercel only
+        - GitHub Actions only
+        - MCP only
+        - Other or not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: usefulness
+    attributes:
+      label: Was the finding useful?
+      options:
+        - Useful and clear
+        - Useful but hard to understand
+        - Confusing output
+        - False positive
+        - Missed a risk I expected
+        - I could not run the tool
     validations:
       required: true
   - type: textarea
@@ -41,7 +69,7 @@ body:
     id: version
     attributes:
       label: Version or Action tag
-      placeholder: ai-saas-guard@0.29.1 or zr9959/ai-saas-guard@v0
+      placeholder: ai-saas-guard@0.30.0 or zr9959/ai-saas-guard@v0
     validations:
       required: false
   - type: checkboxes

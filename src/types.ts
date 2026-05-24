@@ -2,6 +2,7 @@ export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
 export type CommandName =
   | "scan"
+  | "demo"
   | "check-supabase"
   | "check-stripe"
   | "check-mcp"
@@ -53,6 +54,15 @@ export interface BaseReport {
   generatedAt: string;
   findings: Finding[];
   summary: Summary;
+}
+
+export interface ShowcaseReport extends BaseReport {
+  command: "demo";
+  demos: {
+    risky: BaseReport;
+    safe: BaseReport;
+  };
+  nextSteps: string[];
 }
 
 export interface StripeReport extends BaseReport {

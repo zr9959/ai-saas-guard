@@ -1,4 +1,5 @@
 export { scanRepository } from "./commands/scan.js";
+export { runShowcase } from "./commands/demo.js";
 export { checkStripe } from "./commands/checkStripe.js";
 export { checkSupabase } from "./commands/checkSupabase.js";
 export { checkMcp } from "./commands/checkMcp.js";
@@ -21,6 +22,7 @@ export type {
   PrRiskFile,
   PrRiskReport,
   ScanOptions,
+  ShowcaseReport,
   StripeReport,
   SupabaseOptions,
   SupabaseDoctorReport,

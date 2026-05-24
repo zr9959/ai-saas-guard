@@ -2,9 +2,23 @@
 
 Use these public fixtures when you want to understand `ai-saas-guard` before pointing it at a private repository.
 
-## Risky Demo
+## Fastest Path
+
+Run the packaged demo without cloning this repository:
 
 ```bash
+npx ai-saas-guard@latest demo
+```
+
+This prints the risky and safe demo summaries, the first risky files to review, manual verification steps, and launch-focused next steps. It uses only public fixture code shipped in the npm package.
+
+## Risky Demo
+
+Clone the repository only if you want to inspect or edit the fixture files:
+
+```bash
+git clone https://github.com/zr9959/ai-saas-guard.git
+cd ai-saas-guard
 npx ai-saas-guard@latest scan --root examples/demo-risky-saas
 ```
 

@@ -1,7 +1,9 @@
-import type { ActionsReport, BaseReport, Finding, McpReport, SupabaseReport } from "../types.js";
-import { launchGateVerdict, manualProofSteps, reviewFirst } from "./launchGate.js";
+import type { ActionsReport, BaseReport, Finding, McpReport, ShowcaseReport, SupabaseReport } from "../types.js";
+import { launchGateVerdict, manualProofSteps, nextSteps, reviewFirst } from "./launchGate.js";
 
 export function formatTerminalReport(report: BaseReport): string {
+  if (report.command === "demo") return formatDemoTerminalReport(report as ShowcaseReport);
+
   const lines: string[] = [];
   lines.push(`ai-saas-guard ${report.command}`);
   lines.push(`Root: ${report.rootDir}`);
@@ -29,6 +31,12 @@ export function formatTerminalReport(report: BaseReport): string {
     lines.push(`- ${step}`);
   }
 
+  lines.push("");
+  lines.push("Next steps:");
+  for (const step of nextSteps(report.findings)) {
+    lines.push(`- ${step}`);
+  }
+
   for (const [index, item] of report.findings.entries()) {
     lines.push("");
     lines.push(`${index + 1}. [${item.severity.toUpperCase()}] ${item.title}`);
@@ -47,6 +55,42 @@ export function formatTerminalReport(report: BaseReport): string {
   appendCommandExtras(lines, report);
 
   return lines.join("\n");
+}
+
+function formatDemoTerminalReport(report: ShowcaseReport): string {
+  const lines: string[] = [];
+  lines.push("ai-saas-guard demo");
+  lines.push("Synthetic public demo for the local-first launch gate.");
+  lines.push("This is not a pentest, full audit, or certification.");
+  lines.push("");
+  lines.push(`Risky demo: ${summaryText(report.demos.risky)}`);
+  lines.push(`Safe demo: ${summaryText(report.demos.safe)}`);
+  lines.push("");
+  lines.push("Review first:");
+  for (const item of reviewFirst(report.demos.risky.findings)) {
+    lines.push(`- ${item}`);
+  }
+  lines.push("");
+  lines.push("Manual proof to run next:");
+  for (const step of manualProofSteps(report.demos.risky.findings)) {
+    lines.push(`- ${step}`);
+  }
+  lines.push("");
+  lines.push("Next steps:");
+  for (const step of report.nextSteps) {
+    lines.push(`- ${step}`);
+  }
+  lines.push("");
+  lines.push("Run against your app:");
+  lines.push("  npx ai-saas-guard@latest scan --root /path/to/your-saas");
+  lines.push("");
+  lines.push("Read more: https://github.com/zr9959/ai-saas-guard/blob/main/docs/demo-quickstart.md");
+  return lines.join("\n");
+}
+
+function summaryText(report: BaseReport): string {
+  if (report.summary.total === 0) return "0 findings";
+  return `${report.summary.total} findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low, ${report.summary.info} info`;
 }
 
 function appendCommandExtras(lines: string[], report: BaseReport): void {

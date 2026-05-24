@@ -207,11 +207,15 @@ test("reports start with a launch gate and next manual proof", () => {
   assert.match(terminal, /HIGH stripe\.webhook\.missing-signature at app\/api\/stripe\/webhook\/route\.ts:7/);
   assert.match(terminal, /Manual proof to run next:/);
   assert.match(terminal, /Send a forged Stripe webhook/);
+  assert.match(terminal, /Next steps:/);
+  assert.match(terminal, /Fix critical and high trust-boundary findings first/i);
 
   const markdown = formatMarkdownReport(report);
   assert.match(markdown, /\*\*Launch gate:\*\* review required/);
   assert.match(markdown, /### Review First/);
   assert.match(markdown, /### Manual Proof To Run Next/);
+  assert.match(markdown, /### Next Steps/);
+  assert.match(markdown, /Fix critical and high trust-boundary findings first/i);
 });
 
 test("rule catalog contains metadata for every published rule", () => {
@@ -829,6 +833,27 @@ test("CLI supports Supabase doctor, MCP policy template, and Actions hygiene com
   ]);
   assert.equal(actions.code, 0);
   assert.equal(JSON.parse(actions.stdout).command, "check-actions");
+});
+
+test("CLI demo shows packaged risky and safe examples without a target repo", async () => {
+  const terminal = await runCli(["demo"]);
+  assert.equal(terminal.code, 0);
+  assert.match(terminal.stdout, /ai-saas-guard demo/i);
+  assert.match(terminal.stdout, /Risky demo/i);
+  assert.match(terminal.stdout, /19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info/i);
+  assert.match(terminal.stdout, /Safe demo/i);
+  assert.match(terminal.stdout, /0 findings/i);
+  assert.match(terminal.stdout, /Next steps/i);
+  assert.match(terminal.stdout, /not a pentest, full audit, or certification/i);
+
+  const json = await runCli(["demo", "--json"]);
+  assert.equal(json.code, 0);
+  const report = JSON.parse(json.stdout);
+  assert.equal(report.command, "demo");
+  assert.equal(report.summary.total, 19);
+  assert.equal(report.demos.risky.summary.total, 19);
+  assert.equal(report.demos.safe.summary.total, 0);
+  assert.ok(report.demos.risky.findings.some((finding) => finding.ruleId === "stripe.webhook.missing-signature"));
 });
 
 test("CLI --fail-on exits non-zero only because findings meet the threshold", async () => {
@@ -1824,6 +1849,14 @@ test("repository exposes security-safe GitHub issue templates", async () => {
   assert.match(config, /blank_issues_enabled:\s*false/);
   assert.match(config, /docs\/demo-quickstart\.md/);
   assert.match(config, /docs\/launch-readiness-checklist\.md/);
+
+  const quickstart = await readFile(resolve(templateDir, "quickstart_feedback.yml"), "utf8");
+  assert.match(quickstart, /Framework or stack/i);
+  assert.match(quickstart, /Next\.js \+ Supabase \+ Stripe/i);
+  assert.match(quickstart, /Was the finding useful/i);
+  assert.match(quickstart, /Confusing output/i);
+  assert.match(quickstart, /Version or Action tag/i);
+  assert.match(quickstart, /ai-saas-guard@0\.30\.0 or zr9959\/ai-saas-guard@v0/i);
 });
 
 test("repository exposes CODEOWNERS for public maintenance boundaries", async () => {
