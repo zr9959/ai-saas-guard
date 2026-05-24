@@ -32,7 +32,7 @@ It covers:
 - npm dependencies
 - GitHub Actions
 
-The schedule is weekly with a small open pull request limit. This keeps update noise low while still surfacing security and maintenance updates.
+The schedule is weekly with cooldown windows and a small open pull request limit. This keeps update noise low while still surfacing security and maintenance updates.
 
 Dependabot security updates and vulnerability alerts are enabled in repository settings.
 

@@ -135,7 +135,7 @@ CI:
 - Uses `permissions: contents: read`
 - Static workflow checks: `actionlint` and `zizmor`
 - Code scanning workflow: `.github/workflows/codeql.yml`
-- Dependabot config: `.github/dependabot.yml`
+- Dependabot config: `.github/dependabot.yml` with weekly schedules, bounded PR volume, and cooldown windows
 - Latest verified run for the repository trust hardening release must succeed before publishing
 
 Publishing:

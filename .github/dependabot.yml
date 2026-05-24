@@ -8,6 +8,11 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Shanghai"
+    cooldown:
+      default-days: 7
+      semver-major-days: 21
+      semver-minor-days: 7
+      semver-patch-days: 3
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -23,6 +28,8 @@ updates:
       day: "monday"
       time: "09:30"
       timezone: "Asia/Shanghai"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"

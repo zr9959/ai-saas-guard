@@ -1430,6 +1430,10 @@ test("repository enables low-noise Dependabot updates", async () => {
   assert.match(dependabot, /package-ecosystem:\s*"github-actions"/);
   assert.match(dependabot, /directory:\s*"\/"/);
   assert.match(dependabot, /interval:\s*"weekly"/);
+  assert.equal(dependabot.match(/cooldown:\s*\n\s+default-days:\s*7/g)?.length, 2);
+  assert.match(dependabot, /semver-major-days:\s*21/);
+  assert.match(dependabot, /semver-minor-days:\s*7/);
+  assert.match(dependabot, /semver-patch-days:\s*3/);
   assert.match(dependabot, /open-pull-requests-limit:\s*5/);
   assert.match(dependabot, /labels:\s*\n\s+-\s*"dependencies"/);
   assert.doesNotMatch(dependabot, /registries:|token:|password:|secrets\./i);
