@@ -675,7 +675,8 @@ test("npm package excludes macOS AppleDouble metadata files", async () => {
 
     assert.match(npmIgnore, /\*\*\/\._\*/);
     assert.match(npmIgnore, /\*\*\/\.wrangler/);
-    assert.ok(packedPaths.includes("README.zh-CN.md"));
+    assert.ok(packedPaths.includes("docs/README.zh-CN.md"));
+    assert.ok(!packedPaths.includes("README.zh-CN.md"));
     assert.ok(packedPaths.includes("hosted/cloudflare-worker/README.md"));
     assert.ok(!packedPaths.some((filePath) => filePath.startsWith("._") || filePath.includes("/._")));
     assert.ok(!packedPaths.some((filePath) => filePath.startsWith(".wrangler") || filePath.includes("/.wrangler/")));
@@ -1041,7 +1042,7 @@ test("public docs explain PR summary, SARIF, and the v0 Action tag", async () =>
 
 test("public README keeps an updated Chinese translation entry point", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
-  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
   const releaseGate = await readFile(
     resolve(packageRoot, "docs", "release-quality-knowledge-base.md"),
     "utf8"
@@ -1071,7 +1072,7 @@ test("public README keeps an updated Chinese translation entry point", async () 
   assert.match(zhReadme, /check-mcp/);
   assert.match(zhReadme, /GitHub Action/);
   assert.match(zhReadme, /Hosted GitHub App/);
-  assert.match(zhReadme, /docs\/hosted-staging-harness\.md/);
+  assert.match(zhReadme, /hosted-staging-harness\.md/);
   assert.match(zhReadme, /不是渗透测试/);
   assert.match(zhReadme, /不上传代码/);
   assert.match(releaseGate, /README\.zh-CN\.md/);
@@ -1315,7 +1316,7 @@ test("public docs define hosted GitHub App deployment planning", async () => {
 
 test("public docs describe repository trust hardening", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
-  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
   const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
   const security = await readFile(resolve(packageRoot, "SECURITY.md"), "utf8");
 
@@ -1406,7 +1407,7 @@ test("public docs define hosted uninstall and data deletion behavior", async () 
 
 test("public docs record hosted operations evidence without overclaiming delivery", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
-  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
   const evidence = await readFile(resolve(packageRoot, "docs", "hosted-operations-evidence.md"), "utf8");
 
   for (const document of [readme, zhReadme, evidence]) {
@@ -1799,7 +1800,7 @@ test("repository documents strict Scorecard branch protection controls", async (
 
 test("repository documents signed release provenance assets", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
-  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
   const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
 
   for (const document of [readme, zhReadme, governance]) {
@@ -1811,7 +1812,7 @@ test("repository documents signed release provenance assets", async () => {
 
 test("repository exposes OpenSSF Best Practices passing badge evidence", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
-  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
   const governance = await readFile(resolve(packageRoot, "docs", "repository-trust-hardening.md"), "utf8");
   const contributing = await readFile(resolve(packageRoot, "CONTRIBUTING.md"), "utf8");
   const badge = JSON.parse(await readFile(resolve(packageRoot, ".bestpractices.json"), "utf8"));
@@ -1858,7 +1859,7 @@ test("repository exposes OpenSSF Best Practices passing badge evidence", async (
 
 test("public docs describe the live Cloudflare hosted ingress without overclaiming scans", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
-  const zhReadme = await readFile(resolve(packageRoot, "README.zh-CN.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
   const handoff = await readFile(resolve(packageRoot, "docs", "project-handoff.md"), "utf8");
   const deployment = await readFile(resolve(packageRoot, "docs", "github-app-deployment.md"), "utf8");
   const cloudflareReadme = await readFile(

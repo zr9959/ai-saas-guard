@@ -235,7 +235,7 @@ P0:
 - `types` points to generated declaration files if package exports TypeScript API.
 - `exports` is accurate.
 - README install examples match the published package name.
-- If `README.md` changes, `README.zh-CN.md` must be reviewed and updated or explicitly confirmed still current.
+- If `README.md` changes, `docs/README.zh-CN.md` must be reviewed and updated or explicitly confirmed still current.
 - Version follows semver.
 - Release notes state breaking changes, new checks, false-positive changes, and migration notes.
 - Publish with npm trusted publishing/OIDC when possible.

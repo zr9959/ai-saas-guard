@@ -13,15 +13,15 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English README</a> | 中文
+  <a href="../README.md">English README</a> | 中文
 </p>
 
 <p align="center">
   <a href="https://github.com/zr9959/ai-saas-guard/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zr9959/ai-saas-guard/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://www.bestpractices.dev/projects/12955"><img alt="OpenSSF Best Practices" src="https://www.bestpractices.dev/projects/12955/badge"></a>
   <a href="https://www.npmjs.com/package/ai-saas-guard"><img alt="npm" src="https://img.shields.io/npm/v/ai-saas-guard.svg"></a>
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-  <a href="package.json"><img alt="Node.js >=20" src="https://img.shields.io/badge/node-%3E%3D20-339933.svg"></a>
+  <a href="../LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <a href="../package.json"><img alt="Node.js >=20" src="https://img.shields.io/badge/node-%3E%3D20-339933.svg"></a>
 </p>
 
 ---
@@ -67,22 +67,22 @@ AI 能很快把一个 SaaS 做到“看起来能用”。真正危险的是上�
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.27.1`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.27.1`。
+CLI 已发布到 npm：`ai-saas-guard@0.27.2`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.27.2`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.27.1` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.27.1` |
+| npm CLI | `ai-saas-guard@0.27.2` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.27.2` |
 | 输出格式 | Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.27.1` npm README metadata fix；CLI 和 hosted Check Run 的 launch-gate report summary 仍是当前功能 |
-| Action 标签 | `v0.27.1`、`v0` |
+| 当前版本 | `0.27.2` npm README metadata fix；CLI 和 hosted Check Run 的 launch-gate report summary 仍是当前功能 |
+| Action 标签 | `v0.27.2`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；Worker health 和 Check Run publisher 配置已在线，但端到端 GitHub App webhook delivery 仍需要验证私有 App 设置 |
-| Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`；hosted operations evidence 见 [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
+| Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`；hosted operations evidence 见 [docs/hosted-operations-evidence.md](hosted-operations-evidence.md) |
 | OpenSSF Best Practices | 已获得 passing badge，项目 `12955`；`.bestpractices.json` 继续作为保守证据记录 |
 
 ## 快速开始
@@ -148,17 +148,17 @@ node dist/cli.js scan --root /path/to/your-saas
 | GitHub Actions | workflow 权限过宽、PR workflow 缺 concurrency cancel、docs-only 改动跑全量 CI、secret/tool version 缺 fail-fast、`pr-risk` checkout 太浅、Action 未 pin SHA |
 | PR risk | auth、billing、RLS、env、deploy、API、storage、silent-success、测试删除、缺 spec/context、大型混合 diff |
 
-完整规则请看 [docs/rules.md](docs/rules.md)。
+完整规则请看 [docs/rules.md](rules.md)。
 
 ## 仓库可信度加固
 
-公开仓库的维护和发布控制见 [docs/repository-trust-hardening.md](docs/repository-trust-hardening.md)。当前已经配置严格 branch protection、required CI checks、Dependabot npm/GitHub Actions 更新、CodeQL SAST、fast-check fuzz/property tests、基于 npm trusted publishing provenance 的 signed GitHub release assets、private vulnerability reporting、secret scanning 和 push protection。
+公开仓库的维护和发布控制见 [docs/repository-trust-hardening.md](repository-trust-hardening.md)。当前已经配置严格 branch protection、required CI checks、Dependabot npm/GitHub Actions 更新、CodeQL SAST、fast-check fuzz/property tests、基于 npm trusted publishing provenance 的 signed GitHub release assets、private vulnerability reporting、secret scanning 和 push protection。
 
 最新 GitHub releases 会镜像 npm package tarball，并附带 `*.tgz.sigstore.json` 和 `*.tgz.intoto.jsonl` provenance assets。上传前会用 npm registry metadata 校验 tarball digest，并使用 npm provenance 作为来源。
 
 当前 Scorecard 提升路线优先做真实控制，不做表面刷分：更严格的 review gate、可被检测到的 fuzzing、以及 OpenSSF Best Practices Badge 流程。仓库年龄、贡献者多样性、已 review 的 PR 历史这些分数只能随着真实维护逐步提升。
 
-仓库现在已经获得 [OpenSSF Best Practices passing badge](https://www.bestpractices.dev/projects/12955)。[.bestpractices.json](.bestpractices.json) 继续作为公开项目条目的保守证据记录。`dynamic_analysis_enable_assertions` 仍然谨慎标为 unmet，直到运行时断言覆盖面超过当前测试、property 和 fuzz assertions。
+仓库现在已经获得 [OpenSSF Best Practices passing badge](https://www.bestpractices.dev/projects/12955)。[.bestpractices.json](../.bestpractices.json) 继续作为公开项目条目的保守证据记录。`dynamic_analysis_enable_assertions` 仍然谨慎标为 unmet，直到运行时断言覆盖面超过当前测试、property 和 fuzz assertions。
 
 ## PR 风险分流
 
@@ -229,7 +229,7 @@ jobs:
           config: .ai-saas-guard.json
 ```
 
-更多 GitHub Action 示例请看 [docs/github-action.md](docs/github-action.md)。
+更多 GitHub Action 示例请看 [docs/github-action.md](github-action.md)。
 
 ## 项目配置
 
@@ -270,23 +270,23 @@ jobs:
 
 ## Hosted GitHub App 设计
 
-当前仓库已经包含未来 Hosted GitHub App 的设计文档、纯契约测试，以及第一个真实 Cloudflare hosted ingress。私有 staging GitHub App `ai-saas-guard-hosted` 已安装到 `zr9959/ai-saas-guard`，Cloudflare 已配置所需的云端凭据绑定。Worker 代码已经能接收签名 webhook、写入 KV 队列、换取 scoped installation token、读取 GitHub PR file metadata、做 compact PR-risk classification，并发布有长度上限的 Check Run summary；但当前端到端 GitHub App webhook delivery smoke 还被私有 App webhook 设置阻断，证据记录在 [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md)。它还不是完整 source checkout scan worker。
+当前仓库已经包含未来 Hosted GitHub App 的设计文档、纯契约测试，以及第一个真实 Cloudflare hosted ingress。私有 staging GitHub App `ai-saas-guard-hosted` 已安装到 `zr9959/ai-saas-guard`，Cloudflare 已配置所需的云端凭据绑定。Worker 代码已经能接收签名 webhook、写入 KV 队列、换取 scoped installation token、读取 GitHub PR file metadata、做 compact PR-risk classification，并发布有长度上限的 Check Run summary；但当前端到端 GitHub App webhook delivery smoke 还被私有 App webhook 设置阻断，证据记录在 [docs/hosted-operations-evidence.md](hosted-operations-evidence.md)。它还不是完整 source checkout scan worker。
 
 相关文档：
 
-- [docs/github-app-design.md](docs/github-app-design.md)
-- [docs/github-app-deployment.md](docs/github-app-deployment.md)
-- [docs/hosted-first-service-slice.md](docs/hosted-first-service-slice.md)
-- [docs/hosted-deployment-model.md](docs/hosted-deployment-model.md)
-- [docs/hosted-service-runtime.md](docs/hosted-service-runtime.md)
-- [docs/hosted-production-adapters.md](docs/hosted-production-adapters.md)
-- [docs/hosted-node-container-app.md](docs/hosted-node-container-app.md)
-- [docs/hosted-staging-deployment.md](docs/hosted-staging-deployment.md)
-- [docs/hosted-staging-harness.md](docs/hosted-staging-harness.md)
-- [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md)
-- [docs/hosted-uninstall-data-deletion.md](docs/hosted-uninstall-data-deletion.md)
-- [docs/hosted-pricing-packaging.md](docs/hosted-pricing-packaging.md)
-- [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md)
+- [docs/github-app-design.md](github-app-design.md)
+- [docs/github-app-deployment.md](github-app-deployment.md)
+- [docs/hosted-first-service-slice.md](hosted-first-service-slice.md)
+- [docs/hosted-deployment-model.md](hosted-deployment-model.md)
+- [docs/hosted-service-runtime.md](hosted-service-runtime.md)
+- [docs/hosted-production-adapters.md](hosted-production-adapters.md)
+- [docs/hosted-node-container-app.md](hosted-node-container-app.md)
+- [docs/hosted-staging-deployment.md](hosted-staging-deployment.md)
+- [docs/hosted-staging-harness.md](hosted-staging-harness.md)
+- [docs/hosted-operational-release-gate.md](hosted-operational-release-gate.md)
+- [docs/hosted-uninstall-data-deletion.md](hosted-uninstall-data-deletion.md)
+- [docs/hosted-pricing-packaging.md](hosted-pricing-packaging.md)
+- [docs/hosted-preimplementation-contracts.md](hosted-preimplementation-contracts.md)
 
 已经实现的 hosted 预实现纯契约包括：
 
@@ -307,7 +307,7 @@ jobs:
 - worker checkout cleanup planner
 - retention/deletion cleanup planner：把 compact report 删除、按仓库或 installation 范围取消队列和 running job、worker checkout 删除、retention 过期清理、最小审计记录合成一个安全计划；不会输出源码、diff、secret、customer payload、private URL、checkout path 或底层 cleanup error
 - operational release gate evaluator：检查 hosted 暴露前是否具备 fresh CI、webhook replay、workflow static check、dependency/container scan、cleanup、privacy、monitoring、rollback、incident response 和 release cleanup 证据；缺任何 P0 证据都会阻止 hosted exposure
-- hosted compact report fixture：[examples/hosted-compact-report.json](examples/hosted-compact-report.json)
+- hosted compact report fixture：[examples/hosted-compact-report.json](../examples/hosted-compact-report.json)
 
 这些 helper 不会暴露公开服务、不会直接调用 GitHub API、不会持久化 installation token、不会真实写 check run、不会发 PR comment，也不会上传源码。
 
@@ -334,12 +334,12 @@ npm run build
 node dist/cli.js scan --root .
 ```
 
-发布 CLI、GitHub Action、npm package 或任何公开仓库更新前，必须按照 [docs/release-quality-knowledge-base.md](docs/release-quality-knowledge-base.md) 的 release gate 执行。
+发布 CLI、GitHub Action、npm package 或任何公开仓库更新前，必须按照 [docs/release-quality-knowledge-base.md](release-quality-knowledge-base.md) 的 release gate 执行。
 
-以后更新英文 `README.md` 时，也要同步检查并更新本中文 `README.zh-CN.md`。
+以后更新英文 `README.md` 时，也要同步检查并更新本中文 `docs/README.zh-CN.md`。
 
-贡献要求见 [CONTRIBUTING.md](CONTRIBUTING.md)，里面说明了 PR 流程、测试要求、规则设计、release gate evidence 和公开安全边界。
+贡献要求见 [CONTRIBUTING.md](../CONTRIBUTING.md)，里面说明了 PR 流程、测试要求、规则设计、release gate evidence 和公开安全边界。
 
 ## 安全报告
 
-报告漏洞前请阅读 [SECURITY.md](SECURITY.md)。不要在公开 issue 中发布真实 API key、客户数据、私有源码或生产 URL。
+报告漏洞前请阅读 [SECURITY.md](../SECURITY.md)。不要在公开 issue 中发布真实 API key、客户数据、私有源码或生产 URL。
