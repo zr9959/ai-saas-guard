@@ -232,10 +232,13 @@ Post-release docs-only execution:
 - GitHub issue `#94` tracks provider evidence before hosted public beta
 - PR `#95` merged the docs-only handoff/evidence/runbook branch into `main` as merge commit `9f780bc9151502e4e9cc674fa0c220457e1ae8d7`
 - post-merge read-only provider check kept Worker version at `8744d3db-0114-4653-85e2-f1554ff1b26b`, public endpoints healthy, and 15 compact KV records with TTL untouched
+- post-PR `#96` read-only provider recheck kept Worker version at `8744d3db-0114-4653-85e2-f1554ff1b26b`, public endpoints healthy, and 21 compact KV records with TTL untouched
 - `docs/hosted-operator-runbook.md` documents the minimum operator workflow, but still needs deployed-artifact exercises before it counts as provider evidence
 - `npm run build && node --test tests/hosted-beta.test.mjs` passed with 2 tests
 - latest post-merge Phase 4 recheck returned `readyForPublicBeta: false`
 - latest post-merge Phase 5 recheck returned `readyForTeamUse: false`
+- latest post-PR `#96` Phase 4 recheck returned `readyForPublicBeta: false`
+- latest post-PR `#96` Phase 5 recheck returned `readyForTeamUse: false`
 
 ## Data, Environment, And Third-Party Configuration
 

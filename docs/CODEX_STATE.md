@@ -213,6 +213,10 @@ For `v0.43.0`:
 - post-merge hosted beta focused test: `npm run build && node --test tests/hosted-beta.test.mjs`, 2 tests passed
 - post-merge Phase 4 gate recheck: `readyForPublicBeta: false`
 - post-merge Phase 5 gate recheck: `readyForTeamUse: false`
+- after PR `#96`, read-only provider recheck still showed Worker version `8744d3db-0114-4653-85e2-f1554ff1b26b`, public endpoints healthy, and 21 compact KV records with TTL
+- post-PR `#96` hosted beta focused test: `npm run build && node --test tests/hosted-beta.test.mjs`, 2 tests passed
+- post-PR `#96` Phase 4 gate recheck: `readyForPublicBeta: false`
+- post-PR `#96` Phase 5 gate recheck: `readyForTeamUse: false`
 
 ## Known Failures Or Unverified Items
 
@@ -226,6 +230,9 @@ For `v0.43.0`:
 - Operator runbook evidence is missing until the runbook is exercised against deployed artifacts.
 - The post-merge provider check was read-only and did not satisfy rollback, incident, uninstall/deletion, support, or alert evidence.
 - The post-merge gate recheck still blocks public beta and team use.
+- Issue `#93` still has no real DP-1, DP-2, or DP-3 feedback.
+- Issue `#94` still lacks provider alert exports, rollback drill, incident owner/backup evidence, uninstall/deletion proof, and support evidence.
+- The post-PR `#96` gate recheck still blocks public beta and team use.
 - No admin dashboard exists.
 - No mobile UI exists.
 - No SEO/GEO website or analytics exists.

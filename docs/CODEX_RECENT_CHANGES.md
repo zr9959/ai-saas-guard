@@ -256,3 +256,17 @@ Still blocked:
 - no rollback drill has been run
 - no incident owner/backup/support evidence is attached
 - no uninstall/deletion proof is attached
+
+## Post-PR 96 Recheck
+
+After PR `#96` was merged:
+
+- public `/healthz` and `/github/app/install-info` still returned HTTP `200`, `scannerVersion: "0.43.0"`, selected-repository permissions, and safe privacy flags
+- `wrangler deployments list` still showed Worker version `8744d3db-0114-4653-85e2-f1554ff1b26b`
+- `wrangler kv key list` returned 21 compact records with TTL, including PR `#96` records; no records were deleted
+- PR `#96` had successful CI, CodeQL, and hosted `ai-saas-guard PR risk` Check Run results
+- issue `#93` was rechecked and still has no real design-partner feedback
+- issue `#94` was updated with the read-only provider check and remains blocked on real alert, rollback, incident, uninstall/deletion, and support evidence
+- `npm run build && node --test tests/hosted-beta.test.mjs` passed with 2 tests
+- Phase 4 remained `readyForPublicBeta: false`
+- Phase 5 remained `readyForTeamUse: false`
