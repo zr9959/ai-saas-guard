@@ -41,7 +41,31 @@ AI 构建的 SaaS 很容易“看起来已经能上线”：能登录、能打�
 - Next/Vercel 生产环境缺 env 文档、security headers、request ID 或成本风险提示
 - AI 生成的大 PR 把 auth、billing、data、deploy 或测试改动藏在“普通改动”里
 
+先用 30 秒 demo 看输出：`npx ai-saas-guard@latest demo --summary`。不用注册、不上传代码、不调用 LLM。然后用大约 3 分钟扫自己的仓库：
+
+```bash
+npx ai-saas-guard@latest scan --root /path/to/your-saas --summary
+```
+
+输出会先回答三个上线前最实际的问题：
+
+- **真实用户会不会拿到不该有的权限？** 先看 auth、tenant ownership、Supabase RLS 和 Stripe entitlement。
+- **服务失败时会不会假装成功？** 先看 swallowed error、fake success、hardcoded fallback data 和跳过的测试。
+- **上线基础设施是不是权限太大？** 再看 env 暴露、过宽 workflow、MCP tool、deploy gap 和 request evidence。
+
 `ai-saas-guard` 是面向这个时刻的本地优先、review-first 上线预检工具。它不会证明你的应用绝对安全，也不是渗透测试、认证或完整安全审计。它的目标是给 founder、独立开发者、小团队和 reviewer 一份短而有证据的清单，告诉你上线或合并 PR 前最该先看哪里。
+
+## 看到结果后该怎么处理
+
+把报告当成上线 review 队列，而不是分数。先处理或人工验证最高风险的信任边界 finding，再处理低级别 hygiene。
+
+| 如果看到 | 先做什么 |
+| --- | --- |
+| Critical/high 的 auth、billing、RLS、tenant、webhook 或 silent-success finding | 在 staging 复现 manual proof，确认风险路径会 fail closed |
+| Medium 的 deploy、env、request ID、MCP 或 Actions hygiene finding | 判断这个上线路径现在是否必须补控制，还是可以在 critical 路径关闭后跟进 |
+| Low/info 提示 | 等 user access、payment、data access 路径都清楚后再清理 |
+
+想看一个更像真实项目的风险样例，可以扫描 [examples/case-study-ai-saas](../examples/case-study-ai-saas) 或阅读 [case-study-ai-saas.md](case-study-ai-saas.md)。
 
 ## 30 秒复制粘贴 demo
 
@@ -204,6 +228,7 @@ CLI 已发布到 npm：`ai-saas-guard@0.35.0`。GitHub Action 支持 `v0` 浮动
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
 | Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`；hosted operations evidence 见 [docs/hosted-operations-evidence.md](hosted-operations-evidence.md) |
 | OpenSSF Best Practices | 已获得 passing badge，项目 `12955`；`.bestpractices.json` 继续作为保守证据记录 |
+| 下一版路线 | v0.36.0 计划见 [v0.36-roadmap.md](v0.36-roadmap.md) |
 
 ## 主要命令
 
