@@ -11,10 +11,16 @@ function formatDemoMarkdown(report: ShowcaseReport): string {
   const lines: string[] = [];
   lines.push("## ai-saas-guard demo");
   lines.push("");
-  lines.push("Synthetic public demo for the local-first launch gate. This is not a pentest, full audit, or certification.");
+  lines.push("AI-built SaaS can look ready while launch risks stay hidden. This is not a pentest, full audit, or certification.");
   lines.push("");
   lines.push(`- Risky demo: ${escapeMarkdownInline(summaryText(report.demos.risky))}`);
   lines.push(`- Safe demo: ${escapeMarkdownInline(summaryText(report.demos.safe))}`);
+  lines.push("");
+  lines.push("### What This Proves");
+  appendList(lines, [
+    "The same SaaS surfaces can look finished while auth, billing, data, deploy, and CI risks still need review.",
+    "The safe demo keeps the same SaaS surfaces but removes the intentional launch-risk patterns."
+  ].map(escapeMarkdownInline));
   lines.push("");
   lines.push("### Review First");
   appendList(lines, reviewFirst(report.demos.risky.findings).map(escapeMarkdownInline));

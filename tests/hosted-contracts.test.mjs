@@ -749,8 +749,13 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.match(findings.output.summary, /Launch gate: review required/i);
   assert.match(findings.output.summary, /review first/i);
   assert.match(findings.output.summary, /not a full security audit/i);
+  assert.match(findings.output.summary, /What changed at the launch boundary/i);
+  assert.match(findings.output.summary, /Manual proof required/i);
   assert.match(clean.output.summary, /Launch gate: clear from current heuristics/i);
   assert.match(findings.output.text, /Launch gate: review required/i);
+  assert.match(findings.output.text, /What changed at the launch boundary/i);
+  assert.match(findings.output.text, /Why this auth billing data or deploy decision is safe/i);
+  assert.match(findings.output.text, /What manual test proves it fails closed/i);
   assert.match(findings.output.text, /Review categories/i);
   assert.match(findings.output.text, /Verification steps/i);
   assert.match(findings.output.text, /Files to review first/i);

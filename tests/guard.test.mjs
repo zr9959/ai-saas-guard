@@ -881,10 +881,13 @@ test("CLI demo shows packaged risky and safe examples without a target repo", as
   const terminal = await runCli(["demo"]);
   assert.equal(terminal.code, 0);
   assert.match(terminal.stdout, /ai-saas-guard demo/i);
+  assert.match(terminal.stdout, /AI-built SaaS can look ready while launch risks stay hidden/i);
   assert.match(terminal.stdout, /Risky demo/i);
   assert.match(terminal.stdout, /19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info/i);
   assert.match(terminal.stdout, /Safe demo/i);
   assert.match(terminal.stdout, /0 findings/i);
+  assert.match(terminal.stdout, /What this proves/i);
+  assert.match(terminal.stdout, /same SaaS surfaces/i);
   assert.match(terminal.stdout, /Next steps/i);
   assert.match(terminal.stdout, /not a pentest, full audit, or certification/i);
 
@@ -900,8 +903,11 @@ test("CLI demo shows packaged risky and safe examples without a target repo", as
   const summary = await runCli(["demo", "--summary"]);
   assert.equal(summary.code, 0);
   assert.match(summary.stdout, /^ai-saas-guard demo summary/m);
+  assert.match(summary.stdout, /AI-built SaaS can look ready while launch risks stay hidden/i);
   assert.match(summary.stdout, /Risky demo: 19 findings/i);
   assert.match(summary.stdout, /Safe demo: 0 findings/i);
+  assert.match(summary.stdout, /What this proves:/);
+  assert.match(summary.stdout, /same SaaS surfaces/i);
   assert.match(summary.stdout, /Top risks:/);
   assert.match(summary.stdout, /Manual proof to run next:/);
   assert.doesNotMatch(summary.stdout, /Evidence:/);
@@ -1253,6 +1259,8 @@ test("public docs explain focused launch-gate positioning without competitor ove
   assert.match(comparison, /Snyk/i);
   assert.match(comparison, /GitHub code scanning/i);
   assert.match(comparison, /AI-built SaaS launch/i);
+  assert.match(comparison, /What this adds in one line/i);
+  assert.match(comparison, /not intended to substitute/i);
   assert.doesNotMatch(comparison, /better than|replaces|replacement for|full audit|certification|pentest/i);
 });
 
@@ -1514,6 +1522,8 @@ test("README first screen leads with buyer pain, demo output, and product bounda
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const zhReadme = await readFile(resolve(packageRoot, "docs", "README.zh-CN.md"), "utf8");
   const demoOutput = await readFile(resolve(packageRoot, "docs", "demo-terminal-output.txt"), "utf8");
+  const demoScreenshot = await readFile(resolve(packageRoot, "docs", "demo-terminal-screenshot.svg"), "utf8");
+  const coldStartReview = await readFile(resolve(packageRoot, "docs", "cold-start-review.md"), "utf8");
   const firstScreen = readme.slice(0, 2600);
 
   assert.match(firstScreen, /AI-built SaaS can look ready/i);
@@ -1524,12 +1534,19 @@ test("README first screen leads with buyer pain, demo output, and product bounda
   assert.match(firstScreen, /no LLM/i);
   assert.match(firstScreen, /compare with alternatives/i);
   assert.match(readme, /docs\/demo-terminal-output\.txt/);
+  assert.match(readme, /docs\/demo-terminal-screenshot\.svg/);
   assert.match(readme, /docs\/launch-gate-positioning\.md/);
+  assert.match(readme, /docs\/cold-start-review\.md/);
   assert.match(zhReadme, /docs\/demo-terminal-output\.txt/);
+  assert.match(zhReadme, /docs\/demo-terminal-screenshot\.svg/);
   assert.match(zhReadme, /和替代方案的区别/);
   assert.match(demoOutput, /ai-saas-guard demo --summary/i);
   assert.match(demoOutput, /Risky demo: 19 findings/i);
   assert.match(demoOutput, /Safe demo: 0 findings/i);
+  assert.match(demoScreenshot, /Risky demo: 19 findings/i);
+  assert.match(demoScreenshot, /Safe demo: 0 findings/i);
+  assert.match(coldStartReview, /30-second GitHub cold-start/i);
+  assert.match(coldStartReview, /Does the first screen explain the painful problem/i);
   assert.doesNotMatch(readme, /certified secure|full audit|pentest replacement/i);
 });
 

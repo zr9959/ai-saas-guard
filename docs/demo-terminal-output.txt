@@ -1,7 +1,13 @@
 ai-saas-guard demo --summary
 
+AI-built SaaS can look ready while launch risks stay hidden.
+
 Risky demo: 19 findings
 Launch gate: blocked
+
+What this proves:
+- The same SaaS surfaces can look finished while auth, billing, data, deploy, and CI risks still need review.
+- The safe demo keeps the same SaaS surfaces but removes the intentional launch-risk patterns.
 
 Top risks:
 - CRITICAL stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:1

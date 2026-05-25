@@ -1316,7 +1316,7 @@ export function createHostedCheckRunSummary(
     conclusion,
     output: {
       title: formatCheckRunTitle(totalFindings, conclusion, input.failOnSeverity),
-      summary: `Launch gate: ${launchGate}. Review first: verify this signal before release; it is not a full security audit, pentest, or certification.`,
+      summary: `Launch gate: ${launchGate}. Review first: What changed at the launch boundary? Manual proof required before release; it is not a full security audit, pentest, or certification.`,
       text: truncateMarkdown(
         formatCheckRunMarkdown(report, conclusion, localCliCommand, launchGate),
         input.maxMarkdownChars
@@ -2164,6 +2164,11 @@ function formatCheckRunMarkdown(
     "",
     "Files to review first:",
     ...(filesToReview.length === 0 ? ["- None"] : filesToReview.map((file) => `- ${file}`)),
+    "",
+    "Launch-boundary reviewer checklist:",
+    "- What changed at the launch boundary?",
+    "- Why this auth billing data or deploy decision is safe?",
+    "- What manual test proves it fails closed?",
     "",
     "Verification steps:",
     "- Review each listed file before release or merge.",

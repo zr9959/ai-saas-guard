@@ -51,7 +51,7 @@ AI 构建的 SaaS 很容易“看起来已经能上线”：能登录、能打�
 npx ai-saas-guard@latest demo --summary
 ```
 
-这个 demo 会扫描两个包内 fixture：一个故意有上线风险的 AI-built SaaS，和一个同类场景下更安全的版本。可以先看保存好的终端样例：[docs/demo-terminal-output.txt](demo-terminal-output.txt)，再看它[和替代方案的区别](launch-gate-positioning.md)。
+这个 demo 会扫描两个包内 fixture：一个故意有上线风险的 AI-built SaaS，和一个同类场景下更安全的版本。可以先看[终端截图](docs/demo-terminal-screenshot.svg)和保存好的终端样例：[docs/demo-terminal-output.txt](demo-terminal-output.txt)，再看它[和替代方案的区别](launch-gate-positioning.md)。
 
 ## 60 秒本地检查
 
@@ -179,18 +179,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.33.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.33.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.34.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.34.0`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.33.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.33.0` |
+| npm CLI | `ai-saas-guard@0.34.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.34.0` |
 | 输出格式 | 短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.33.0` 优化 README 首屏、增加保存好的终端 demo 输出，并新增 deployed worker staging evidence automation：先验证 safe log samples，再生成 hosted release-gate input |
-| Action 标签 | `v0.33.0`、`v0` |
+| 当前版本 | `0.34.0` 增加可视化 demo 截图、优化首次 demo 输出、补充更精简的竞品定位说明，并强化 hosted Check Run reviewer checklist |
+| Action 标签 | `v0.34.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
