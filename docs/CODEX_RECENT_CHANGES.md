@@ -234,3 +234,25 @@ Decision:
 - do not invite teams beyond beta
 - do not commercialize
 - continue with real design-partner feedback and provider evidence collection
+
+## Post-PR 95 Follow-Up
+
+After PR `#95` was merged:
+
+- local `main` was synchronized to `origin/main` at merge commit `9f780bc9151502e4e9cc674fa0c220457e1ae8d7`
+- read-only provider checks confirmed public `/healthz` and `/github/app/install-info` still return HTTP `200`, `scannerVersion: "0.43.0"`, selected-repository permissions, and safe privacy flags
+- `wrangler deployments list` still showed Worker version `8744d3db-0114-4653-85e2-f1554ff1b26b`
+- `wrangler kv key list` returned 15 compact records with TTL; no records were deleted
+- issue `#93` was updated to clarify that real DP-1/DP-2/DP-3 inputs are still required
+- issue `#94` was updated with the safe provider check result and remaining provider evidence blockers
+- `npm run build && node --test tests/hosted-beta.test.mjs` passed with 2 tests after the read-only provider check
+- Phase 4 remained `readyForPublicBeta: false`
+- Phase 5 remained `readyForTeamUse: false`
+
+Still blocked:
+
+- no real design-partner feedback is recorded
+- no provider alert export is attached
+- no rollback drill has been run
+- no incident owner/backup/support evidence is attached
+- no uninstall/deletion proof is attached
