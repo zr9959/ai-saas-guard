@@ -820,6 +820,7 @@ function summarizeFindings(findings) {
 }
 
 function renderCheckRunSummary({ identity, report, scannerVersion }) {
+  const riskAreas = summarizeHostedRiskAreas(report.topRiskyFiles);
   const lines = [
     `Launch-risk gate: ai-saas-guard found ${report.summary.total} PR risk signal(s) for ${identity.repositoryFullName}#${identity.pullRequestNumber}.`,
     `Scanner version: ${scannerVersion}.`,
@@ -839,10 +840,21 @@ function renderCheckRunSummary({ identity, report, scannerVersion }) {
   ];
 
   if (report.topRiskyFiles.length > 0) {
+    lines.push("", "Risk areas:");
+    for (const area of riskAreas.slice(0, 5)) {
+      lines.push(`- ${area.name}: ${area.count} file(s). Proof: ${area.proof}`);
+    }
     lines.push("", "Review queue:");
     for (const file of report.topRiskyFiles.slice(0, 5)) {
       lines.push(`- ${file.path}: ${file.categories.join(", ")} (${file.added}+/${file.removed}-)`);
     }
+    lines.push(
+      "",
+      "Reviewer checklist:",
+      "- What trust boundary changed?",
+      "- Why is this auth, billing, data, deploy, or test decision safe?",
+      "- What manual proof shows it fails closed?"
+    );
   }
 
   if (report.truncated) {
@@ -850,6 +862,81 @@ function renderCheckRunSummary({ identity, report, scannerVersion }) {
   }
 
   return lines.join("\n").slice(0, 6_000);
+}
+
+function summarizeHostedRiskAreas(files) {
+  const counts = new Map();
+  for (const file of files) {
+    for (const category of file.categories) {
+      const area = hostedRiskAreaForCategory(category);
+      counts.set(area.key, {
+        ...area,
+        count: (counts.get(area.key)?.count ?? 0) + 1
+      });
+    }
+  }
+
+  return [...counts.values()].sort((a, b) => {
+    if (b.weight !== a.weight) return b.weight - a.weight;
+    return b.count - a.count;
+  });
+}
+
+function hostedRiskAreaForCategory(category) {
+  if (category === "auth/session") {
+    return {
+      key: "auth",
+      name: "Auth and session",
+      weight: 50,
+      proof: "use two accounts and confirm access, session, and ownership checks fail closed"
+    };
+  }
+  if (category === "billing/subscription") {
+    return {
+      key: "billing",
+      name: "Billing and entitlement",
+      weight: 50,
+      proof: "force unsigned, duplicate, failed, and canceled billing events before granting access"
+    };
+  }
+  if (category === "database schema/migration" || category === "RLS/policy") {
+    return {
+      key: "data",
+      name: "Tenant data access",
+      weight: 45,
+      proof: "run cross-tenant SELECT, INSERT, UPDATE, and DELETE checks with user A and user B"
+    };
+  }
+  if (category === "env/secrets/deploy" || category === "permissions/storage") {
+    return {
+      key: "deploy",
+      name: "Deploy, secrets, and permissions",
+      weight: 35,
+      proof: "confirm production env, workflow permissions, and storage scopes are least privilege"
+    };
+  }
+  if (category === "tests removed or weakened") {
+    return {
+      key: "tests",
+      name: "Tests and silent success",
+      weight: 40,
+      proof: "make the upstream path fail and confirm tests catch an error instead of fake success"
+    };
+  }
+  if (category === "API contract") {
+    return {
+      key: "api",
+      name: "API contract",
+      weight: 30,
+      proof: "exercise invalid, unauthorized, and failed upstream requests against changed routes"
+    };
+  }
+  return {
+    key: "large-diff",
+    name: "Large AI diff",
+    weight: 20,
+    proof: "split unrelated UI, refactor, and trust-boundary changes before review"
+  };
 }
 
 async function createGitHubAppJwt({ appId, privateKeyPem }) {

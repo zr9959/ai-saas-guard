@@ -273,6 +273,10 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
         assert.equal(body.status, "completed");
         assert.equal(body.conclusion, "neutral");
         assert.match(body.output.summary, /Review task: inspect the files below before merge/i);
+        assert.match(body.output.summary, /Risk areas/i);
+        assert.match(body.output.summary, /Billing and entitlement/i);
+        assert.match(body.output.summary, /Tenant data access/i);
+        assert.match(body.output.summary, /Reviewer checklist/i);
         assert.match(body.output.summary, /Review queue/i);
         assert.match(body.output.summary, /Manual proof: prove changed auth, billing, data, deploy, or tests fail closed/i);
         assert.match(body.output.summary, /Boundary: selected repository only/i);

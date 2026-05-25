@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { execFile } from "node:child_process";
-import { rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -53,6 +53,8 @@ function parseArgs(argv) {
     else if (arg === "--kv-namespace-id") parsed.kvNamespaceId = argv[++index];
     else if (arg.startsWith("--wait-seconds=")) parsed.waitSeconds = Number(arg.slice("--wait-seconds=".length));
     else if (arg === "--wait-seconds") parsed.waitSeconds = Number(argv[++index]);
+    else if (arg.startsWith("--evidence-file=")) parsed.evidenceFile = arg.slice("--evidence-file=".length);
+    else if (arg === "--evidence-file") parsed.evidenceFile = argv[++index];
     else throw new Error(`Unknown argument: ${arg}`);
   }
   return parsed;
@@ -72,6 +74,7 @@ function createPlan(input) {
     installInfoUrl: `${input.workerUrl.replace(/\/+$/g, "")}/github/app/install-info`,
     healthUrl: `${input.workerUrl.replace(/\/+$/g, "")}/healthz`,
     kvNamespaceId: input.kvNamespaceId,
+    evidenceFile: input.evidenceFile,
     waitSeconds: input.waitSeconds,
     privacy: {
       writesSourceToLogs: false,
@@ -113,11 +116,16 @@ function validateSafeInput(input) {
   if (!Number.isSafeInteger(input.waitSeconds) || input.waitSeconds < 30 || input.waitSeconds > 600) {
     throw new Error("wait-seconds must be between 30 and 600");
   }
+  if (input.evidenceFile !== undefined && (!input.evidenceFile || input.evidenceFile.startsWith("-") || input.evidenceFile.includes("\0"))) {
+    throw new Error("Invalid evidence file path");
+  }
 }
 
 async function runSmoke(plan) {
   let originalBranch;
   let prNumber;
+  let result;
+  let cleanup;
 
   try {
     await verifyHostedEndpoints(plan);
@@ -158,21 +166,25 @@ async function runSmoke(plan) {
     const headSha = (await git(["rev-parse", "HEAD"])).trim();
     const checkRun = await waitForCheckRun({ ...plan, headSha });
 
-    console.log(
-      JSON.stringify(
-        {
-          ok: true,
-          pullRequest: prNumber,
-          headSha,
-          checkRun,
-          privacy: plan.privacy
-        },
-        null,
-        2
-      )
-    );
+    result = {
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      repo: plan.repo,
+      base: plan.base,
+      branch: plan.branch,
+      pullRequest: prNumber,
+      headSha,
+      checkRun,
+      privacy: plan.privacy
+    };
   } finally {
-    await cleanupSmoke({ plan, prNumber, originalBranch });
+    cleanup = await cleanupSmoke({ plan, prNumber, originalBranch });
+  }
+
+  if (result) {
+    result.cleanup = cleanup;
+    await writeEvidence(plan, result);
+    console.log(JSON.stringify(result, null, 2));
   }
 }
 
@@ -215,15 +227,23 @@ async function waitForCheckRun(plan) {
 }
 
 async function cleanupSmoke({ plan, prNumber, originalBranch }) {
+  const cleanup = {
+    closedPullRequest: false,
+    deletedRemoteBranch: false,
+    restoredBranch: false,
+    deletedLocalBranch: false,
+    kv: { deletedKeys: 0, remainingSmokeKeys: 0 }
+  };
   if (prNumber) {
-    await ignoreFailure(gh(["pr", "close", String(prNumber), "--repo", plan.repo, "--delete-branch"]));
+    cleanup.closedPullRequest = await ignoreFailure(gh(["pr", "close", String(prNumber), "--repo", plan.repo, "--delete-branch"]));
   }
-  await ignoreFailure(git(["push", "origin", "--delete", plan.branch]));
+  cleanup.deletedRemoteBranch = await ignoreFailure(git(["push", "origin", "--delete", plan.branch]));
   if (originalBranch) {
-    await ignoreFailure(git(["switch", originalBranch]));
+    cleanup.restoredBranch = await ignoreFailure(git(["switch", originalBranch]));
   }
-  await ignoreFailure(git(["branch", "-D", plan.branch]));
-  await clearHostedKv(plan);
+  cleanup.deletedLocalBranch = await ignoreFailure(git(["branch", "-D", plan.branch]));
+  cleanup.kv = await clearHostedKv(plan);
+  return cleanup;
 }
 
 async function clearHostedKv(plan) {
@@ -231,7 +251,7 @@ async function clearHostedKv(plan) {
   const keys = JSON.parse(listJson)
     .map((item) => item.name)
     .filter((name) => /^(delivery|scan):/.test(name));
-  if (keys.length === 0) return;
+  if (keys.length === 0) return { deletedKeys: 0, remainingSmokeKeys: 0 };
 
   const file = join(tmpdir(), `ai-saas-guard-hosted-kv-delete-${Date.now()}.json`);
   await writeFile(file, JSON.stringify(keys, null, 2));
@@ -240,6 +260,15 @@ async function clearHostedKv(plan) {
   } finally {
     await rm(file, { force: true });
   }
+  const remainingJson = await wrangler(["kv", "key", "list", "--namespace-id", plan.kvNamespaceId, "--remote"]);
+  const remainingSmokeKeys = JSON.parse(remainingJson).filter((item) => /^(delivery|scan):/.test(item.name)).length;
+  return { deletedKeys: keys.length, remainingSmokeKeys };
+}
+
+async function writeEvidence(plan, result) {
+  if (!plan.evidenceFile) return;
+  await mkdir(dirname(plan.evidenceFile), { recursive: true });
+  await writeFile(plan.evidenceFile, `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600 });
 }
 
 async function git(args) {
@@ -269,8 +298,10 @@ async function run(command, args, options = {}) {
 async function ignoreFailure(promise) {
   try {
     await promise;
+    return true;
   } catch {
     // Cleanup should continue through already-removed branches, PRs, or KV records.
+    return false;
   }
 }
 
@@ -279,5 +310,5 @@ function sleep(ms) {
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/hosted-pr-smoke.mjs [--plan]\n\nRuns a real hosted GitHub App staging smoke against ${DEFAULTS.repo}.\nThe real run creates a temporary PR, waits for the hosted Check Run, closes the PR, deletes the branch, and clears staging KV smoke records.`);
+  console.log(`Usage: node scripts/hosted-pr-smoke.mjs [--plan] [--evidence-file <path>]\n\nRuns a real hosted GitHub App staging smoke against ${DEFAULTS.repo}.\nThe real run creates a temporary PR, waits for the hosted Check Run, closes the PR, deletes the branch, and clears staging KV smoke records.`);
 }

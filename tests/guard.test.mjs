@@ -871,6 +871,7 @@ test("hosted real PR smoke runner has a safe plan and cleanup boundary", async (
   assert.match(plan.branch, /^codex\/hosted-smoke-\d+/);
   assert.equal(plan.checkName, "ai-saas-guard PR risk");
   assert.equal(plan.installInfoUrl, "https://ai-saas-guard-hosted.zr9959.workers.dev/github/app/install-info");
+  assert.equal(plan.evidenceFile, undefined);
   assert.equal(plan.privacy.writesSourceToLogs, false);
   assert.equal(plan.privacy.writesTokensToLogs, false);
   assert.equal(plan.privacy.closesTemporaryPullRequest, true);
@@ -886,6 +887,10 @@ test("hosted real PR smoke runner has a safe plan and cleanup boundary", async (
   assert.match(script, /"push",\s*"origin",\s*"--delete"/);
   assert.match(script, /check-runs/);
   assert.match(script, /"--method",\s*"GET"/);
+  assert.match(script, /--evidence-file/);
+  assert.match(script, /writeEvidence/);
+  assert.match(script, /closedPullRequest/);
+  assert.match(script, /remainingSmokeKeys/);
   assert.match(script, /"kv",\s*"bulk",\s*"delete"/);
   assert.match(script, /delivery\|scan/);
   assert.doesNotMatch(script, /sk_(?:live|test)_|whsec_|ghs_[A-Za-z0-9]/);
@@ -1383,12 +1388,16 @@ test("public docs explain local Action and hosted GitHub App usage paths", async
   assert.match(readme, /Local CLI/i);
   assert.match(readme, /GitHub Action/i);
   assert.match(readme, /Hosted GitHub App/i);
+  assert.match(readme, /Choose the path by trust boundary/i);
+  assert.match(readme, /automatic Check Run that groups auth, billing, tenant-data, deploy, and test-risk areas/i);
   assert.match(readme, /limited trial gate/i);
   assert.match(readme, /not the complete hosted SaaS/i);
   assert.match(zhReadme, /三种使用路径/);
   assert.match(zhReadme, /本地 CLI/);
   assert.match(zhReadme, /GitHub Action/);
   assert.match(zhReadme, /Hosted GitHub App/);
+  assert.match(zhReadme, /按信任边界选择/);
+  assert.match(zhReadme, /auth、billing、tenant data、deploy 和 test-risk areas/);
 });
 
 test("public docs explain focused launch-gate positioning without competitor overclaiming", async () => {
@@ -1780,6 +1789,8 @@ test("public docs define the hosted operational release gate", async () => {
   assert.match(gate, /release_cleanup/i);
   assert.match(gate, /hosted_pr_smoke/i);
   assert.match(gate, /scripts\/hosted-pr-smoke\.mjs/);
+  assert.match(gate, /--evidence-file/);
+  assert.match(gate, /machine-readable evidence record/i);
   assert.match(gate, /codex\/hosted-smoke-\*/);
   assert.match(gate, /Check Runs with a GET request/i);
   assert.match(gate, /delivery:.*scan:/is);
@@ -1868,6 +1879,9 @@ test("public docs record hosted operations evidence without overclaiming deliver
   assert.match(evidence, /log boundary/i);
   assert.match(evidence, /source-candidate executable evidence/i);
   assert.match(evidence, /scripts\/hosted-pr-smoke\.mjs/);
+  assert.match(evidence, /--evidence-file/);
+  assert.match(evidence, /cleanup status/i);
+  assert.match(evidence, /mode `0600`/i);
   assert.match(evidence, /dirty working tree/i);
   assert.match(evidence, /gh api --method GET/i);
   assert.match(evidence, /remote branch deletion/i);
