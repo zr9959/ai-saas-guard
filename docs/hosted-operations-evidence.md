@@ -41,6 +41,67 @@ Recorded on 2026-05-25 from the deployed Cloudflare Worker plus temporary GitHub
 | End-to-end GitHub App delivery | Temporary PR `#52` created `ai-saas-guard PR risk` from GitHub App `ai-saas-guard-hosted`; Check Run `77585561127` completed with conclusion `success` for head SHA `408925d2bf4df564082dabc3e1893a72c25bdd19` | Passed |
 | Compact hosted record | KV scan record `scan:135085075:1247239389:52:408925d2bf4df564082dabc3e1893a72c25bdd19:0.28.0` completed with zero findings, `conclusion: "success"`, and all privacy flags set to false for raw payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens | Passed |
 
+## Public Beta Evidence Intake Status
+
+Recorded on 2026-05-25 after the `v0.43.0` handoff package was committed.
+
+This is public beta intake status only. It does not make hosted beta ready, and it does not replace the P0 hosted release gate.
+
+| Area | Evidence | Status |
+| --- | --- | --- |
+| Design-partner intake | GitHub issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) tracks privacy-safe feedback for DP-1 solo founder, DP-2 small team PR review, and DP-3 MCP or AI-generated integration contexts. No real design-partner feedback has been recorded yet. | Open, blocked on real participants |
+| Provider evidence intake | GitHub issue [#94](https://github.com/zr9959/ai-saas-guard/issues/94) tracks ingress, queue, worker, Check Run, cleanup, retention, rollback, incident, uninstall/deletion, and support evidence before public beta. | Open, blocked on provider evidence |
+| Public hosted health | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned HTTP `200`, `ok: true`, `scannerVersion: "0.43.0"`, `checkRunPublisher: "configured"`, and privacy flags set to false for raw webhook payloads, PR text, raw source, raw diffs, secrets, customer payloads, private checkout paths, and installation tokens. | Passed for public endpoint health only |
+| Public install info | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/github/app/install-info` returned HTTP `200`, selected-repository permissions `checks: write`, `contents: read`, `metadata: read`, `pull_requests: read`, events `pull_request`, `installation`, and `installation_repositories`, and the same privacy flags set to false. | Passed for public install wording only |
+| Deployed Worker version | `wrangler deployments list` showed current deployed version `8744d3db-0114-4653-85e2-f1554ff1b26b`, created at `2026-05-25T14:00:00.153Z`. | Passed for deployed version lookup |
+| Compact KV records | `wrangler kv key list --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote` returned 5 compact `delivery:` / `scan:` records with expirations. The records were not bulk-deleted because this was not an explicit smoke cleanup task. | Present; not a cleanup proof |
+| Provider monitoring | No provider dashboard or alert evidence has been attached for ingress errors, queue depth, worker failure, Check Run failure, cleanup failure, or retention failure. | Missing |
+| Rollback and incident response | No manual rollback drill, incident owner, backup owner, queue pause, worker pause, credential rotation, status update, or customer communication evidence has been attached for the deployed artifact. | Missing |
+
+## Phase 4 And Phase 5 Gate Recheck
+
+Recorded on 2026-05-25 from the current source checkout after public beta intake issue creation.
+
+Verification command:
+
+```bash
+npm run build && node --test tests/hosted-beta.test.mjs
+```
+
+Result: 2 hosted beta tests passed.
+
+The current evidence was then mapped into `evaluateHostedBetaReadinessGate` and `evaluateTeamLaunchGateReadiness` with only currently proven items set to true. Public endpoint health, selected-repository install wording, safe privacy flags, no-audit-claim wording, no raw source/diff/PR-text storage, and the prior v0.43 hosted smoke were treated as available evidence. Full deployed source-checkout proof, rate limiting, abuse kill switch, uninstall/deletion proof, rollback, incident owner, support path, and team workflow controls were treated as missing because no fresh provider or design-partner evidence has been attached.
+
+| Gate | Result | Blocked reasons |
+| --- | --- | --- |
+| Phase 4 hosted beta readiness | `readyForPublicBeta: false` | `phase3_gate_missing`, `rate_limit_missing`, `abuse_kill_switch_missing`, `uninstall_deletion_proof_missing`, `rollback_test_missing`, `incident_owner_missing`, `support_path_missing` |
+| Phase 5 team launch gate | `readyForTeamUse: false` | `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing` |
+
+Decision: do not open public beta, do not invite teams beyond beta, and do not sell or commercialize. Continue with design-partner feedback issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) and provider evidence issue [#94](https://github.com/zr9959/ai-saas-guard/issues/94).
+
+## Operator Runbook Recheck
+
+Recorded on 2026-05-25 after adding [hosted-operator-runbook.md](hosted-operator-runbook.md) on PR [#95](https://github.com/zr9959/ai-saas-guard/pull/95).
+
+The runbook now documents health checks, pause workflow, queue and failure checks, rollback workflow, compact record deletion, incident escalation, support triage, evidence templates, and cleanup expectations. This improves operator readiness documentation, but it is not provider evidence by itself.
+
+Verification command:
+
+```bash
+npm run build && node --test tests/hosted-beta.test.mjs
+```
+
+Result: 2 hosted beta tests passed.
+
+The Phase 4 and Phase 5 gate recheck still returned the same blocked result:
+
+- Phase 4 `readyForPublicBeta: false`
+- Phase 4 blocked reasons: `phase3_gate_missing`, `rate_limit_missing`, `abuse_kill_switch_missing`, `uninstall_deletion_proof_missing`, `rollback_test_missing`, `incident_owner_missing`, `support_path_missing`
+- Phase 5 `readyForTeamUse: false`
+- Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
+
+Decision: keep public beta, team use, and commercialization blocked until issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) has real design-partner feedback and issue [#94](https://github.com/zr9959/ai-saas-guard/issues/94) has real provider evidence.
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.

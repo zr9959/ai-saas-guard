@@ -47,6 +47,10 @@ The pure evaluator `evaluateHostedOperationalReleaseGate` and the exported `HOST
 
 Deployed worker staging evidence is documented in [hosted-deployed-worker-staging.md](hosted-deployed-worker-staging.md). The `ai-saas-guard/hosted/deployed-staging` export adds `createHostedDeployedWorkerStagingEvidenceBundle` and `evaluateHostedDeployedWorkerStagingReleaseGate` so a deployed Node/container read-only checkout worker candidate can turn public HTTPS health, signed webhook replay, deployed success/failure cleanup probes, log-boundary samples, and external CI/scan/rollback evidence into this same gate. It does not deploy cloud resources and is not production hosted exposure.
 
+Public beta feedback and provider-evidence intake is documented in [public-beta-evidence-feedback.md](public-beta-evidence-feedback.md). That document defines the privacy-safe design-partner feedback, monitoring, rollback, incident, support, and cleanup records needed before this gate can be treated as beta evidence. It is an intake process only; it does not replace the P0 evidence requirements in this document.
+
+The minimum operator workflow is documented in [hosted-operator-runbook.md](hosted-operator-runbook.md). The runbook explains pause, queue/failure checks, rollback, compact record deletion, incident escalation, support triage, and cleanup. It is not evidence until the steps are exercised against deployed artifacts and recorded.
+
 The evaluator blocks hosted exposure unless every P0 item has fresh evidence, a `sha256:<digest>` container image digest is recorded, and release notes avoid positive pentest, certification, and full-audit claims. Explicit wording such as "not a pentest, certification, or full security audit" remains allowed.
 
 Source-level evidence notes for this release candidate:

@@ -1,6 +1,6 @@
 # Project Handoff
 
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 Use this public-safe document when moving `ai-saas-guard` into a new GitHub-facing ChatGPT/Codex Project or a new conversation.
 
@@ -66,6 +66,7 @@ Implemented surfaces:
 - hosted Node/container app skeleton document and helpers for safe health and webhook HTTP ingress, one-job worker ticks, in-memory provider adapters, provider reference validation, and the chosen `node_container` roles `webhook-ingress` and `scan-worker`
 - hosted staging deployment planner document and helpers for provider binding, staging release-gate evidence, Node/container deployment composition, and production GitHub App promotion gating
 - hosted staging harness document and helpers for local signed webhook replay, file-backed queue/report/Check Run artifacts, worker sandbox cleanup verification, and release-gate evidence fixtures without cloud calls
+- public beta evidence and feedback intake document defining privacy-safe design-partner feedback targets, feedback templates, provider monitoring/rollback/incident/support evidence, beta block conditions, and cleanup requirements before public beta
 - live Cloudflare hosted ingress at `https://ai-saas-guard-hosted.zr9959.workers.dev` with `/healthz`, `/github/app/install-info`, `/github/app/manifest-callback`, signed `/github/webhook` intake, Cloudflare KV storage, private staging GitHub App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard`, Worker code for public-safe install guidance, scoped installation-token exchange, PR file metadata fetching, compact PR-risk classification, bounded selected-repository Check Run publishing, and signed installation deletion/repository removal cleanup, plus hosted operations evidence in `docs/hosted-operations-evidence.md`
 - resource caps for repository text collection, including per-file, total-file, and total-byte scan budgets to reduce worst-case memory use
 - hosted pre-implementation contracts document, hosted compact report fixture, and pure helpers for pull request webhook intake planning, durable scan queue upsert planning, worker read-only scan planning, Check Run publication planning, queue-safe pull request event parsing from trusted GitHub event fields, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, retention/deletion cleanup planning, and operational release gate evaluation
@@ -88,6 +89,7 @@ ai-saas-guard pr-risk
 ai-saas-guard check-supabase
 ai-saas-guard check-stripe
 ai-saas-guard check-mcp
+ai-saas-guard check-actions
 ```
 
 ## Mandatory Release Gate
@@ -152,8 +154,8 @@ Hosted staging:
 - GitHub App ID: `3834787`
 - GitHub App installation ID: `135085075`
 - Installed repository: `zr9959/ai-saas-guard`
-- Current hosted mode: deployed Worker health, signed GitHub App webhook delivery, compact KV records, cleanup, and Check Run publication pass in staging; code supports signed webhook ingress, compact queueing, scoped GitHub App token exchange, PR file risk classification, bounded Check Run publishing, and a Node/container read-only checkout worker runner
-- Not yet complete: deployed full source checkout scan worker with sandbox evidence, monitoring evidence, rollback evidence, incident-response evidence, production hosted exposure, and paid hosted workflow features
+- Current hosted mode: deployed Worker health, signed GitHub App webhook delivery, compact KV records, cleanup, and Check Run publication pass in staging; code supports signed webhook ingress, compact queueing, scoped GitHub App token exchange, PR file risk classification, bounded Check Run publishing, Node/container read-only checkout worker runner, Phase 3 source-checkout trial gate, Phase 4 hosted beta readiness gate, and Phase 5 team launch gate
+- Not yet complete: deployed full source checkout scan worker with sandbox evidence, provider monitoring evidence, provider rollback evidence, production hosted exposure, real external user/design-partner feedback, and paid hosted workflow features
 
 OpenSSF Best Practices:
 
@@ -163,11 +165,133 @@ OpenSSF Best Practices:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current published release line: `v0.28.1` pending this branch release
+- Current published release line: `v0.43.0` published to GitHub Release, npm, and the `v0` Action tag
 - Next source candidate: none
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
 - Long-lived npm publish tokens should not be required.
+
+## Latest User Requirements And Current Plan
+
+The newest operating instruction from the user is: keep going automatically until the point where commercialization would begin, then stop. Do not keep creating endless five-item micro-plans. Use the roadmap phases as gates instead:
+
+- Phase 1 local CLI/GitHub Action: complete.
+- Phase 2 hosted ingress: complete for staging Cloudflare webhook ingress and compact Check Run publication.
+- Phase 3 hosted source-checkout trial gate: complete in code via `evaluateHostedSourceCheckoutTrialGate`.
+- Phase 4 hosted beta readiness gate: complete in code via `evaluateHostedBetaReadinessGate`.
+- Phase 5 team launch gate: complete in code via `evaluateTeamLaunchGateReadiness`.
+- Phase 6 commercialization: intentionally not started. Do not add pricing, billing, paid packaging, marketplace conversion, or sales funnel work until there is real user/design-partner feedback.
+
+Next work should therefore be feedback and evidence work, not more speculative feature expansion:
+
+- use `docs/public-beta-evidence-feedback.md` as the intake checklist
+- use GitHub issue `#93` for design-partner feedback tracking
+- use GitHub issue `#94` for provider evidence tracking
+- collect real user/design-partner feedback
+- review public installation wording and support path
+- collect provider monitoring, rollback, incident-response, uninstall/deletion, and support evidence before public beta
+- keep CLI/Action/docs current
+- only start commercialization after actual usage evidence exists
+
+## Latest Deployment And Test Evidence
+
+Latest release:
+
+- Version: `0.43.0`
+- Commit/tag target: `7318c04f2ade79861c198e00e42ec6c32b90f9b9`
+- GitHub Release: `v0.43.0`
+- npm: `ai-saas-guard@0.43.0`, `latest`
+- GitHub Action floating tag: `v0` points to `7318c04f2ade79861c198e00e42ec6c32b90f9b9`
+- Cloudflare Worker deployed version: `8744d3db-0114-4653-85e2-f1554ff1b26b`
+- Worker health: `https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returns `scannerVersion: "0.43.0"`
+- Real hosted PR smoke: PR `#91`, Check Run `77724168740`, conclusion `success`, temporary branch deleted, KV smoke records cleaned to `[]`
+
+Latest release verification passed:
+
+```bash
+npm test
+npm audit --audit-level=high --registry=https://registry.npmjs.org
+npm pack --dry-run --json
+uvx zizmor --offline .github/workflows
+go run github.com/rhysd/actionlint/cmd/actionlint@latest
+node dist/cli.js scan --root . --json
+node dist/cli.js pr-risk --root . --json
+node dist/cli.js scan --root . --sarif
+npx wrangler deploy --dry-run
+npx wrangler deploy
+node scripts/hosted-pr-smoke.mjs --evidence-file /tmp/ai-saas-guard-hosted-smoke-v0.43.json
+```
+
+CI for PR `#92` passed: test, fuzz, actionlint, zizmor, and CodeQL. The hosted `ai-saas-guard PR risk` Check Run was skipped as expected for the repository's current hosted smoke behavior.
+
+Post-release docs-only execution:
+
+- `3177e99 docs: add codex handoff and beta evidence intake`
+- `58cb8dc docs: record public beta evidence intake status`
+- GitHub issue `#93` tracks design-partner feedback intake
+- GitHub issue `#94` tracks provider evidence before hosted public beta
+- draft PR `#95` contains the docs-only handoff/evidence/runbook branch
+- `docs/hosted-operator-runbook.md` documents the minimum operator workflow, but still needs deployed-artifact exercises before it counts as provider evidence
+- `npm run build && node --test tests/hosted-beta.test.mjs` passed with 2 tests
+- latest Phase 4 recheck returned `readyForPublicBeta: false`
+- latest Phase 5 recheck returned `readyForTeamUse: false`
+
+## Data, Environment, And Third-Party Configuration
+
+Database changes:
+
+- No application database schema or customer database migration was added.
+- The live hosted ingress uses Cloudflare KV namespace binding `HOSTED_EVENTS` for compact delivery/scan records only.
+- Current KV evidence after v0.43 smoke cleanup: staging smoke keys returned `[]`.
+- Supabase files in this repository are fixtures/examples only, not a connected production database.
+
+Environment variables and secrets:
+
+- Cloudflare Worker public env/config includes `SCANNER_VERSION: "0.43.0"`, `GITHUB_APP_ID: "3834787"`, `GITHUB_APP_SLUG: "ai-saas-guard-hosted"`, and `GITHUB_APP_INSTALLATION_ID: "135085075"`.
+- Cloudflare secrets are expected for `WEBHOOK_SECRET` and `GITHUB_APP_PRIVATE_KEY`; do not commit or print their values.
+- npm publishing uses GitHub Actions Trusted Publisher/OIDC. Do not add long-lived npm tokens.
+- No `.env` file, raw private key, raw webhook secret, installation token, database URL, or customer payload should be committed.
+
+Third-party services:
+
+- GitHub repo: `zr9959/ai-saas-guard`
+- GitHub App: `ai-saas-guard-hosted`, App ID `3834787`, installation ID `135085075`, selected-repository access to `zr9959/ai-saas-guard`
+- Cloudflare Worker: `ai-saas-guard-hosted` at `https://ai-saas-guard-hosted.zr9959.workers.dev`
+- Cloudflare KV binding: `HOSTED_EVENTS`
+- npm package: `ai-saas-guard`
+- OpenSSF Best Practices project: `12955`
+
+## Security Risk Register
+
+Known constraints and risks:
+
+- The live Cloudflare Worker is still a hosted ingress that fetches PR file metadata and publishes compact Check Runs. It is not yet a deployed full source-checkout scan worker.
+- Source checkout runner code and gates exist, but deployed source-checkout worker sandbox, provider monitoring, provider rollback, and incident-response evidence still need real provider evidence before external beta.
+- Hosted beta/team gates exist in code but are readiness evaluators, not proof of real external usage.
+- Do not claim pentest, full audit, certification, or general AI reviewer.
+- Keep all local scans deterministic, no LLM calls, no code upload, no default network calls.
+- Do not store raw webhook bodies, PR title/body text, raw diffs, source, secrets, customer payloads, checkout paths, or installation tokens.
+- Continue updating both `README.md` and `docs/README.zh-CN.md` for every public release or feature-positioning change.
+- Clean `/tmp` artifacts, package tarballs, smoke branches/PRs, staging KV records, and long-running test/dev processes after each task.
+
+## SEO, GEO, Admin, And Mobile Notes
+
+SEO/GEO:
+
+- Current public discoverability is README/npm/GitHub-driven; no website, landing page, sitemap, search-console setup, analytics, or geographic targeting has been implemented.
+- Public copy should lead with buyer pain in simple English and keep Chinese README parity.
+- Do not add tracking/analytics that could collect source, diffs, PR text, customer payloads, or personal data without a separate privacy review.
+
+Backend/admin:
+
+- No admin dashboard exists.
+- Current operational controls are code-level gates, Cloudflare deployment, GitHub App config, KV cleanup, and release evidence docs.
+- Before any public beta, define a privacy-safe operator workflow for pausing hosted processing, checking queue depth, reviewing failure counts, deleting compact records, and rollback.
+
+Mobile:
+
+- There is no mobile app and no mobile-specific UI.
+- README/docs should remain readable on mobile, but no responsive web app or mobile browser testing has been performed because the product is currently CLI/GitHub/npm/Check Run focused.
 
 ## Repository Boundaries
 
