@@ -1577,6 +1577,9 @@ test("public docs define the hosted Node container app skeleton", async () => {
   assert.match(app, /createInMemoryHostedAppPlatform/);
   assert.match(app, /planHostedNodeContainerDeployment/);
   assert.match(app, /evaluateHostedSourceCheckoutTrialGate/);
+  assert.match(app, /ai-saas-guard\/hosted\/beta/);
+  assert.match(app, /evaluateHostedBetaReadinessGate/);
+  assert.match(app, /evaluateTeamLaunchGateReadiness/);
   assert.match(app, /node_container/);
   assert.match(app, /webhook-ingress/);
   assert.match(app, /scan-worker/);
@@ -1786,6 +1789,13 @@ test("public docs define the hosted operational release gate", async () => {
   assert.match(gate, /createHostedSourceCheckoutEvidence/);
   assert.match(gate, /evaluateHostedSourceCheckoutTrialGate/);
   assert.match(gate, /readyForPhase4Beta/);
+  assert.match(gate, /Phase 4 Hosted Beta Readiness Gate/i);
+  assert.match(gate, /evaluateHostedBetaReadinessGate/);
+  assert.match(gate, /readyForPublicBeta/);
+  assert.match(gate, /Phase 5 Team Launch Gate/i);
+  assert.match(gate, /evaluateTeamLaunchGateReadiness/);
+  assert.match(gate, /readyForTeamUse/);
+  assert.match(gate, /billing remains disabled/i);
   assert.match(gate, /live smoke/i);
   assert.match(gate, /incident owner/i);
   assert.match(gate, /checkout_start/);
@@ -2520,6 +2530,10 @@ test("hosted contract helpers have an explicit npm subpath export", async () => 
   assert.deepEqual(packageJson.exports["./hosted/deployed-staging"], {
     types: "./dist/hosted/deployed-staging.d.ts",
     default: "./dist/hosted/deployed-staging.js"
+  });
+  assert.deepEqual(packageJson.exports["./hosted/beta"], {
+    types: "./dist/hosted/beta.d.ts",
+    default: "./dist/hosted/beta.js"
   });
   assert.deepEqual(packageJson.exports["./hosted/worker"], {
     types: "./dist/hosted/worker.d.ts",

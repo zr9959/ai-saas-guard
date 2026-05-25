@@ -235,13 +235,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.42.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.42.0` |
+| npm CLI | `ai-saas-guard@0.43.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.43.0` |
 | Outputs | Launch decision queue, short summary, terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.42.0`, `v0` |
-| Current release | `0.42.0` adds a single Phase 3 source-checkout trial gate that combines plan, stage evidence, scan proof, live smoke, rollback, monitoring, and incident-owner checks before hosted beta |
+| Versioned Action tags | `v0.43.0`, `v0` |
+| Current release | `0.43.0` adds pre-commercial hosted gates for Phase 4 beta readiness and Phase 5 team launch readiness while keeping billing disabled |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; public install/privacy notes are in [docs/hosted-install-privacy.md](docs/hosted-install-privacy.md); signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
@@ -369,6 +369,8 @@ The first live hosted ingress is deployed on Cloudflare Workers at `https://ai-s
 
 The next hosted source-checkout step is intentionally narrow: deploy the existing read-only checkout worker behind the same selected-repository identity, keep the fixed `pr-risk --json` command, write only compact findings to the Check Run, and require deployed cleanup/log-boundary/rollback evidence before broader trial use. The hosted worker export includes `createHostedSourceCheckoutTrialPlan`, `createHostedSourceCheckoutEvidence`, and `evaluateHostedSourceCheckoutTrialGate` so Phase 3 has one machine-checkable gate for checkout start/end, token removal, CLI start/end, compact report write, Check Run write, cleanup status, live smoke, rollback, monitoring, and incident-owner proof before Phase 4 beta.
 
+The `ai-saas-guard/hosted/beta` export adds `evaluateHostedBetaReadinessGate` and `evaluateTeamLaunchGateReadiness`. These pre-commercial gates block hosted beta unless selected-repository install limits, abuse controls, safe telemetry, uninstall deletion proof, rollback, support ownership, beta smoke, and no-audit-claim wording are ready; they also block team use unless org policy config, required status-check docs, suppression audit, reviewer checklist, release evidence export, retention docs, and billing-disabled proof are in place.
+
 Hosted install and privacy details are summarized in [docs/hosted-install-privacy.md](docs/hosted-install-privacy.md): selected-repository permissions, supported events, Check Run data boundaries, uninstall cleanup, and why the local CLI remains the private/offline path.
 
 The hosted operational release gate is documented in [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md). It defines the hosted-specific CI, replay, queue, worker cleanup, privacy, monitoring, rollback, and incident-response evidence required before any hosted environment is exposed to users. The pure gate evaluator exported from `ai-saas-guard/hosted/contracts` blocks hosted exposure unless every P0 evidence item is fresh, a container digest is recorded, and release notes avoid pentest, certification, and full-audit claims.
@@ -423,7 +425,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.42.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.43.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
