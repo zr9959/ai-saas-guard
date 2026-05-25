@@ -4,6 +4,10 @@
 
 The narrow bet is simple: a founder or reviewer should know which launch-risk files to inspect first, what manual proof to run, and what fix direction to try before traffic reaches real users.
 
+## What This Adds In One Line
+
+`ai-saas-guard` turns AI-built SaaS launch risks into a short local review queue; it is not intended to substitute for broad SAST, dependency scanning, workflow security analysis, or repository scorecards.
+
 ## Where It Fits
 
 | Tool category | Typical strength | How ai-saas-guard fits beside it |

@@ -31,7 +31,7 @@
 
 AI-built SaaS can look ready before it is ready: login works, checkout opens, the dashboard loads, and tests are green. The launch risk is usually hidden in trust-boundary code that decides who gets access, who pays, what data they can see, and whether failures are visible.
 
-Start with the 30-second copy-paste demo: `npx ai-saas-guard@latest demo --summary`. No signup, no code upload, no LLM call. See [docs/demo-terminal-output.txt](docs/demo-terminal-output.txt) and [compare with alternatives](docs/launch-gate-positioning.md).
+Start with the 30-second copy-paste demo: `npx ai-saas-guard@latest demo --summary`. No signup, no code upload, no LLM call. See the [terminal screenshot](docs/demo-terminal-screenshot.svg), [saved output](docs/demo-terminal-output.txt), [compare with alternatives](docs/launch-gate-positioning.md), and the [30-second cold-start review](docs/cold-start-review.md).
 
 These are the failures that hurt after real users arrive:
 
@@ -54,7 +54,7 @@ No signup, no code upload, no LLM call:
 npx ai-saas-guard@latest demo --summary
 ```
 
-The demo scans two packaged fixtures: one risky AI-built SaaS and one safer version. See the saved terminal sample in [docs/demo-terminal-output.txt](docs/demo-terminal-output.txt), then compare with alternatives in [docs/launch-gate-positioning.md](docs/launch-gate-positioning.md).
+The demo scans two packaged fixtures: one risky AI-built SaaS and one safer version. See the [terminal screenshot](docs/demo-terminal-screenshot.svg) or saved terminal sample in [docs/demo-terminal-output.txt](docs/demo-terminal-output.txt), then compare with alternatives in [docs/launch-gate-positioning.md](docs/launch-gate-positioning.md).
 
 ## 60-Second Local Check
 
@@ -199,13 +199,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.33.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.33.0` |
+| npm CLI | `ai-saas-guard@0.34.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.34.0` |
 | Outputs | Short summary, terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.33.0`, `v0` |
-| Current release | `0.33.0` sharpens the README first screen, adds a saved terminal demo output, and adds deployed worker staging evidence automation that validates safe logs before building hosted release-gate input |
+| Versioned Action tags | `v0.34.0`, `v0` |
+| Current release | `0.34.0` adds a visual demo screenshot, tightens first-run demo output, adds a concise competitor-positioning line, and improves hosted Check Run reviewer checklist wording |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
@@ -374,7 +374,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.33.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.34.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard

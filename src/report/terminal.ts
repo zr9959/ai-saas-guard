@@ -60,11 +60,15 @@ export function formatTerminalReport(report: BaseReport): string {
 function formatDemoTerminalReport(report: ShowcaseReport): string {
   const lines: string[] = [];
   lines.push("ai-saas-guard demo");
-  lines.push("Synthetic public demo for the local-first launch gate.");
+  lines.push("AI-built SaaS can look ready while launch risks stay hidden.");
   lines.push("This is not a pentest, full audit, or certification.");
   lines.push("");
   lines.push(`Risky demo: ${summaryText(report.demos.risky)}`);
   lines.push(`Safe demo: ${summaryText(report.demos.safe)}`);
+  lines.push("");
+  lines.push("What this proves:");
+  lines.push("- The same SaaS surfaces can look finished while auth, billing, data, deploy, and CI risks still need review.");
+  lines.push("- The safe demo keeps the same SaaS surfaces but removes the intentional launch-risk patterns.");
   lines.push("");
   lines.push("Review first:");
   for (const item of reviewFirst(report.demos.risky.findings)) {
