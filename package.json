@@ -1,6 +1,6 @@
 {
   "name": "ai-saas-guard",
-  "version": "0.39.0",
+  "version": "0.40.0",
   "description": "Local-first CLI that catches launch blockers in AI-built Next.js/Supabase/Stripe SaaS apps.",
   "readmeFilename": "README.md",
   "type": "module",

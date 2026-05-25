@@ -23,7 +23,7 @@ This Worker is a real hosted ingress with first-slice Check Run publishing code,
 - `HOSTED_EVENTS`: Cloudflare KV namespace for compact delivery and queued scan records.
 - `WEBHOOK_SECRET`: Worker secret matching the GitHub App webhook secret.
 - `GITHUB_APP_PRIVATE_KEY`: Worker secret for the staging GitHub App private key, used only in memory to sign short-lived GitHub App JWTs.
-- `SCANNER_VERSION`: public version string, currently `0.39.0`.
+- `SCANNER_VERSION`: public version string, currently `0.40.0`.
 - `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_INSTALLATION_ID`: public staging identifiers for the private GitHub App installation.
 
 ## Deployment
@@ -68,6 +68,7 @@ Do not add raw app private keys, webhook secrets, installation tokens, source, d
 The Check Run is intentionally compact. It should answer:
 
 - What changed at a launch-risk boundary?
+- Which risk areas are involved: auth/session, billing/entitlement, tenant data, deploy/permissions, API contract, or tests/silent success?
 - Which files are in the Review queue?
 - What Manual proof should block merge until it passes?
 - What selected-repository permissions did the hosted check use?
@@ -90,7 +91,7 @@ Use the repository smoke runner before each hosted release:
 
 ```bash
 node scripts/hosted-pr-smoke.mjs --plan
-node scripts/hosted-pr-smoke.mjs
+node scripts/hosted-pr-smoke.mjs --evidence-file /tmp/ai-saas-guard-hosted-smoke.json
 ```
 
 The real run is intentionally narrow:
@@ -99,7 +100,7 @@ The real run is intentionally narrow:
 - commits one public smoke marker file with no secrets or source excerpts
 - opens a temporary PR against `zr9959/ai-saas-guard`
 - waits for the `ai-saas-guard PR risk` Check Run on the trusted head SHA
-- records only the Check Run conclusion, URL, and safe output title
+- records only the Check Run conclusion, URL, safe output title, and cleanup status
 - closes the PR, deletes the branch, restores the local branch, and clears staging KV `delivery:` and `scan:` records with `wrangler kv bulk delete`
 
 The script refuses to run against another repository, requires HTTPS Worker URLs, and keeps the local CLI path available even if hosted smoke fails.

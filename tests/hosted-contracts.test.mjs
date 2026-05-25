@@ -762,6 +762,11 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.match(findings.output.text, /Review task: inspect the files below before merge/i);
   assert.match(findings.output.text, /Manual proof: prove changed auth, billing, data, deploy, or tests fail closed/i);
   assert.match(findings.output.text, /Boundary: selected repository only/i);
+  assert.match(findings.output.text, /Risk areas/i);
+  assert.match(findings.output.text, /Billing and entitlement/i);
+  assert.match(findings.output.text, /Tenant data access/i);
+  assert.match(findings.output.text, /force unsigned, duplicate, failed, and canceled billing events/i);
+  assert.match(findings.output.text, /cross-tenant SELECT, INSERT, UPDATE, and DELETE/i);
   assert.match(findings.output.text, /What changed at the launch boundary/i);
   assert.match(findings.output.text, /Why this auth billing data or deploy decision is safe/i);
   assert.match(findings.output.text, /What manual test proves it fails closed/i);

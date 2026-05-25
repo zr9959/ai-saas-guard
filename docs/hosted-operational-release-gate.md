@@ -98,10 +98,10 @@ For a hosted release candidate, CI must additionally verify the built container 
 For any release that changes the deployed Cloudflare GitHub App ingress, run the real smoke after deployment:
 
 ```bash
-node scripts/hosted-pr-smoke.mjs
+node scripts/hosted-pr-smoke.mjs --evidence-file /tmp/ai-saas-guard-hosted-smoke.json
 ```
 
-The script must refuse a dirty working tree, target only `zr9959/ai-saas-guard`, create a `codex/hosted-smoke-*` branch, query Check Runs with a GET request on the trusted head SHA, close the temporary PR, delete the remote and local branch, and bulk-delete staging KV `delivery:` / `scan:` records.
+The script must refuse a dirty working tree, target only `zr9959/ai-saas-guard`, create a `codex/hosted-smoke-*` branch, query Check Runs with a GET request on the trusted head SHA, write a public-safe machine-readable evidence record, close the temporary PR, delete the remote and local branch, and bulk-delete staging KV `delivery:` / `scan:` records.
 
 ## Hosted Security Tests
 

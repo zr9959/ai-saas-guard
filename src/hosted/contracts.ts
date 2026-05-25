@@ -2252,6 +2252,7 @@ function formatCheckRunMarkdown(
   launchGate: string
 ): string {
   const categories = getHostedCheckRunCategories(report);
+  const riskAreas = getHostedCheckRunRiskAreas(report);
   const filesToReview = getHostedCheckRunFiles(report);
   const findingLines =
     report.evidence.length === 0
@@ -2286,6 +2287,11 @@ function formatCheckRunMarkdown(
     "- Inspect the listed files locally before release or merge.",
     "- Reproduce locally with the CLI command above.",
     "- Prove changed auth, billing, data, deploy, or tests fail closed.",
+    "",
+    "Risk areas:",
+    ...(riskAreas.length === 0
+      ? ["- None"]
+      : riskAreas.map((area) => `- ${area.name}: ${area.count} finding(s). Proof: ${area.proof}`)),
     "",
     "Launch decision queue:",
     "- Can a real user get access they should not have?",
@@ -2356,6 +2362,85 @@ function formatFindingLocation(finding: CompactHostedFinding): string {
 function getHostedCheckRunCategories(report: CompactHostedReport): string[] {
   const categories = report.evidence.map((finding) => categoryForRuleId(finding.ruleId));
   return [...new Set(categories)];
+}
+
+function getHostedCheckRunRiskAreas(report: CompactHostedReport): Array<{
+  key: string;
+  name: string;
+  proof: string;
+  weight: number;
+  count: number;
+}> {
+  const counts = new Map<
+    string,
+    { key: string; name: string; proof: string; weight: number; count: number }
+  >();
+  for (const finding of report.evidence) {
+    const area = riskAreaForRuleId(finding.ruleId);
+    counts.set(area.key, {
+      ...area,
+      count: (counts.get(area.key)?.count ?? 0) + 1
+    });
+  }
+
+  return [...counts.values()].sort((a, b) => {
+    if (b.weight !== a.weight) return b.weight - a.weight;
+    return b.count - a.count;
+  });
+}
+
+function riskAreaForRuleId(ruleId: string): {
+  key: string;
+  name: string;
+  proof: string;
+  weight: number;
+} {
+  if (/^(auth|api)\./.test(ruleId)) {
+    return {
+      key: "auth",
+      name: "Auth and session",
+      proof: "use two accounts and confirm access, session, and ownership checks fail closed",
+      weight: 50
+    };
+  }
+  if (/^stripe\./.test(ruleId)) {
+    return {
+      key: "billing",
+      name: "Billing and entitlement",
+      proof: "force unsigned, duplicate, failed, and canceled billing events before granting access",
+      weight: 50
+    };
+  }
+  if (/^(supabase|data)\./.test(ruleId)) {
+    return {
+      key: "data",
+      name: "Tenant data access",
+      proof: "run cross-tenant SELECT, INSERT, UPDATE, and DELETE checks with user A and user B",
+      weight: 45
+    };
+  }
+  if (/^(deploy|secrets|mcp|actions)\./.test(ruleId)) {
+    return {
+      key: "deploy",
+      name: "Deploy, secrets, tools, and permissions",
+      proof: "confirm production env, workflow permissions, and tool scopes are least privilege",
+      weight: 35
+    };
+  }
+  if (/^silent-success\.|weakened-test|test/i.test(ruleId)) {
+    return {
+      key: "tests",
+      name: "Tests and silent success",
+      proof: "make the upstream path fail and confirm tests catch an error instead of fake success",
+      weight: 40
+    };
+  }
+  return {
+    key: "pr",
+    name: "PR trust boundary",
+    proof: "explain the trust-boundary decision and prove the changed path fails closed",
+    weight: 30
+  };
 }
 
 function categoryForRuleId(ruleId: string): string {
