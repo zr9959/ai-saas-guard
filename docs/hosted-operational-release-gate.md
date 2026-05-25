@@ -170,6 +170,15 @@ Required proof:
 - failure cleanup covers clone failure, timeout, CLI failure, malformed JSON output, Check Run write failure, cancellation, and process interruption.
 - cleanup failures create an operator-review event without returning raw source, raw diffs, installation tokens, checkout paths, private URLs, or low-level filesystem errors to users.
 
+### Source Checkout Trial Evidence Contract
+
+The v0.41 source-checkout trial boundary is executable as a pure contract before public exposure. The `ai-saas-guard/hosted/worker` export now includes:
+
+- `createHostedSourceCheckoutTrialPlan`: accepts the proposed selected-repository trial shape and blocks anything wider than `contents: read`, `checks: write`, fixed `ai-saas-guard pr-risk --root <worker-checkout> --base <trusted-base-sha> --json`, no raw source storage, no raw diff storage, no installation-token storage, and no public scanner claim.
+- `createHostedSourceCheckoutEvidence`: records stage-level evidence for `checkout_start`, `token_remove`, `cli_start`, `cli_end`, `compact_report_write`, `check_run_write`, and `cleanup_end`, then blocks release-gate readiness unless every stage passed and cleanup status is `deleted`.
+
+The evidence object must stay compact and privacy-safe. It may contain job key, stage IDs, timestamps, summary counts, compact finding count, cleanup status, and safe blocked reasons. It must not include source, diffs, checkout paths, installation tokens, PR-authored commands, private URLs, or low-level filesystem errors.
+
 ### Log Boundary Evidence
 
 Before exposure, sample ingress, queue, worker, report, and Check Run logs for the release candidate. The sample may contain scan key, installation ID, repository ID, PR number, head SHA, scanner version, duration, summary counts, error class, and cleanup status.

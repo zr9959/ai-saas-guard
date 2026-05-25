@@ -213,18 +213,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.40.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.40.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.41.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.41.0`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.40.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.40.0` |
+| npm CLI | `ai-saas-guard@0.41.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.41.0` |
 | 输出格式 | 上线决策队列、短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.40.0` 按上线风险区域分组 hosted Check Run 输出，增加机器可读 hosted smoke evidence，讲清 CLI/Action/Hosted 三条路径选择，并记录下一步 source-checkout 边界 |
-| Action 标签 | `v0.40.0`、`v0` |
+| 当前版本 | `0.41.0` 增加 source-checkout trial plan/evidence 契约，压缩 hosted Check Run reviewer 输出，并记录下一阶段 hosted source-checkout gate |
+| Action 标签 | `v0.41.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；安装和隐私说明见 [hosted-install-privacy.md](hosted-install-privacy.md)；提供 `/github/app/install-info`，签名 GitHub App webhook delivery、compact Check Run 和 installation cleanup staging smoke 已通过 |
@@ -383,7 +383,7 @@ GitHub Marketplace wrapper 决策见 [docs/github-marketplace-wrapper-decision.m
 
 当前仓库已经包含未来 Hosted GitHub App 的设计文档、纯契约测试、第一个真实 Cloudflare hosted ingress，以及 Node/container read-only checkout scan runner。私有 staging GitHub App `ai-saas-guard-hosted` 已安装到 `zr9959/ai-saas-guard`，Cloudflare 已配置所需的云端凭据绑定。Worker 代码已经能接收签名 webhook、写入 KV 队列、换取 scoped installation token、读取 GitHub PR file metadata、做 compact PR-risk classification，并发布有长度上限的 selected-repository Check Run summary；`/github/app/install-info` 会返回公开安全的安装说明、权限、事件、隐私边界和卸载说明。签名 installation deletion 和 repository removal 事件会删除匹配的 compact records。当前端到端 GitHub App webhook delivery smoke 已通过，证据记录在 [docs/hosted-operations-evidence.md](hosted-operations-evidence.md)。Cloudflare ingress 本身仍不是完整 source checkout scan worker。
 
-下一步 hosted source checkout 仍然要保持窄边界：把现有 read-only checkout worker 放到同一个 selected-repository identity 后面，继续固定 `pr-risk --json` 命令，只把 compact findings 写入 Check Run，并在扩大 trial 前要求 deployed cleanup、log-boundary 和 rollback evidence。
+下一步 hosted source checkout 仍然要保持窄边界：把现有 read-only checkout worker 放到同一个 selected-repository identity 后面，继续固定 `pr-risk --json` 命令，只把 compact findings 写入 Check Run，并在扩大 trial 前要求 deployed cleanup、log-boundary 和 rollback evidence。v0.41 契约层新增 `createHostedSourceCheckoutTrialPlan` 和 `createHostedSourceCheckoutEvidence`，用于在公开暴露前检查 checkout start/end、token removal、CLI start/end、compact report write、Check Run write 和 cleanup status。
 
 Hosted 安装、权限和隐私边界见 [hosted-install-privacy.md](hosted-install-privacy.md)：selected-repository 权限、支持的 GitHub 事件、Check Run 数据边界、卸载清理，以及为什么本地 CLI 仍然是私有/离线路径。
 

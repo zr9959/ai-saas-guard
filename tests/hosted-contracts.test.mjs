@@ -750,7 +750,7 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.match(findings.output.summary, /Launch gate: review required/i);
   assert.match(findings.output.summary, /launch-risk gate/i);
   assert.match(findings.output.summary, /not an AI reviewer/i);
-  assert.match(findings.output.summary, /Review task: inspect the files below before merge/i);
+  assert.match(findings.output.summary, /Review task: inspect risk areas and files before merge/i);
   assert.match(findings.output.summary, /not.*full audit/i);
   assert.match(findings.output.summary, /Boundary: selected repository only/i);
   assert.match(findings.output.summary, /Manual proof: prove changed auth, billing, data, deploy, or tests fail closed/i);
@@ -759,7 +759,7 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.match(findings.output.text, /Launch decision queue/i);
   assert.match(findings.output.text, /not an AI reviewer/i);
   assert.match(findings.output.text, /Launch gate: review required/i);
-  assert.match(findings.output.text, /Review task: inspect the files below before merge/i);
+  assert.match(findings.output.text, /Review task: inspect risk areas and files before merge/i);
   assert.match(findings.output.text, /Manual proof: prove changed auth, billing, data, deploy, or tests fail closed/i);
   assert.match(findings.output.text, /Boundary: selected repository only/i);
   assert.match(findings.output.text, /Risk areas/i);

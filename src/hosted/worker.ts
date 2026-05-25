@@ -73,6 +73,102 @@ export interface HostedReadOnlyCheckoutScanRunnerOptions {
   commandRunner?: HostedReadOnlyCheckoutCommandRunner;
 }
 
+export interface HostedSourceCheckoutTrialPlanInput {
+  requestedAt: string;
+  repositoryFullName: string;
+  selectedRepositoryOnly: boolean;
+  permissions: {
+    contents: "read" | "write" | "none";
+    checks: "write" | "read" | "none";
+  };
+  command: string[];
+  storesRawSource: boolean;
+  storesRawDiffs: boolean;
+  storesInstallationToken: boolean;
+  exposesPublicScanner: boolean;
+}
+
+export interface HostedSourceCheckoutTrialPlan {
+  readyForTrial: boolean;
+  blockedReasons: Array<
+    | "repository_not_selected"
+    | "contents_read_required"
+    | "checks_write_required"
+    | "fixed_pr_risk_json_command_required"
+    | "raw_source_storage_blocked"
+    | "raw_diff_storage_blocked"
+    | "installation_token_storage_blocked"
+    | "public_scanner_claim_blocked"
+  >;
+  requestedAt: string;
+  repositoryFullName: string;
+  permissions: {
+    contents: "read";
+    checks: "write";
+  };
+  fixedCommand: ["ai-saas-guard", "pr-risk", "--root", "<worker-checkout>", "--base", "<trusted-base-sha>", "--json"];
+  stages: Array<{
+    id:
+      | "checkout_start"
+      | "token_remove"
+      | "cli_start"
+      | "cli_end"
+      | "compact_report_write"
+      | "check_run_write"
+      | "cleanup_end";
+    evidence: string;
+  }>;
+  privacy: {
+    storesRawSource: false;
+    storesRawDiffs: false;
+    storesInstallationToken: false;
+    exposesPublicScanner: false;
+  };
+}
+
+export interface HostedSourceCheckoutEvidenceInput {
+  requestedAt: string;
+  jobKey: string;
+  stages: Array<{
+    id: HostedSourceCheckoutTrialPlan["stages"][number]["id"];
+    ok: boolean;
+    at: string;
+  }>;
+  summaryCounts: Record<string, number>;
+  compactFindingCount: number;
+  cleanupStatus: "deleted" | "failed" | "unknown";
+  rawSource?: string;
+  rawDiff?: string;
+  checkoutPath?: string;
+  installationToken?: string;
+}
+
+export interface HostedSourceCheckoutEvidence {
+  readyForReleaseGate: boolean;
+  blockedReasons: Array<
+    | "missing_checkout_start"
+    | "missing_token_remove"
+    | "missing_cli_start"
+    | "missing_cli_end"
+    | "missing_compact_report_write"
+    | "missing_check_run_write"
+    | "missing_cleanup_end"
+    | "cleanup_not_deleted"
+  >;
+  requestedAt: string;
+  jobKey: string;
+  stageResults: HostedSourceCheckoutEvidenceInput["stages"];
+  summaryCounts: Record<string, number>;
+  compactFindingCount: number;
+  cleanupStatus: "deleted" | "failed" | "unknown";
+  privacy: {
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesPrivateCheckoutPath: false;
+    includesInstallationToken: false;
+  };
+}
+
 export interface HostedReadOnlyCheckoutScanGateInput {
   requestedAt: string;
   jobKey: string;
@@ -144,6 +240,107 @@ export function createHostedReadOnlyCheckoutScanRunner(
   options: HostedReadOnlyCheckoutScanRunnerOptions
 ): HostedServiceScanRunner {
   return (input) => runHostedReadOnlyCheckoutScan(input, options);
+}
+
+export function createHostedSourceCheckoutTrialPlan(
+  input: HostedSourceCheckoutTrialPlanInput
+): HostedSourceCheckoutTrialPlan {
+  const blockedReasons: HostedSourceCheckoutTrialPlan["blockedReasons"] = [];
+  const expectedCommand = [
+    "ai-saas-guard",
+    "pr-risk",
+    "--root",
+    "<worker-checkout>",
+    "--base",
+    "<trusted-base-sha>",
+    "--json"
+  ];
+
+  if (!input.selectedRepositoryOnly) blockedReasons.push("repository_not_selected");
+  if (input.permissions.contents !== "read") blockedReasons.push("contents_read_required");
+  if (input.permissions.checks !== "write") blockedReasons.push("checks_write_required");
+  if (!arraysEqual(input.command, expectedCommand)) {
+    blockedReasons.push("fixed_pr_risk_json_command_required");
+  }
+  if (input.storesRawSource) blockedReasons.push("raw_source_storage_blocked");
+  if (input.storesRawDiffs) blockedReasons.push("raw_diff_storage_blocked");
+  if (input.storesInstallationToken) blockedReasons.push("installation_token_storage_blocked");
+  if (input.exposesPublicScanner) blockedReasons.push("public_scanner_claim_blocked");
+
+  return {
+    readyForTrial: blockedReasons.length === 0,
+    blockedReasons,
+    requestedAt: input.requestedAt,
+    repositoryFullName: input.repositoryFullName,
+    permissions: {
+      contents: "read",
+      checks: "write"
+    },
+    fixedCommand: [
+      "ai-saas-guard",
+      "pr-risk",
+      "--root",
+      "<worker-checkout>",
+      "--base",
+      "<trusted-base-sha>",
+      "--json"
+    ],
+    stages: [
+      { id: "checkout_start", evidence: "trusted selected-repository identity and contents:read token requested" },
+      { id: "token_remove", evidence: "temporary askpass and token material removed before CLI starts" },
+      { id: "cli_start", evidence: "fixed pr-risk --json command starts in temporary worker checkout" },
+      { id: "cli_end", evidence: "CLI exits with bounded output and compact JSON only" },
+      { id: "compact_report_write", evidence: "compact findings stored without source, diff, secrets, or checkout paths" },
+      { id: "check_run_write", evidence: "bounded Check Run written from compact findings only" },
+      { id: "cleanup_end", evidence: "worker checkout, generated artifacts, and credential material deleted" }
+    ],
+    privacy: {
+      storesRawSource: false,
+      storesRawDiffs: false,
+      storesInstallationToken: false,
+      exposesPublicScanner: false
+    }
+  };
+}
+
+export function createHostedSourceCheckoutEvidence(
+  input: HostedSourceCheckoutEvidenceInput
+): HostedSourceCheckoutEvidence {
+  const requiredStages: HostedSourceCheckoutTrialPlan["stages"][number]["id"][] = [
+    "checkout_start",
+    "token_remove",
+    "cli_start",
+    "cli_end",
+    "compact_report_write",
+    "check_run_write",
+    "cleanup_end"
+  ];
+  const observed = new Map(input.stages.map((stage) => [stage.id, stage]));
+  const blockedReasons: HostedSourceCheckoutEvidence["blockedReasons"] = [];
+
+  for (const stage of requiredStages) {
+    if (observed.get(stage)?.ok !== true) {
+      blockedReasons.push(`missing_${stage}` as HostedSourceCheckoutEvidence["blockedReasons"][number]);
+    }
+  }
+  if (input.cleanupStatus !== "deleted") blockedReasons.push("cleanup_not_deleted");
+
+  return {
+    readyForReleaseGate: blockedReasons.length === 0,
+    blockedReasons,
+    requestedAt: input.requestedAt,
+    jobKey: input.jobKey,
+    stageResults: input.stages.map((stage) => ({ ...stage })),
+    summaryCounts: { ...input.summaryCounts },
+    compactFindingCount: input.compactFindingCount,
+    cleanupStatus: input.cleanupStatus,
+    privacy: {
+      includesRawSource: false,
+      includesRawDiffs: false,
+      includesPrivateCheckoutPath: false,
+      includesInstallationToken: false
+    }
+  };
 }
 
 export function evaluateHostedReadOnlyCheckoutScanGate(

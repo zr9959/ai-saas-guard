@@ -1375,7 +1375,7 @@ export function createHostedCheckRunSummary(
       title: formatCheckRunTitle(totalFindings, conclusion, input.failOnSeverity),
       summary: [
         `Launch-risk gate: ${launchGate}. Launch gate: ${launchGate}.`,
-        "Review task: inspect the files below before merge.",
+        "Review task: inspect risk areas and files before merge.",
         "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
         "Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification."
       ].join(" "),
@@ -2271,7 +2271,7 @@ function formatCheckRunMarkdown(
   return [
     "### AI SaaS Guard Launch-risk gate",
     "",
-    "Review task: inspect the files below before merge.",
+    "Review task: inspect risk areas and files before merge.",
     "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
     "Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification.",
     "",

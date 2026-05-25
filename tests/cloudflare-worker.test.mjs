@@ -272,7 +272,7 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
         assert.equal(body.head_sha, "a".repeat(40));
         assert.equal(body.status, "completed");
         assert.equal(body.conclusion, "neutral");
-        assert.match(body.output.summary, /Review task: inspect the files below before merge/i);
+        assert.match(body.output.summary, /Review task: inspect risk areas and files before merge/i);
         assert.match(body.output.summary, /Risk areas/i);
         assert.match(body.output.summary, /Billing and entitlement/i);
         assert.match(body.output.summary, /Tenant data access/i);
@@ -280,7 +280,7 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
         assert.match(body.output.summary, /Review queue/i);
         assert.match(body.output.summary, /Manual proof: prove changed auth, billing, data, deploy, or tests fail closed/i);
         assert.match(body.output.summary, /Boundary: selected repository only/i);
-        assert.match(body.output.summary, /Selected-repository hosted check/i);
+        assert.match(body.output.summary, /Privacy: compact file\/category signals only/i);
         assert.match(body.output.summary, /app\/api\/stripe\/webhook\/route\.ts/);
         assert.doesNotMatch(JSON.stringify(body), /ghs_test_installation_token|STRIPE_SECRET_KEY|grantSubscription|raw diff/i);
         return Response.json({ id: 777, html_url: "https://github.example/checks/777" });

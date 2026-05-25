@@ -19,9 +19,138 @@ async function loadHostedWorker() {
   const worker = await import("../dist/hosted/worker.js");
   assert.equal(typeof worker.createHostedReadOnlyCheckoutScanRunner, "function");
   assert.equal(typeof worker.evaluateHostedReadOnlyCheckoutScanGate, "function");
+  assert.equal(typeof worker.createHostedSourceCheckoutTrialPlan, "function");
+  assert.equal(typeof worker.createHostedSourceCheckoutEvidence, "function");
   assert.equal(typeof worker.HostedReadOnlyCheckoutScanError, "function");
   return worker;
 }
+
+test("hosted source checkout trial plan keeps the next hosted layer narrow", async () => {
+  const { createHostedSourceCheckoutTrialPlan } = await loadHostedWorker();
+  const plan = createHostedSourceCheckoutTrialPlan({
+    requestedAt: "2026-05-25T13:00:00.000Z",
+    repositoryFullName: "owner/repo",
+    selectedRepositoryOnly: true,
+    permissions: { contents: "read", checks: "write" },
+    command: [
+      "ai-saas-guard",
+      "pr-risk",
+      "--root",
+      "<worker-checkout>",
+      "--base",
+      "<trusted-base-sha>",
+      "--json"
+    ],
+    storesRawSource: false,
+    storesRawDiffs: false,
+    storesInstallationToken: false,
+    exposesPublicScanner: false
+  });
+  const blocked = createHostedSourceCheckoutTrialPlan({
+    requestedAt: "2026-05-25T13:01:00.000Z",
+    repositoryFullName: "owner/repo",
+    selectedRepositoryOnly: false,
+    permissions: { contents: "write", checks: "read" },
+    command: ["bash", "-lc", "ai-saas-guard pr-risk"],
+    storesRawSource: true,
+    storesRawDiffs: true,
+    storesInstallationToken: true,
+    exposesPublicScanner: true
+  });
+  const serialized = JSON.stringify(plan);
+
+  assert.equal(plan.readyForTrial, true);
+  assert.deepEqual(plan.blockedReasons, []);
+  assert.deepEqual(plan.permissions, { contents: "read", checks: "write" });
+  assert.deepEqual(plan.fixedCommand, [
+    "ai-saas-guard",
+    "pr-risk",
+    "--root",
+    "<worker-checkout>",
+    "--base",
+    "<trusted-base-sha>",
+    "--json"
+  ]);
+  assert.deepEqual(
+    plan.stages.map((stage) => stage.id),
+    [
+      "checkout_start",
+      "token_remove",
+      "cli_start",
+      "cli_end",
+      "compact_report_write",
+      "check_run_write",
+      "cleanup_end"
+    ]
+  );
+  assert.equal(serialized.includes("raw source"), false);
+  assert.equal(plan.privacy.exposesPublicScanner, false);
+  assert.equal(blocked.readyForTrial, false);
+  assert.deepEqual(blocked.blockedReasons, [
+    "repository_not_selected",
+    "contents_read_required",
+    "checks_write_required",
+    "fixed_pr_risk_json_command_required",
+    "raw_source_storage_blocked",
+    "raw_diff_storage_blocked",
+    "installation_token_storage_blocked",
+    "public_scanner_claim_blocked"
+  ]);
+});
+
+test("hosted source checkout evidence records stages without leaking checkout data", async () => {
+  const { createHostedSourceCheckoutEvidence } = await loadHostedWorker();
+  const evidence = createHostedSourceCheckoutEvidence({
+    requestedAt: "2026-05-25T13:05:00.000Z",
+    jobKey: "job-source-checkout",
+    stages: [
+      { id: "checkout_start", ok: true, at: "2026-05-25T13:05:01.000Z" },
+      { id: "token_remove", ok: true, at: "2026-05-25T13:05:02.000Z" },
+      { id: "cli_start", ok: true, at: "2026-05-25T13:05:03.000Z" },
+      { id: "cli_end", ok: true, at: "2026-05-25T13:05:04.000Z" },
+      { id: "compact_report_write", ok: true, at: "2026-05-25T13:05:05.000Z" },
+      { id: "check_run_write", ok: true, at: "2026-05-25T13:05:06.000Z" },
+      { id: "cleanup_end", ok: true, at: "2026-05-25T13:05:07.000Z" }
+    ],
+    summaryCounts: { critical: 0, high: 1, medium: 0, low: 0, info: 0, total: 1 },
+    compactFindingCount: 1,
+    cleanupStatus: "deleted",
+    rawSource: "const secret = 'do-not-return';",
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    checkoutPath: "/tmp/private-checkout",
+    installationToken: "ghs_do_not_return"
+  });
+  const blocked = createHostedSourceCheckoutEvidence({
+    requestedAt: "2026-05-25T13:06:00.000Z",
+    jobKey: "job-source-checkout",
+    stages: [{ id: "checkout_start", ok: true, at: "2026-05-25T13:06:01.000Z" }],
+    summaryCounts: { critical: 0, high: 0, medium: 0, low: 0, info: 0, total: 0 },
+    compactFindingCount: 0,
+    cleanupStatus: "failed"
+  });
+  const serialized = JSON.stringify(evidence);
+
+  assert.equal(evidence.readyForReleaseGate, true);
+  assert.deepEqual(evidence.blockedReasons, []);
+  assert.equal(evidence.cleanupStatus, "deleted");
+  assert.equal(evidence.privacy.includesRawSource, false);
+  assert.equal(evidence.privacy.includesRawDiffs, false);
+  assert.equal(evidence.privacy.includesPrivateCheckoutPath, false);
+  assert.equal(evidence.privacy.includesInstallationToken, false);
+  assert.equal(serialized.includes("do-not-return"), false);
+  assert.equal(serialized.includes("private-checkout"), false);
+  assert.equal(serialized.includes("ghs_"), false);
+  assert.equal(blocked.readyForReleaseGate, false);
+  assert.deepEqual(blocked.blockedReasons, [
+    "missing_token_remove",
+    "missing_cli_start",
+    "missing_cli_end",
+    "missing_compact_report_write",
+    "missing_check_run_write",
+    "missing_cleanup_end",
+    "cleanup_not_deleted"
+  ]);
+});
 
 test("hosted checkout worker runs trusted git and CLI commands with bounded output and cleanup", async () => {
   const checkoutRoot = await mkdtemp(join(tmpdir(), "ai-saas-guard-worker-"));
