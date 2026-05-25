@@ -146,7 +146,7 @@ One command returns a launch-readiness report with:
 - why the finding matters for an AI-built SaaS launch
 - manual verification steps you can actually run
 - practical fix direction, not generic advice
-- short `--summary`, terminal, JSON, SARIF, and PR markdown output for local review or CI
+- launch decision queue, ranking explanation, trust statement, short `--summary`, terminal, JSON, SARIF, and PR markdown output for local review or CI
 
 ## Problems It Helps You Catch
 
@@ -231,13 +231,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.35.1` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.35.1` |
-| Outputs | Short summary, terminal, JSON, SARIF, and PR-focused markdown |
+| npm CLI | `ai-saas-guard@0.36.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.36.0` |
+| Outputs | Launch decision queue, short summary, terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.35.1`, `v0` |
-| Current release | `0.35.1` updates the case-study fixture to a patched Next.js release so GitHub Dependabot no longer reports known Next.js advisories for the packaged example |
+| Versioned Action tags | `v0.36.0`, `v0` |
+| Current release | `0.36.0` turns Markdown and summary output into a clearer launch decision queue with ranking explanations, reviewer checklists, case-study flow, and local trust/resource statements |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
@@ -297,7 +297,7 @@ AI-generated PRs often combine unrelated work:
 - suggested PR split
 - required tests or manual verification
 - explicit git-diff diagnostics when a base ref or shallow checkout prevents PR classification
-- PR-focused markdown for GitHub step summaries or PR comments
+- PR-focused markdown with launch decision queue, reviewer checklist, ranking explanation, and suggested split for GitHub step summaries or PR comments
 
 ```bash
 node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --json
@@ -415,7 +415,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.35.1` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.36.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard

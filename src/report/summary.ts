@@ -1,5 +1,5 @@
 import type { BaseReport, ShowcaseReport } from "../types.js";
-import { launchGateVerdict, manualProofSteps, nextSteps, reviewFirst } from "./launchGate.js";
+import { launchDecisionQuestions, launchGateVerdict, manualProofSteps, nextSteps, reviewFirst } from "./launchGate.js";
 
 export function formatSummaryReport(report: BaseReport): string {
   if (report.command === "demo") return formatShowcaseSummary(report as ShowcaseReport);
@@ -9,6 +9,10 @@ export function formatSummaryReport(report: BaseReport): string {
   lines.push(`Root: ${report.rootDir}`);
   lines.push(`Findings: ${summaryText(report)}`);
   lines.push(`Launch gate: ${launchGateVerdict(report)}`);
+  lines.push(`Decision queue: ${launchDecisionQuestions(report.findings)[0]}`);
+  if (report.findings.length > 0) {
+    lines.push("Review trust-boundary findings before deploy/cost hygiene.");
+  }
 
   if (report.findings.length === 0) {
     lines.push("");

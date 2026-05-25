@@ -6,6 +6,8 @@ This is a synthetic, public-safe example of the kind of review queue `ai-saas-gu
 ai-saas-guard scan summary
 Findings: 6 findings: 0 critical, 3 high, 3 medium, 0 low, 0 info
 Launch gate: review required: high-risk launch paths need manual verification before launch
+Decision queue: Can a real user get access they should not have? Review auth, tenant ownership, Supabase RLS, webhook entitlement, and data mutation findings first.
+Review trust-boundary findings before deploy/cost hygiene.
 
 Top risks:
 - HIGH stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:12 - Stripe webhook does not verify the Stripe signature
@@ -24,6 +26,12 @@ Next steps
 Full report:
   Rerun without --summary, or use --json, --sarif, or --markdown where supported.
 ```
+
+Markdown reports include the same decision queue plus:
+
+- why auth, billing, tenant data, RLS, webhooks, and silent-success findings rank first
+- a trust statement: local-first, deterministic, read-only, no code upload, no LLM calls
+- a reviewer checklist for PR risk output
 
 The full terminal report expands each finding:
 
@@ -86,4 +94,4 @@ Start with the highest severity findings that touch trust-boundary code: auth, b
 - Why could this fail for real users?
 - What manual proof shows the path fails closed?
 
-The report is a focused review queue. It does not replace your two-account authorization tests, Stripe webhook replay, deploy-preview checks, or human review.
+The report is a focused launch decision queue. It does not replace your two-account authorization tests, Stripe webhook replay, deploy-preview checks, or human review.

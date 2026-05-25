@@ -1,5 +1,14 @@
 import type { ActionsReport, BaseReport, Evidence, Finding, McpReport, PrRiskReport, ShowcaseReport, SupabaseReport } from "../types.js";
-import { launchGateVerdict, manualProofSteps, nextSteps, reviewFirst } from "./launchGate.js";
+import {
+  launchDecisionQuestions,
+  launchGateVerdict,
+  manualProofSteps,
+  nextSteps,
+  prReviewerChecklist,
+  rankingExplanation,
+  reviewFirst,
+  trustStatement
+} from "./launchGate.js";
 
 export function formatMarkdownReport(report: BaseReport): string {
   if (report.command === "demo") return `${formatDemoMarkdown(report as ShowcaseReport)}\n`;
@@ -52,6 +61,10 @@ function formatPrRiskMarkdown(report: PrRiskReport): string {
   }
 
   lines.push("");
+  lines.push("### Launch Decision Queue");
+  appendList(lines, launchDecisionQuestions(report.findings).map(escapeMarkdownInline));
+
+  lines.push("");
   lines.push("### Review first");
   if (report.topRiskyFiles.length === 0) {
     lines.push("");
@@ -70,6 +83,17 @@ function formatPrRiskMarkdown(report: PrRiskReport): string {
   lines.push("");
   lines.push("### Required verification");
   appendList(lines, report.requiredTests.length > 0 ? report.requiredTests : report.reviewChecklist);
+
+  lines.push("");
+  lines.push("### Reviewer checklist");
+  appendList(lines, prReviewerChecklist().map(escapeMarkdownInline));
+
+  lines.push("");
+  lines.push("### Why this review order");
+  appendList(lines, [
+    "Rank trust-boundary files before cosmetic files because auth, billing, tenant data, RLS, webhook, and silent-success changes can affect real users before UI issues do.",
+    ...rankingExplanation(report.findings)
+  ].map(escapeMarkdownInline));
 
   lines.push("");
   lines.push("### Suggested PR split");
@@ -107,6 +131,18 @@ function appendList(lines: string[], items: string[]): void {
 }
 
 function appendLaunchQueue(lines: string[], findings: Finding[]): void {
+  lines.push("");
+  lines.push("### Launch Decision Queue");
+  appendList(lines, launchDecisionQuestions(findings).map(escapeMarkdownInline));
+
+  lines.push("");
+  lines.push("### Why This Is Ranked First");
+  appendList(lines, rankingExplanation(findings).map(escapeMarkdownInline));
+
+  lines.push("");
+  lines.push("### Trust Statement");
+  appendList(lines, trustStatement().map(escapeMarkdownInline));
+
   if (findings.length === 0) return;
 
   lines.push("");

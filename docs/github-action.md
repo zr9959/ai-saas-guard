@@ -8,7 +8,7 @@ The Action runs the same local scanner inside the GitHub-hosted runner. It reads
 
 ## PR Summary
 
-Use markdown when reviewers need a short, evidence-first summary of risky files, required verification, and suggested PR split.
+Use markdown when reviewers need a short, evidence-first launch decision queue: risky files, required verification, reviewer checklist, ranking explanation, and suggested PR split.
 
 ```yaml
 name: ai-saas-guard-pr-summary
@@ -37,7 +37,7 @@ jobs:
       - run: cat ai-saas-guard-pr.md >> "$GITHUB_STEP_SUMMARY"
 ```
 
-Use markdown for PR review triage. It is intentionally short enough for a GitHub step summary or a PR comment created by your own workflow. It does not require a hosted service.
+Use markdown for PR review triage. It is intentionally short enough for a GitHub step summary or a PR comment created by your own workflow. It does not require a hosted service. The report keeps the middle-layer contract explicit: it translates trust-boundary changes into human review questions, not an automatic approval.
 
 ## Project Config
 
@@ -98,4 +98,4 @@ jobs:
           sarif_file: ai-saas-guard.sarif
 ```
 
-Use SARIF for tracking alerts over time. Use markdown for reviewer guidance on a specific PR. Many teams should run both: markdown for quick review order, SARIF for code scanning visibility.
+Use SARIF for tracking alerts over time. Use markdown for reviewer guidance on a specific PR. Many teams should run both: markdown for launch decision queues, SARIF for code scanning visibility.
