@@ -4,6 +4,7 @@ This document describes the deployed worker staging evidence helper implemented 
 
 The package exports `ai-saas-guard/hosted/deployed-staging` with:
 
+- `createHostedDeployedWorkerStagingEvidenceAutomation`
 - `createHostedDeployedWorkerStagingEvidenceBundle`
 - `evaluateHostedDeployedWorkerStagingReleaseGate`
 
@@ -13,12 +14,14 @@ It does not deploy cloud resources, create a GitHub App, call GitHub, fetch repo
 
 ## Inputs
 
+`createHostedDeployedWorkerStagingEvidenceAutomation` is the recommended helper for a deployed staging candidate. It validates safe log samples with `validateHostedLogBoundary`, builds the deployed evidence bundle, returns the release-gate input, and includes the collection steps that should have produced the evidence. It never returns the forbidden raw source, raw diff, secret, customer payload, installation token, checkout path, private URL, or untrusted PR text values used for the boundary check.
+
 `createHostedDeployedWorkerStagingEvidenceBundle` expects only bounded evidence:
 
 - public HTTPS health probe metadata from the deployed Node/container app
 - signed webhook replay summaries
 - deployed worker success and failure cleanup summaries
-- log-boundary validation output
+- log-boundary validation output, or safe log samples passed through the automation helper first
 - external evidence for CI, workflow static checks, dependency/container scans, monitoring, rollback, and incident response
 - scanner version, collected timestamp, evidence URL base, and evidence owner
 
@@ -43,6 +46,17 @@ The bundle generates deployed evidence for these hosted gate IDs when the probes
 - `release_cleanup`: no deployed worker checkout entries remained active after release probes
 
 Other gate IDs still come from external evidence because they belong to CI, workflow analysis, dependency/container scan, monitoring, rollback, and incident-response systems.
+
+## Automation Helper
+
+The automation helper keeps this evidence path deterministic while removing a manual wiring step:
+
+1. Validate safe log samples against known forbidden material.
+2. Convert public health, signed webhook replay, deployed worker cleanup, and external evidence into a deployed staging bundle.
+3. Return the exact `releaseGateInput` for `evaluateHostedDeployedWorkerStagingReleaseGate`.
+4. Return a collection plan naming the required public HTTPS health, signed webhook, worker cleanup, safe log samples, and external evidence steps.
+
+It is still static and caller-driven. It does not connect to a provider, read source files, deploy infrastructure, fetch repositories, or publish Check Runs.
 
 ## Blocking Behavior
 

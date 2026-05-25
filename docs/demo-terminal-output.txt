@@ -1,0 +1,19 @@
+ai-saas-guard demo --summary
+
+Risky demo: 19 findings
+Launch gate: blocked
+
+Top risks:
+- CRITICAL stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:1
+- CRITICAL supabase.rls.broad-policy at supabase/migrations/001_accounts.sql:10
+- HIGH silent-success.swallowed-error at app/api/billing/checkout/route.ts:4
+
+Manual proof to run next:
+- Send a request without a valid Stripe signature and confirm the handler rejects it.
+- Run a two-account tenant check and confirm User B cannot access User A data.
+- Force the billing provider call to fail and confirm the API route returns an error, not fake success.
+
+Safe demo: 0 findings
+Launch gate: ready for local review
+
+This is a deterministic local demo fixture. It does not upload code, call an LLM, or certify the app.
