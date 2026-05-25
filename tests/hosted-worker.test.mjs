@@ -18,6 +18,7 @@ const identity = {
 async function loadHostedWorker() {
   const worker = await import("../dist/hosted/worker.js");
   assert.equal(typeof worker.createHostedReadOnlyCheckoutScanRunner, "function");
+  assert.equal(typeof worker.evaluateHostedReadOnlyCheckoutScanGate, "function");
   assert.equal(typeof worker.HostedReadOnlyCheckoutScanError, "function");
   return worker;
 }
@@ -357,4 +358,61 @@ test("hosted checkout worker rejects unsafe input and command failures without l
   } finally {
     await rm(checkoutRoot, { recursive: true, force: true });
   }
+});
+
+test("hosted checkout scan gate requires full checkout scan check-run and cleanup proof", async () => {
+  const { evaluateHostedReadOnlyCheckoutScanGate } = await loadHostedWorker();
+  const passed = evaluateHostedReadOnlyCheckoutScanGate({
+    requestedAt: "2026-05-25T06:10:00.000Z",
+    jobKey: "job-worker",
+    commandStages: ["git_init", "git_remote_add", "git_fetch_head", "git_fetch_base", "git_checkout", "cli_scan"],
+    summaryCounts: { critical: 0, high: 1, medium: 0, low: 0, info: 0, total: 1 },
+    compactFindingCount: 1,
+    compactReportStored: true,
+    checkRunPublished: true,
+    checkoutDeleted: true,
+    tokenRemovedBeforeCli: true,
+    maxOutputBytes: 1_048_576,
+    timeoutMs: 120_000,
+    rawSource: "const secret = 'do-not-return';",
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    checkoutPath: "/tmp/private-checkout",
+    installationToken: "ghs_do_not_return"
+  });
+  const blocked = evaluateHostedReadOnlyCheckoutScanGate({
+    requestedAt: "2026-05-25T06:11:00.000Z",
+    jobKey: "job-worker",
+    commandStages: ["git_init", "git_remote_add", "git_fetch_head"],
+    summaryCounts: { critical: 0, high: 0, medium: 0, low: 0, info: 0, total: 0 },
+    compactFindingCount: 0,
+    compactReportStored: false,
+    checkRunPublished: false,
+    checkoutDeleted: false,
+    tokenRemovedBeforeCli: false,
+    maxOutputBytes: 2_000_000,
+    timeoutMs: 1_000_000
+  });
+  const serialized = JSON.stringify(passed);
+
+  assert.equal(passed.readyForHostedTrial, true);
+  assert.deepEqual(passed.blockedReasons, []);
+  assert.equal(passed.privacy.includesRawSource, false);
+  assert.equal(passed.privacy.includesRawDiffs, false);
+  assert.equal(passed.privacy.includesPrivateCheckoutPath, false);
+  assert.equal(passed.privacy.includesInstallationToken, false);
+  assert.equal(serialized.includes("do-not-return"), false);
+  assert.equal(serialized.includes("private-checkout"), false);
+  assert.equal(serialized.includes("ghs_"), false);
+  assert.equal(blocked.readyForHostedTrial, false);
+  assert.deepEqual(blocked.blockedReasons, [
+    "missing_command_stage_git_fetch_base",
+    "missing_command_stage_git_checkout",
+    "missing_command_stage_cli_scan",
+    "compact_report_missing",
+    "check_run_missing",
+    "checkout_cleanup_missing",
+    "token_boundary_missing",
+    "output_budget_exceeded",
+    "timeout_budget_exceeded"
+  ]);
 });

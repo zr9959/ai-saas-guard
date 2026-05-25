@@ -135,6 +135,14 @@ Next steps
 
 如果想看它和 Semgrep、zizmor、OpenSSF Scorecard、Snyk、GitHub code scanning 的边界区别，见 [launch-gate-positioning.md](launch-gate-positioning.md)。
 
+## 三种使用路径
+
+| 路径 | 适合什么场景 | 当前状态 |
+| --- | --- | --- |
+| 本地 CLI | 私有代码、本机首次上线 review、founder 或 reviewer 自查 | 已发布到 npm；本地优先、只读、不上传代码、不调用 LLM |
+| GitHub Action | CI 里的 review queue、SARIF、PR summary artifact、可控 fail threshold | 可通过 `zr9959/ai-saas-guard@v0` 或固定版本标签使用 |
+| Hosted GitHub App | 未来面向 selected repositories 的 hosted Check Run 体验 | 目前只是 limited trial gate，不是完整 hosted SaaS，也不是公开 hosted scanner |
+
 ## 快速开始
 
 无需全局安装，直接运行：
@@ -179,18 +187,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.34.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.34.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.35.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.35.0`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.34.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.34.0` |
+| npm CLI | `ai-saas-guard@0.35.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.35.0` |
 | 输出格式 | 短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.34.0` 增加可视化 demo 截图、优化首次 demo 输出、补充更精简的竞品定位说明，并强化 hosted Check Run reviewer checklist |
-| Action 标签 | `v0.34.0`、`v0` |
+| 当前版本 | `0.35.0` 新增 hosted GitHub App limited-trial gate、read-only checkout scan gate、三种使用路径、真实 AI SaaS case-study fixture 和本地扫描资源预算 helper |
+| Action 标签 | `v0.35.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
@@ -375,10 +383,14 @@ GitHub Marketplace wrapper 决策见 [docs/github-marketplace-wrapper-decision.m
 - GitHub App deployment planner：`ai-saas-guard/hosted/github-app` 导出 `planHostedGitHubAppDeployment`，生成 first slice 最小权限 manifest，并在 release gate、公开 HTTPS URL、container digest、secret 引用、原始 secret 输入、permission 或 event 不安全时阻止创建
 - Hosted production adapter layer：`ai-saas-guard/hosted/production-adapters` 导出 `createHostedGitHubAppJwt`、`planHostedGitHubInstallationTokenRequest` 和 `planHostedProductionWorkerExecution`，用于 GitHub App RS256 JWT、selected-repository installation token 请求规划、worker/check-run 分离 token scope、固定只读 worker 命令、timeout/output 预算、compact JSON-only 输出，以及 success/failure/timeout/cancellation 的 cleanup 规划；它本身仍然不部署公开 hosted 服务
 - Hosted Node/container app skeleton：`ai-saas-guard/hosted/app` 导出 `createHostedHttpApp`、`createInMemoryHostedAppPlatform`、`createHostedNodeCheckoutAppPlatform` 和 `planHostedNodeContainerDeployment`，提供安全 `/healthz`、签名 `/github/webhook` ingress、单 job worker tick、测试用 in-memory provider adapters、真实 read-only checkout worker 组合入口、可见 timeout/output 安全预算，以及 secret manager、queue、compact report store、worker sandbox、GitHub Checks publisher 的部署引用校验；它本身仍然不部署或暴露公开 hosted 服务
+- Read-only checkout scan gate：`ai-saas-guard/hosted/worker` 导出 `evaluateHostedReadOnlyCheckoutScanGate`，要求真实 worker 路径证明 trusted git stages、CLI scan、compact report storage、Check Run publication、checkout cleanup、CLI 前 token removal 以及 timeout/output budgets 都满足后，才能进入 hosted trial
 - Hosted staging deployment planner：`ai-saas-guard/hosted/staging` 导出 `planHostedProviderBinding`、`planHostedStagingDeployment` 和 `planHostedGitHubAppPromotion`，把真实 provider 引用、Node/container deployment plan、hosted operational release-gate evidence 和 GitHub App deployment planning 组合起来；缺少 queue、store、worker sandbox、Check Run publisher、logs、metrics、rollback 或 incident-response 引用时，会阻止 staging exposure 和 production promotion；它本身仍然不会调用云平台、创建 GitHub App 或暴露公开 hosted 服务
 - Hosted staging harness：`ai-saas-guard/hosted/staging-harness` 导出 `createFileBackedHostedStagingHarness`、`createHostedStagingHarnessEvidence`、`createHostedStagingReleaseEvidenceBundle`、`evaluateHostedStagingReleaseEvidenceBundle` 和 `validateHostedLogBoundary`，可以在本地用 file-backed queue、compact report、Check Run request 和 worker sandbox 跑通签名 webhook replay、worker tick 和 cleanup 校验，把 success/failure cleanup probes 与 log-boundary samples 转成 release-gate evidence，并直接执行 hosted release gate 判断；它只是 staging 演练工具，不会调用云平台、创建 GitHub App、写真实 Check Run 或暴露公开 hosted 服务
 - Deployed worker staging evidence：`ai-saas-guard/hosted/deployed-staging` 导出 `createHostedDeployedWorkerStagingEvidenceAutomation`、`createHostedDeployedWorkerStagingEvidenceBundle` 和 `evaluateHostedDeployedWorkerStagingReleaseGate`，先验证 safe log samples，再把 public HTTPS health、signed webhook replay、deployed worker cleanup 以及外部 CI/scan/rollback evidence 转成 hosted release gate evidence；它不会部署云资源，也不会宣称 production hosted exposure
 - Cloudflare hosted ingress：`hosted/cloudflare-worker` 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`，提供 `/healthz`、`/github/app/manifest-callback` 和签名 `/github/webhook` intake；Worker 已具备 compact pull request identity、file/category risk signal 和 Check Run metadata 路径；staging GitHub App ID 为 `3834787`，installation ID 为 `135085075`；真实 GitHub App webhook delivery 和 Check Run smoke 已通过；完整 source checkout worker deployment、monitoring、rollback 和 incident-response evidence 仍需要通过 hosted operational release gate
+- Hosted GitHub App limited trial gate：`ai-saas-guard/hosted/contracts` 导出 `createHostedGitHubAppTrialGate`，确保 trial 只作用于 selected repositories，并要求 Check Run publication、compact report、worker cleanup 和 safe log-boundary evidence；它不宣称完整 hosted SaaS 已可用
+- Case-study fixture：`examples/case-study-ai-saas` 和 [case-study-ai-saas.md](case-study-ai-saas.md) 展示一个更接近真实 AI SaaS 的 auth、billing、Supabase、Next/Vercel 和 GitHub Actions 风险组合
+- Resource budget：`createLocalScanResourceBudget` 暴露大仓库本地扫描的保守预算：文件数、单文件字节、总字节、忽略 build/dependency 目录、不上传代码、不调用 LLM
 - webhook event parser
 - check-run summary renderer
 - Check Run publication planner：要求 repository `checks: write`，只从 compact report 生成有长度上限的 Check Run payload，包含 review categories、优先 review 文件、verification steps 和本地 CLI 复现命令；MVP 不发 PR comment

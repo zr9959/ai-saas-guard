@@ -9,6 +9,7 @@ export { applyGuardConfig, defaultConfigFileName, loadGuardConfig } from "./conf
 export { createScanContext } from "./context.js";
 export { getRuleMetadata, RULE_CATALOG } from "./rules/catalog.js";
 export { formatSummaryReport } from "./report/summary.js";
+export { createLocalScanResourceBudget } from "./performance.js";
 export type {
   BaseReport,
   CommandName,
@@ -32,3 +33,4 @@ export type {
 export type { ScanContext, ScanInput } from "./context.js";
 export type { FindingSuppression, GuardConfig, RuleConfigValue } from "./config.js";
 export type { RuleMetadata, RuleStability } from "./rules/catalog.js";
+export type { LocalScanResourceBudget, LocalScanResourceBudgetInput } from "./performance.js";

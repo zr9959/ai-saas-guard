@@ -91,6 +91,19 @@ Privacy boundaries:
 
 - do not return temporary checkout paths, raw source, raw diffs, evidence snippets, secrets, customer payloads, PR-authored commands, PR-authored repository names, or installation tokens
 - do not persist source checkout contents beyond the worker run
+
+The read-only checkout scan gate turns a real worker observation into a small release/trial decision. The exported helper is `evaluateHostedReadOnlyCheckoutScanGate`.
+
+It requires:
+
+- trusted git setup, fetch, checkout, and CLI scan stages
+- compact report storage
+- bounded Check Run publication
+- checkout cleanup
+- installation token removal before the CLI phase
+- timeout and output budgets within the hosted worker limits
+
+It returns only compact counts, observed stages, blocked reasons, and privacy flags. It does not return raw source, raw diffs, checkout paths, or installation tokens.
 - rely on the deployment sandbox for network egress restrictions around the CLI phase; the runner itself removes GitHub credentials before invoking the CLI
 
 The exported helper is `createHostedReadOnlyCheckoutScanRunner`.
@@ -265,6 +278,21 @@ Privacy boundaries:
 - do not create issue comments, review comments, or PR comments
 
 The exported helper is `planHostedCheckRunPublication`. It is intended to be the GitHub-API-independent contract for the first real Check Run writer. PR comments remain an explicit later workflow or paid hosted feature, not part of this MVP contract.
+
+## Hosted GitHub App Limited Trial Gate
+
+The limited trial gate decides whether the hosted GitHub App can be tried on a small selected-repository set. The exported helper is `createHostedGitHubAppTrialGate`.
+
+It requires:
+
+- trial repositories are a subset of selected GitHub App repositories
+- the trial repository count stays under the configured cap
+- compact Check Runs were published
+- compact reports were stored
+- worker cleanup was verified
+- safe log-boundary samples were accepted
+
+It does not install a GitHub App, call GitHub, run workers, or claim the complete hosted SaaS is ready. It is a deterministic gate for small controlled trials.
 
 ## Queue Cleanup Planner
 

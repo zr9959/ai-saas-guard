@@ -14,6 +14,7 @@ import {
   checkSupabase,
   classifyPrRisk,
   createScanContext,
+  createLocalScanResourceBudget,
   getRuleMetadata,
   RULE_CATALOG,
   scanRepository
@@ -129,6 +130,28 @@ test("text file collection can cap file count and total bytes", async () => {
   assert.equal(oneFile.length, 1);
   assert.ok(byteCapped.reduce((total, file) => total + Buffer.byteLength(file.content), 0) <= 6);
   assert.ok(byteCapped.length < 3);
+});
+
+test("local scan resource budget documents conservative large-repo limits", () => {
+  const budget = createLocalScanResourceBudget({
+    repositoryKind: "large-ai-saas",
+    maxFiles: 2_500,
+    maxTotalBytes: 12 * 1024 * 1024,
+    maxFileBytes: 256 * 1024
+  });
+
+  assert.equal(budget.localFirst, true);
+  assert.equal(budget.deterministic, true);
+  assert.equal(budget.uploadsCode, false);
+  assert.equal(budget.callsLlm, false);
+  assert.deepEqual(budget.limits, {
+    maxFiles: 2500,
+    maxTotalBytes: 12 * 1024 * 1024,
+    maxFileBytes: 256 * 1024
+  });
+  assert.ok(budget.ignoredDirectories.includes("node_modules"));
+  assert.ok(budget.ignoredDirectories.includes(".next"));
+  assert.match(budget.operatorNote, /keeps local scans bounded/i);
 });
 
 test("generic markdown report keeps attacker-controlled evidence on one escaped line", () => {
@@ -1245,6 +1268,22 @@ test("public docs include a copy-paste sample launch report", async () => {
   assert.doesNotMatch(sampleReport, /full audit|certification|pentest/i);
 });
 
+test("public docs explain local Action and hosted GitHub App usage paths", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
+
+  assert.match(readme, /Three Ways To Use It/i);
+  assert.match(readme, /Local CLI/i);
+  assert.match(readme, /GitHub Action/i);
+  assert.match(readme, /Hosted GitHub App/i);
+  assert.match(readme, /limited trial gate/i);
+  assert.match(readme, /not the complete hosted SaaS/i);
+  assert.match(zhReadme, /三种使用路径/);
+  assert.match(zhReadme, /本地 CLI/);
+  assert.match(zhReadme, /GitHub Action/);
+  assert.match(zhReadme, /Hosted GitHub App/);
+});
+
 test("public docs explain focused launch-gate positioning without competitor overclaiming", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
@@ -1857,6 +1896,26 @@ test("public demo fixtures show risky and safe launch scans", async () => {
       /client_secret|private key|sk_(?:live|test)_|whsec_|postgres:\/\/|mysql:\/\//i
     );
   }
+});
+
+test("case-study fixture looks like an AI SaaS and triggers launch-risk findings", async () => {
+  const docs = await readFile(resolve(packageRoot, "docs", "case-study-ai-saas.md"), "utf8");
+  const readme = await readFile(resolve(packageRoot, "examples", "case-study-ai-saas", "README.md"), "utf8");
+  const report = await scanRepository({
+    rootDir: resolve(packageRoot, "examples", "case-study-ai-saas")
+  });
+  const ruleIds = findingRuleIds(report);
+
+  assert.match(docs, /case-study-ai-saas/);
+  assert.match(readme, /auth/i);
+  assert.match(readme, /billing/i);
+  assert.match(readme, /Supabase/i);
+  assert.match(readme, /Vercel/i);
+  assert.ok(ruleIds.includes("stripe.webhook.missing-signature"));
+  assert.ok(ruleIds.includes("supabase.rls.broad-policy"));
+  assert.ok(ruleIds.includes("silent-success.swallowed-error"));
+  assert.ok(ruleIds.includes("deploy.next.missing-security-headers"));
+  assert.ok(ruleIds.includes("actions.permissions.too-broad"));
 });
 
 test("hosted GitHub App docs define an implementation-ready permission contract", async () => {
