@@ -37,6 +37,8 @@ Start with the 30-second copy-paste demo: `npx ai-saas-guard@latest demo --summa
 npx ai-saas-guard@latest scan --root /path/to/your-saas --summary
 ```
 
+For AI-heavy PRs, run it in GitHub Actions to turn auth, billing, data, deploy, and test changes into a reviewer queue before merge.
+
 The output is meant to answer three practical questions before you invite users:
 
 - **Can a real user get access they should not have?** Check auth, tenant ownership, Supabase RLS, and Stripe entitlement paths first.
@@ -231,19 +233,19 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.36.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.36.0` |
+| npm CLI | `ai-saas-guard@0.37.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.37.0` |
 | Outputs | Launch decision queue, short summary, terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.36.0`, `v0` |
-| Current release | `0.36.0` turns Markdown and summary output into a clearer launch decision queue with ranking explanations, reviewer checklists, case-study flow, and local trust/resource statements |
+| Versioned Action tags | `v0.37.0`, `v0` |
+| Current release | `0.37.0` makes the GitHub Action path easier to copy into PR workflows, improves Check Run wording around the launch-risk middle layer, and keeps README first-screen guidance focused on AI-heavy PR review |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
 | Hosted GitHub App staging | Private App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard`; hosted operations evidence is in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
 | OpenSSF Best Practices | Passing badge, project `12955`; `.bestpractices.json` remains the conservative evidence record |
-| Next roadmap | v0.36.0 plan is tracked in [docs/v0.36-roadmap.md](docs/v0.36-roadmap.md) |
+| Previous roadmap | v0.36.0 plan is tracked in [docs/v0.36-roadmap.md](docs/v0.36-roadmap.md) |
 
 ## Example Finding
 
@@ -415,7 +417,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.36.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.37.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard

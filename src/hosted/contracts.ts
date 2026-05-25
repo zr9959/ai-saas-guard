@@ -1373,7 +1373,7 @@ export function createHostedCheckRunSummary(
     conclusion,
     output: {
       title: formatCheckRunTitle(totalFindings, conclusion, input.failOnSeverity),
-      summary: `Launch gate: ${launchGate}. Review first: What changed at the launch boundary? Manual proof required before release; it is not a full security audit, pentest, or certification.`,
+      summary: `Launch-risk gate: ${launchGate}. Launch gate: ${launchGate}. Review first: What changed at the launch boundary? Manual proof required before release. This is not an AI reviewer and not a full security audit, pentest, or certification.`,
       text: truncateMarkdown(
         formatCheckRunMarkdown(report, conclusion, localCliCommand, launchGate),
         input.maxMarkdownChars
@@ -2263,22 +2263,32 @@ function formatCheckRunMarkdown(
         ];
 
   return [
-    "### AI SaaS Guard",
+    "### AI SaaS Guard Launch-risk gate",
     "",
-    "Review first: verify findings locally before launch. This hosted check is not a full security audit, pentest, or certification.",
+    "Review first: verify findings locally before launch or merge. Not an AI reviewer or full security audit.",
     "",
     `Launch gate: ${launchGate}`,
     `Conclusion: ${conclusion}`,
     `Local CLI: \`${localCliCommand}\``,
-    `Retention: compact report ${report.retentionDays} days; raw source, raw diffs, secrets, and customer payloads are not retained.`,
+    `Retention: compact report ${report.retentionDays} days; no raw source, diffs, secrets, or customer payloads.`,
+    "",
+    "Review categories:",
+    ...(categories.length === 0 ? ["- None"] : categories.map((category) => `- ${category}`)),
+    "",
+    "Verification steps:",
+    "- Review listed files before release or merge.",
+    "- Reproduce locally with the CLI command above.",
+    "- Confirm behavior with app-specific tests.",
+    "",
+    "Launch decision queue:",
+    "- Can a real user get access they should not have?",
+    "- Can the app claim success when something failed?",
+    "- Can launch infrastructure do too much damage?",
     "",
     "Summary:",
     ...severityOrder.map(
       (severity) => `- ${capitalize(severity)}: ${report.summaryCounts[severity] ?? 0}`
     ),
-    "",
-    "Review categories:",
-    ...(categories.length === 0 ? ["- None"] : categories.map((category) => `- ${category}`)),
     "",
     "Files to review first:",
     ...(filesToReview.length === 0 ? ["- None"] : filesToReview.map((file) => `- ${file}`)),
@@ -2287,11 +2297,6 @@ function formatCheckRunMarkdown(
     "- What changed at the launch boundary?",
     "- Why this auth billing data or deploy decision is safe?",
     "- What manual test proves it fails closed?",
-    "",
-    "Verification steps:",
-    "- Review each listed file before release or merge.",
-    "- Reproduce locally with the CLI command above.",
-    "- Treat findings as review prompts; confirm behavior with app-specific tests.",
     "",
     "Findings:",
     ...findingLines
