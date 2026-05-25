@@ -38,6 +38,8 @@ Post-release docs-only work after `v0.43.0`:
 - committed public beta evidence intake status: `58cb8dc docs: record public beta evidence intake status`
 - opened draft PR `#95` from branch `codex/beta-evidence-readiness`
 - added hosted operator runbook on PR `#95`
+- merged PR `#95` into `main` with merge commit `9f780bc9151502e4e9cc674fa0c220457e1ae8d7`
+- performed post-merge read-only provider check: public endpoints still healthy, Worker version unchanged, KV has 15 compact records with TTL and was not deleted
 - opened GitHub issue `#93` for design-partner feedback intake
 - opened GitHub issue `#94` for provider evidence before hosted public beta
 - rechecked Phase 4/5 gates from current evidence; both remain blocked
@@ -142,6 +144,7 @@ Hosted public beta is blocked by evidence, not by the readiness-gate code:
 - provider monitoring/rollback/incident evidence is not collected
 - no design-partner feedback has been collected
 - `docs/public-beta-evidence-feedback.md` defines the intake process, but no real feedback or provider evidence has been recorded yet
+- post-merge read-only provider check did not include rollback, incident, uninstall/deletion, support, or provider alert evidence
 - Phase 4 hosted beta readiness recheck returned `readyForPublicBeta: false`
 - Phase 5 team launch gate recheck returned `readyForTeamUse: false`
 - `docs/hosted-operator-runbook.md` documents operator workflow, but it is not evidence until exercised against deployed artifacts

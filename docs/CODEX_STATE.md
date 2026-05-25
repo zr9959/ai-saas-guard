@@ -207,7 +207,12 @@ For `v0.43.0`:
 - Phase 4 gate recheck: `readyForPublicBeta: false`
 - Phase 5 gate recheck: `readyForTeamUse: false`
 - draft PR `#95` contains the docs-only handoff/evidence/runbook branch
+- PR `#95` merged into `main` with merge commit `9f780bc9151502e4e9cc674fa0c220457e1ae8d7`
+- post-merge read-only provider check: public endpoints returned HTTP 200, Worker version remained `8744d3db-0114-4653-85e2-f1554ff1b26b`, and KV had 15 compact records with TTL
 - `docs/hosted-operator-runbook.md` is documented but not yet exercised as provider evidence
+- post-merge hosted beta focused test: `npm run build && node --test tests/hosted-beta.test.mjs`, 2 tests passed
+- post-merge Phase 4 gate recheck: `readyForPublicBeta: false`
+- post-merge Phase 5 gate recheck: `readyForTeamUse: false`
 
 ## Known Failures Or Unverified Items
 
@@ -219,6 +224,8 @@ For `v0.43.0`:
 - GitHub issue `#93` has no recorded real participant feedback yet.
 - GitHub issue `#94` has missing provider monitoring, rollback, incident, uninstall/deletion, and support evidence.
 - Operator runbook evidence is missing until the runbook is exercised against deployed artifacts.
+- The post-merge provider check was read-only and did not satisfy rollback, incident, uninstall/deletion, support, or alert evidence.
+- The post-merge gate recheck still blocks public beta and team use.
 - No admin dashboard exists.
 - No mobile UI exists.
 - No SEO/GEO website or analytics exists.
