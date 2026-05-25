@@ -24,6 +24,53 @@ export function reviewFirst(findings: Finding[], limit = 3): string[] {
   });
 }
 
+export function launchDecisionQuestions(findings: Finding[]): string[] {
+  if (findings.length === 0) {
+    return [
+      "Can a real user get access they should not have? No current finding, but still run a two-account auth/data-access smoke.",
+      "Can the app claim success when something failed? No current finding, but still force one provider failure before launch.",
+      "Can launch infrastructure do too much damage? No current finding, but still confirm env, CI, MCP, and deploy permissions."
+    ];
+  }
+
+  return [
+    "Can a real user get access they should not have? Review auth, tenant ownership, Supabase RLS, webhook entitlement, and data mutation findings first.",
+    "Can the app claim success when something failed? Review silent-success, hardcoded fallback, skipped test, and provider failure findings before launch.",
+    "Can launch infrastructure do too much damage? Review env exposure, GitHub Actions permissions, MCP tool power, deploy config, logging, and resource hints."
+  ];
+}
+
+export function rankingExplanation(findings: Finding[]): string[] {
+  if (findings.length === 0) {
+    return [
+      "No findings were ranked by this command; this is still a heuristic result, not a certification."
+    ];
+  }
+
+  return [
+    "ai-saas-guard ranks auth, billing, tenant data, RLS, webhooks, and silent-success findings before deploy/cost hygiene because those paths can grant access, expose customer data, or hide production failures.",
+    "Medium and low deploy, CI, MCP, and observability findings stay in the queue because they can amplify launch damage, but they should not distract from critical user-access, payment, and data-access proof."
+  ];
+}
+
+export function prReviewerChecklist(): string[] {
+  return [
+    "What changed at the trust boundary?",
+    "Why this auth/session/payment/data access decision?",
+    "What manual proof should block merge until it passes?",
+    "Which files should be reviewed together before this PR is approved?",
+    "Should auth, billing, data access, deploy, or UI changes be split into separate PRs?"
+  ];
+}
+
+export function trustStatement(): string[] {
+  return [
+    "Runs as a local-first, deterministic, read-only launch gate over repository files.",
+    "Does not upload code or call an LLM.",
+    "Uses bounded file collection and ignores heavy generated directories such as node_modules, .next, dist, build, coverage, and .git."
+  ];
+}
+
 export function manualProofSteps(findings: Finding[], limit = 3): string[] {
   const steps: string[] = [];
   const seen = new Set<string>();

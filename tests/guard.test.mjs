@@ -250,6 +250,70 @@ test("reports start with a launch gate and next manual proof", () => {
   assert.doesNotMatch(summary, /Evidence:/);
 });
 
+test("markdown reports explain the launch decision queue and trust model", () => {
+  const report = {
+    command: "scan",
+    rootDir: ".",
+    generatedAt: "2026-05-25T00:00:00.000Z",
+    findings: [
+      {
+        ruleId: "supabase.rls.broad-policy",
+        title: "Broad Supabase RLS policy",
+        severity: "critical",
+        evidence: [
+          {
+            file: "supabase/migrations/001_projects.sql",
+            line: 9,
+            snippet: "using (true)"
+          }
+        ],
+        why: "Broad policies can expose tenant data across accounts.",
+        suggestedVerification: "Use two accounts and confirm User B cannot read User A rows.",
+        suggestedFix: "Scope the policy to auth.uid() and the tenant owner column."
+      },
+      {
+        ruleId: "deploy.next.missing-security-headers",
+        title: "Missing Next.js security headers",
+        severity: "medium",
+        evidence: [
+          {
+            file: "next.config.js",
+            line: 1,
+            snippet: "const nextConfig = {}"
+          }
+        ],
+        why: "Missing headers weaken the production browser boundary.",
+        suggestedVerification: "Deploy a preview and inspect security headers on API and app routes.",
+        suggestedFix: "Add a headers() config or equivalent platform headers."
+      }
+    ],
+    summary: {
+      critical: 1,
+      high: 0,
+      medium: 1,
+      low: 0,
+      info: 0,
+      total: 2
+    }
+  };
+
+  const markdown = formatMarkdownReport(report);
+  const summary = formatSummaryReport(report);
+
+  assert.match(markdown, /### Launch Decision Queue/);
+  assert.match(markdown, /Can a real user get access they should not have/i);
+  assert.match(markdown, /Can the app claim success when something failed/i);
+  assert.match(markdown, /Can launch infrastructure do too much damage/i);
+  assert.match(markdown, /### Why This Is Ranked First/);
+  assert.match(markdown, /auth, billing, tenant data, RLS, webhooks, and silent-success/i);
+  assert.match(markdown, /### Trust Statement/);
+  assert.match(markdown, /local-first, deterministic, read-only/i);
+  assert.match(markdown, /does not upload code or call an LLM/i);
+
+  assert.match(summary, /Decision queue:/);
+  assert.match(summary, /Review trust-boundary findings before deploy\/cost hygiene/i);
+});
+
 test("rule catalog contains metadata for every published rule", () => {
   assert.deepEqual(Object.keys(RULE_CATALOG).sort(), expectedRuleIds);
 
@@ -865,6 +929,11 @@ test("CLI can emit a PR-focused markdown summary for pr-risk", async () => {
   assert.match(stdout, /app\/api\/stripe\/webhook\/route\.ts/);
   assert.match(stdout, /billing\/subscription/);
   assert.match(stdout, /### Required verification/m);
+  assert.match(stdout, /### Reviewer checklist/m);
+  assert.match(stdout, /What changed at the trust boundary/i);
+  assert.match(stdout, /What manual proof should block merge/i);
+  assert.match(stdout, /### Why this review order/m);
+  assert.match(stdout, /trust-boundary files before cosmetic files/i);
   assert.match(stdout, /### Suggested PR split/m);
   assert.doesNotMatch(stdout, /LGTM|ship it|looks good/i);
 });
@@ -1907,6 +1976,11 @@ test("case-study fixture looks like an AI SaaS and triggers launch-risk findings
   const ruleIds = findingRuleIds(report);
 
   assert.match(docs, /case-study-ai-saas/);
+  assert.match(docs, /Local scan/i);
+  assert.match(docs, /Markdown report/i);
+  assert.match(docs, /PR risk/i);
+  assert.match(docs, /Fix-before\/fix-after/i);
+  assert.match(docs, /Trust and resource boundary/i);
   assert.match(readme, /auth/i);
   assert.match(readme, /billing/i);
   assert.match(readme, /Supabase/i);
