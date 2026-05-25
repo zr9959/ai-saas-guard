@@ -1780,6 +1780,14 @@ test("public docs define the hosted operational release gate", async () => {
   assert.match(gate, /createHostedStagingReleaseEvidenceBundle/);
   assert.match(gate, /validateHostedLogBoundary/);
   assert.match(gate, /HOSTED_OPERATIONAL_RELEASE_GATE_REQUIREMENTS/);
+  assert.match(gate, /Source Checkout Trial Evidence Contract/i);
+  assert.match(gate, /createHostedSourceCheckoutTrialPlan/);
+  assert.match(gate, /createHostedSourceCheckoutEvidence/);
+  assert.match(gate, /checkout_start/);
+  assert.match(gate, /token_remove/);
+  assert.match(gate, /compact_report_write/);
+  assert.match(gate, /cleanup_end/);
+  assert.match(gate, /fixed `ai-saas-guard pr-risk --root <worker-checkout> --base <trusted-base-sha> --json`/);
   assert.match(gate, /positive pentest, certification, and full-audit claims/i);
   assert.match(gate, /No hosted production environment is exposed/i);
   assert.match(gate, /container_scan/i);

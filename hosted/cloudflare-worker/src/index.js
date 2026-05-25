@@ -822,29 +822,19 @@ function summarizeFindings(findings) {
 function renderCheckRunSummary({ identity, report, scannerVersion }) {
   const riskAreas = summarizeHostedRiskAreas(report.topRiskyFiles);
   const lines = [
-    `Launch-risk gate: ai-saas-guard found ${report.summary.total} PR risk signal(s) for ${identity.repositoryFullName}#${identity.pullRequestNumber}.`,
-    `Scanner version: ${scannerVersion}.`,
-    "",
-    "Review task: inspect the files below before merge.",
+    `Launch-risk gate: ${report.summary.total} PR risk signal(s) for ${identity.repositoryFullName}#${identity.pullRequestNumber}.`,
+    "Review task: inspect risk areas and files before merge.",
     "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
-    "Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification.",
     "",
-    "Selected-repository hosted check: this App uses checks:write, contents:read, pull_requests:read, and metadata:read for the installed repository only.",
+    "Risk areas:",
+    ...(riskAreas.length === 0
+      ? ["- None"]
+      : riskAreas.slice(0, 5).map((area) => `- ${area.name}: ${area.count} file(s). Proof: ${area.proof}`)),
     "",
-    "Launch decision queue:",
-    "- Can a real user get access they should not have?",
-    "- Can the app claim success when something failed?",
-    "- Can launch infrastructure do too much damage?",
-    "",
-    "Privacy: this Check Run stores compact file/category signals only. It does not store webhook payload bodies, PR title/body text, diff contents, source, secrets, checkout paths, or installation tokens."
+    "Review queue:"
   ];
 
   if (report.topRiskyFiles.length > 0) {
-    lines.push("", "Risk areas:");
-    for (const area of riskAreas.slice(0, 5)) {
-      lines.push(`- ${area.name}: ${area.count} file(s). Proof: ${area.proof}`);
-    }
-    lines.push("", "Review queue:");
     for (const file of report.topRiskyFiles.slice(0, 5)) {
       lines.push(`- ${file.path}: ${file.categories.join(", ")} (${file.added}+/${file.removed}-)`);
     }
@@ -855,7 +845,15 @@ function renderCheckRunSummary({ identity, report, scannerVersion }) {
       "- Why is this auth, billing, data, deploy, or test decision safe?",
       "- What manual proof shows it fails closed?"
     );
+  } else {
+    lines.push("- None");
   }
+
+  lines.push(
+    "",
+    `Boundary: selected repository only; scanner ${scannerVersion}; not an AI reviewer, pentest, full audit, or certification.`,
+    "Privacy: compact file/category signals only; no webhook bodies, PR text, source, diffs, secrets, checkout paths, or installation tokens."
+  );
 
   if (report.truncated) {
     lines.push("", "Note: PR file pagination was capped; run the local CLI for a complete review.");

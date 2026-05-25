@@ -7,7 +7,7 @@
     "enabled": true
   },
   "vars": {
-    "SCANNER_VERSION": "0.40.0",
+    "SCANNER_VERSION": "0.41.0",
     "GITHUB_APP_ID": "3834787",
     "GITHUB_APP_SLUG": "ai-saas-guard-hosted",
     "GITHUB_APP_INSTALLATION_ID": "135085075"
