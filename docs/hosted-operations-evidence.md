@@ -41,6 +41,23 @@ Recorded on 2026-05-25 from the deployed Cloudflare Worker plus temporary GitHub
 | End-to-end GitHub App delivery | Temporary PR `#52` created `ai-saas-guard PR risk` from GitHub App `ai-saas-guard-hosted`; Check Run `77585561127` completed with conclusion `success` for head SHA `408925d2bf4df564082dabc3e1893a72c25bdd19` | Passed |
 | Compact hosted record | KV scan record `scan:135085075:1247239389:52:408925d2bf4df564082dabc3e1893a72c25bdd19:0.28.0` completed with zero findings, `conclusion: "success"`, and all privacy flags set to false for raw payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens | Passed |
 
+## Public Beta Evidence Intake Status
+
+Recorded on 2026-05-25 after the `v0.43.0` handoff package was committed.
+
+This is public beta intake status only. It does not make hosted beta ready, and it does not replace the P0 hosted release gate.
+
+| Area | Evidence | Status |
+| --- | --- | --- |
+| Design-partner intake | GitHub issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) tracks privacy-safe feedback for DP-1 solo founder, DP-2 small team PR review, and DP-3 MCP or AI-generated integration contexts. No real design-partner feedback has been recorded yet. | Open, blocked on real participants |
+| Provider evidence intake | GitHub issue [#94](https://github.com/zr9959/ai-saas-guard/issues/94) tracks ingress, queue, worker, Check Run, cleanup, retention, rollback, incident, uninstall/deletion, and support evidence before public beta. | Open, blocked on provider evidence |
+| Public hosted health | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned HTTP `200`, `ok: true`, `scannerVersion: "0.43.0"`, `checkRunPublisher: "configured"`, and privacy flags set to false for raw webhook payloads, PR text, raw source, raw diffs, secrets, customer payloads, private checkout paths, and installation tokens. | Passed for public endpoint health only |
+| Public install info | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/github/app/install-info` returned HTTP `200`, selected-repository permissions `checks: write`, `contents: read`, `metadata: read`, `pull_requests: read`, events `pull_request`, `installation`, and `installation_repositories`, and the same privacy flags set to false. | Passed for public install wording only |
+| Deployed Worker version | `wrangler deployments list` showed current deployed version `8744d3db-0114-4653-85e2-f1554ff1b26b`, created at `2026-05-25T14:00:00.153Z`. | Passed for deployed version lookup |
+| Compact KV records | `wrangler kv key list --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote` returned 5 compact `delivery:` / `scan:` records with expirations. The records were not bulk-deleted because this was not an explicit smoke cleanup task. | Present; not a cleanup proof |
+| Provider monitoring | No provider dashboard or alert evidence has been attached for ingress errors, queue depth, worker failure, Check Run failure, cleanup failure, or retention failure. | Missing |
+| Rollback and incident response | No manual rollback drill, incident owner, backup owner, queue pause, worker pause, credential rotation, status update, or customer communication evidence has been attached for the deployed artifact. | Missing |
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
