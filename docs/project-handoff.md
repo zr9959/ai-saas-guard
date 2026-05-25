@@ -23,6 +23,8 @@ Recent setup commits at the time this handoff was created:
 
 `ai-saas-guard` is a local-first launch preflight CLI for AI-built SaaS apps.
 
+North star: `ai-saas-guard` is the launch-risk middle layer between AI-generated SaaS code and real users. It translates AI-built SaaS code and AI-heavy PRs into a founder-readable, reviewer-ready launch gate. It is not a low-level static-analysis engine, a pentest, a certification, or a full security audit service.
+
 The core user is a founder, solo builder, or reviewer shipping an AI-assisted SaaS MVP who needs to know what deserves human review before launch or merge.
 
 The narrow product promise:
