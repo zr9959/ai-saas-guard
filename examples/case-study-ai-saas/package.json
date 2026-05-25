@@ -1,0 +1,12 @@
+{
+  "name": "case-study-ai-saas",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "next": "15.0.0",
+    "stripe": "17.0.0"
+  }
+}

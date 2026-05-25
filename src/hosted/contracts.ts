@@ -539,6 +539,63 @@ export interface HostedCheckRunPublicationPlan {
   };
 }
 
+export type HostedGitHubAppTrialGateBlockedReason =
+  | "trial_repository_limit_exceeded"
+  | "trial_repository_not_selected"
+  | "check_run_publication_missing"
+  | "compact_report_missing"
+  | "worker_cleanup_missing"
+  | "safe_log_boundary_rejected";
+
+export interface HostedGitHubAppTrialGateInput {
+  requestedAt: string;
+  appName: string;
+  installationId: number;
+  selectedRepositoryIds: number[];
+  trialRepositoryIds: number[];
+  completedCheckRuns: Array<{
+    repositoryId: number;
+    pullRequestNumber: number;
+    headSha: string;
+    conclusion: HostedCheckRunConclusion;
+    compactReportStored: boolean;
+    checkRunPublished: boolean;
+    workerCleanupVerified: boolean;
+  }>;
+  safeLogBoundary: {
+    accepted: boolean;
+    sampleCount: number;
+    blockedReasons: string[];
+  };
+  maxTrialRepositories?: number;
+  rawSource?: string;
+  rawDiff?: string;
+  secretValues?: string[];
+  customerPayload?: unknown;
+}
+
+export interface HostedGitHubAppTrialGate {
+  readyForTrial: boolean;
+  blockedReasons: HostedGitHubAppTrialGateBlockedReason[];
+  requestedAt: string;
+  scope: {
+    appName: string;
+    installationId: number;
+    trialRepositoryIds: number[];
+    maxTrialRepositories: number;
+  };
+  checkRunsReady: boolean;
+  safeLogBoundaryReady: boolean;
+  requiredNextProof: string[];
+  privacy: {
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesSecrets: false;
+    includesCustomerPayloads: false;
+    claimsCompleteHostedSaas: false;
+  };
+}
+
 export type HostedDeletionTrigger =
   | "repository_removed"
   | "installation_deleted"
@@ -1402,6 +1459,67 @@ export function planHostedCheckRunPublication(
       }
     },
     privacy: hostedCheckRunPublicationPrivacy()
+  };
+}
+
+export function createHostedGitHubAppTrialGate(
+  input: HostedGitHubAppTrialGateInput
+): HostedGitHubAppTrialGate {
+  const maxTrialRepositories = input.maxTrialRepositories ?? 3;
+  const selectedRepositoryIds = new Set(input.selectedRepositoryIds);
+  const blockedReasons: HostedGitHubAppTrialGateBlockedReason[] = [];
+  const trialRepositoryLimitExceeded = input.trialRepositoryIds.length > maxTrialRepositories;
+  const trialRepositoryNotSelected = input.trialRepositoryIds.some(
+    (repositoryId) => !selectedRepositoryIds.has(repositoryId)
+  );
+  const matchingRuns = input.completedCheckRuns.filter((run) =>
+    input.trialRepositoryIds.includes(run.repositoryId)
+  );
+  const checkRunPublicationMissing =
+    matchingRuns.length === 0 || matchingRuns.some((run) => !run.checkRunPublished);
+  const compactReportMissing =
+    matchingRuns.length === 0 || matchingRuns.some((run) => !run.compactReportStored);
+  const workerCleanupMissing =
+    matchingRuns.length === 0 || matchingRuns.some((run) => !run.workerCleanupVerified);
+  const safeLogBoundaryRejected =
+    !input.safeLogBoundary.accepted || input.safeLogBoundary.sampleCount <= 0;
+
+  if (trialRepositoryLimitExceeded) blockedReasons.push("trial_repository_limit_exceeded");
+  if (trialRepositoryNotSelected) blockedReasons.push("trial_repository_not_selected");
+  if (checkRunPublicationMissing) blockedReasons.push("check_run_publication_missing");
+  if (compactReportMissing) blockedReasons.push("compact_report_missing");
+  if (workerCleanupMissing) blockedReasons.push("worker_cleanup_missing");
+  if (safeLogBoundaryRejected) blockedReasons.push("safe_log_boundary_rejected");
+
+  return {
+    readyForTrial: blockedReasons.length === 0,
+    blockedReasons,
+    requestedAt: input.requestedAt,
+    scope: {
+      appName: input.appName,
+      installationId: input.installationId,
+      trialRepositoryIds: [...input.trialRepositoryIds].sort((a, b) => a - b),
+      maxTrialRepositories
+    },
+    checkRunsReady:
+      matchingRuns.length > 0 &&
+      !checkRunPublicationMissing &&
+      !compactReportMissing &&
+      !workerCleanupMissing,
+    safeLogBoundaryReady: !safeLogBoundaryRejected,
+    requiredNextProof: [
+      "Install only on selected trial repositories.",
+      "Publish one bounded Check Run from compact report data only.",
+      "Verify worker checkout cleanup after success and failure.",
+      "Sample logs and confirm raw source, raw diffs, secrets, customer payloads, and tokens are absent."
+    ],
+    privacy: {
+      includesRawSource: false,
+      includesRawDiffs: false,
+      includesSecrets: false,
+      includesCustomerPayloads: false,
+      claimsCompleteHostedSaas: false
+    }
   };
 }
 

@@ -7,6 +7,7 @@ import {
   authorizeInstallationTokenScope,
   buildHostedScanIdentity,
   createHostedCheckRunSummary,
+  createHostedGitHubAppTrialGate,
   createHostedQueueCleanupPlan,
   createHostedWorkerCheckoutCleanupPlan,
   createCompactHostedReport,
@@ -913,6 +914,90 @@ test("hosted check-run publication planner rejects unsafe scope before writing",
   assert.equal(removedRepository.reason, "repository_removed_from_installation");
   assert.equal(removedRepository.shouldWriteCheckRun, false);
   assert.equal(removedRepository.request, undefined);
+});
+
+test("hosted GitHub App trial gate allows only scoped repositories with cleanup and safe logs", () => {
+  const gate = createHostedGitHubAppTrialGate({
+    requestedAt: "2026-05-25T06:00:00.000Z",
+    appName: "ai-saas-guard-hosted",
+    installationId: 123,
+    selectedRepositoryIds: [456],
+    trialRepositoryIds: [456],
+    completedCheckRuns: [
+      {
+        repositoryId: 456,
+        pullRequestNumber: 7,
+        headSha: "a".repeat(40),
+        conclusion: "neutral",
+        compactReportStored: true,
+        checkRunPublished: true,
+        workerCleanupVerified: true
+      }
+    ],
+    safeLogBoundary: {
+      accepted: true,
+      sampleCount: 2,
+      blockedReasons: []
+    },
+    maxTrialRepositories: 3,
+    rawSource: "const secret = 'do-not-return';",
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    secretValues: ["ghs_do_not_return"]
+  });
+  const serialized = JSON.stringify(gate);
+
+  assert.equal(gate.readyForTrial, true);
+  assert.deepEqual(gate.blockedReasons, []);
+  assert.deepEqual(gate.scope, {
+    appName: "ai-saas-guard-hosted",
+    installationId: 123,
+    trialRepositoryIds: [456],
+    maxTrialRepositories: 3
+  });
+  assert.equal(gate.requiredNextProof.includes("Install only on selected trial repositories."), true);
+  assert.equal(gate.privacy.includesRawSource, false);
+  assert.equal(gate.privacy.includesRawDiffs, false);
+  assert.equal(gate.privacy.includesSecrets, false);
+  assert.equal(serialized.includes("do-not-return"), false);
+  assert.equal(serialized.includes("private.ts"), false);
+  assert.equal(serialized.includes("ghs_"), false);
+});
+
+test("hosted GitHub App trial gate blocks unscoped repos missing cleanup and unsafe logs", () => {
+  const gate = createHostedGitHubAppTrialGate({
+    requestedAt: "2026-05-25T06:05:00.000Z",
+    appName: "ai-saas-guard-hosted",
+    installationId: 123,
+    selectedRepositoryIds: [456],
+    trialRepositoryIds: [456, 999],
+    completedCheckRuns: [
+      {
+        repositoryId: 456,
+        pullRequestNumber: 7,
+        headSha: "a".repeat(40),
+        conclusion: "success",
+        compactReportStored: true,
+        checkRunPublished: false,
+        workerCleanupVerified: false
+      }
+    ],
+    safeLogBoundary: {
+      accepted: false,
+      sampleCount: 1,
+      blockedReasons: ["secret_value"]
+    },
+    maxTrialRepositories: 1
+  });
+
+  assert.equal(gate.readyForTrial, false);
+  assert.deepEqual(gate.blockedReasons, [
+    "trial_repository_limit_exceeded",
+    "trial_repository_not_selected",
+    "check_run_publication_missing",
+    "worker_cleanup_missing",
+    "safe_log_boundary_rejected"
+  ]);
+  assert.equal(gate.checkRunsReady, false);
 });
 
 test("hosted queue cleanup cancels only matching repository work", () => {

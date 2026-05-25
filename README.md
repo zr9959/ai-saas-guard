@@ -138,6 +138,14 @@ One command returns a launch-readiness report with:
 
 For a concise comparison with Semgrep, zizmor, OpenSSF Scorecard, Snyk, and GitHub code scanning, see [docs/launch-gate-positioning.md](docs/launch-gate-positioning.md).
 
+## Three Ways To Use It
+
+| Path | Best for | Status |
+| --- | --- | --- |
+| Local CLI | Private code, first local launch review, founder or reviewer workflow | Published on npm; local-first, read-only, no code upload, no LLM calls |
+| GitHub Action | CI review queue, SARIF upload, PR summary artifacts, controlled fail thresholds | Available through `zr9959/ai-saas-guard@v0` and fixed version tags |
+| Hosted GitHub App | Future hosted Check Run experience for selected repositories | Limited trial gate only; not the complete hosted SaaS, not a public hosted scanner |
+
 ## Quick Start
 
 Run the published CLI without installing it globally:
@@ -199,13 +207,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.34.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.34.0` |
+| npm CLI | `ai-saas-guard@0.35.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.35.0` |
 | Outputs | Short summary, terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.34.0`, `v0` |
-| Current release | `0.34.0` adds a visual demo screenshot, tightens first-run demo output, adds a concise competitor-positioning line, and improves hosted Check Run reviewer checklist wording |
+| Versioned Action tags | `v0.35.0`, `v0` |
+| Current release | `0.35.0` adds a hosted GitHub App limited-trial gate, read-only checkout scan gate, three usage paths, a realistic AI SaaS case-study fixture, and a local scan resource budget helper |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
@@ -318,6 +326,8 @@ The hosted production adapter layer is documented in [docs/hosted-production-ada
 
 The hosted read-only checkout worker is exported from `ai-saas-guard/hosted/worker`. It creates a temporary checkout from trusted GitHub App identity, uses a runtime installation token only through git askpass, removes askpass material before the CLI phase, rejects mutated command/checkout/token-scope plans, runs the fixed `ai-saas-guard pr-risk --json` command with bounded timeout/output, converts CLI JSON into compact findings, and deletes the checkout after success or failure. It does not return source, diffs, secrets, checkout paths, PR-authored commands, or installation tokens.
 
+The read-only checkout scan gate is exported as `evaluateHostedReadOnlyCheckoutScanGate` from `ai-saas-guard/hosted/worker`. It records whether the real worker path observed trusted git stages, CLI scan, compact report storage, Check Run publication, checkout cleanup, token removal before CLI, and bounded timeout/output settings before a hosted trial can proceed.
+
 The hosted Node/container app skeleton is documented in [docs/hosted-node-container-app.md](docs/hosted-node-container-app.md). It exports `createHostedHttpApp`, `createInMemoryHostedAppPlatform`, `createHostedNodeCheckoutAppPlatform`, and `planHostedNodeContainerDeployment` from `ai-saas-guard/hosted/app`. It adds a safe `/healthz` route, signed `/github/webhook` ingress, one-job worker tick, in-memory provider adapters for tests, a concrete read-only checkout worker composition with visible timeout/output safety budgets, and deployment-plan validation for secret manager, queue, compact report store, worker sandbox, and GitHub Checks publisher references. It still does not deploy or expose a public hosted service by itself.
 
 The hosted staging deployment planner is documented in [docs/hosted-staging-deployment.md](docs/hosted-staging-deployment.md). It exports `planHostedProviderBinding`, `planHostedStagingDeployment`, and `planHostedGitHubAppPromotion` from `ai-saas-guard/hosted/staging`. It composes real provider references, the Node/container deployment plan, hosted operational release-gate evidence, and GitHub App deployment planning so staging and production promotion stay blocked until the required queue, store, worker sandbox, Check Run publisher, logs, metrics, rollback, and incident-response references are present. It still does not call a cloud provider, create a GitHub App, or expose a public hosted service by itself.
@@ -336,7 +346,13 @@ Hosted pricing and packaging boundaries are documented in [docs/hosted-pricing-p
 
 Hosted pre-implementation pure contracts are documented in [docs/hosted-preimplementation-contracts.md](docs/hosted-preimplementation-contracts.md). They now include a pull request webhook intake planner that verifies signatures before parsing or queueing, a durable scan queue planner that reuses queued, running, and completed jobs for the same trusted scan key, a worker read-only scan planner that fixes the CLI command and requires repository `contents: read`, a concrete Node read-only checkout scan runner, and a Check Run publication planner that requires repository `checks: write` and builds bounded check-only payloads from compact reports. They also cover queue-safe webhook event parsing, bounded check-run summary rendering, idempotent queue cleanup planning, worker checkout cleanup planning, a retention/deletion cleanup planner, an operational release gate evaluator, the production adapter plans needed for GitHub App auth and bounded worker execution, the Node/container app skeleton needed for real provider wiring, the staging deployment planner needed before production GitHub App promotion, the local staging harness needed to rehearse webhook replay, persistence, publication, and cleanup without cloud calls, and the deployed worker staging evidence helper needed to evaluate public HTTPS health, deployed cleanup, and log-boundary evidence without storing raw hosted data. The service runtime composes these contracts behind replaceable adapters. PR comments remain a later workflow or paid hosted feature, not part of the hosted MVP contract.
 
+The limited hosted GitHub App trial gate is exported as `createHostedGitHubAppTrialGate` from `ai-saas-guard/hosted/contracts`. It keeps trial use scoped to selected repositories and requires Check Run publication, compact report storage, worker cleanup, and safe log-boundary evidence before treating a small trial as ready. It does not claim the complete hosted SaaS is available.
+
 A public hosted compact report schema fixture is available at [examples/hosted-compact-report.json](examples/hosted-compact-report.json). It is synthetic and public-safe: compact evidence only, no raw source, raw diffs, secrets, webhook payload bodies, customer payloads, private URLs, or worker checkout paths.
+
+The case-study fixture in [examples/case-study-ai-saas](examples/case-study-ai-saas) and [docs/case-study-ai-saas.md](docs/case-study-ai-saas.md) shows a more realistic AI-built SaaS shape across auth-adjacent routes, billing, Stripe, Supabase, Next/Vercel, and GitHub Actions.
+
+For large repositories, `createLocalScanResourceBudget` exposes the conservative local scan budget: bounded text files, per-file bytes, total bytes, ignored build/dependency directories, no code upload, and no LLM calls.
 
 The proposed hosted app permission boundary is intentionally narrow: repository contents read, pull requests read, checks write, and metadata read for the first version. Optional PR comments require repository policy opt-in, and broad permissions such as administration, deployments, Actions write, and repository secrets are out of scope.
 
@@ -374,7 +390,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.34.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.35.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard

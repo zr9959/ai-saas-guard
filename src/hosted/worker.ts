@@ -29,6 +29,15 @@ export type HostedReadOnlyCheckoutCommandStage =
   | "git_checkout"
   | "cli_scan";
 
+export type HostedReadOnlyCheckoutScanGateBlockedReason =
+  | `missing_command_stage_${HostedReadOnlyCheckoutCommandStage}`
+  | "compact_report_missing"
+  | "check_run_missing"
+  | "checkout_cleanup_missing"
+  | "token_boundary_missing"
+  | "output_budget_exceeded"
+  | "timeout_budget_exceeded";
+
 export interface HostedReadOnlyCheckoutCommand {
   stage: HostedReadOnlyCheckoutCommandStage;
   command: string;
@@ -62,6 +71,41 @@ export interface HostedReadOnlyCheckoutScanRunnerOptions {
   maxOutputBytes?: number;
   installationTokenProvider: HostedInstallationTokenProvider;
   commandRunner?: HostedReadOnlyCheckoutCommandRunner;
+}
+
+export interface HostedReadOnlyCheckoutScanGateInput {
+  requestedAt: string;
+  jobKey: string;
+  commandStages: HostedReadOnlyCheckoutCommandStage[];
+  summaryCounts: Record<string, number>;
+  compactFindingCount: number;
+  compactReportStored: boolean;
+  checkRunPublished: boolean;
+  checkoutDeleted: boolean;
+  tokenRemovedBeforeCli: boolean;
+  maxOutputBytes: number;
+  timeoutMs: number;
+  rawSource?: string;
+  rawDiff?: string;
+  checkoutPath?: string;
+  installationToken?: string;
+}
+
+export interface HostedReadOnlyCheckoutScanGate {
+  readyForHostedTrial: boolean;
+  blockedReasons: HostedReadOnlyCheckoutScanGateBlockedReason[];
+  requestedAt: string;
+  jobKey: string;
+  summaryCounts: Record<string, number>;
+  compactFindingCount: number;
+  commandStagesObserved: HostedReadOnlyCheckoutCommandStage[];
+  privacy: {
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesPrivateCheckoutPath: false;
+    includesInstallationToken: false;
+    claimsCompleteHostedSaas: false;
+  };
 }
 
 export type HostedReadOnlyCheckoutScanSafeReason =
@@ -100,6 +144,52 @@ export function createHostedReadOnlyCheckoutScanRunner(
   options: HostedReadOnlyCheckoutScanRunnerOptions
 ): HostedServiceScanRunner {
   return (input) => runHostedReadOnlyCheckoutScan(input, options);
+}
+
+export function evaluateHostedReadOnlyCheckoutScanGate(
+  input: HostedReadOnlyCheckoutScanGateInput
+): HostedReadOnlyCheckoutScanGate {
+  const requiredStages: HostedReadOnlyCheckoutCommandStage[] = [
+    "git_init",
+    "git_remote_add",
+    "git_fetch_head",
+    "git_fetch_base",
+    "git_checkout",
+    "cli_scan"
+  ];
+  const observedStages = new Set(input.commandStages);
+  const blockedReasons: HostedReadOnlyCheckoutScanGateBlockedReason[] = [];
+
+  for (const stage of requiredStages) {
+    if (!observedStages.has(stage)) blockedReasons.push(`missing_command_stage_${stage}`);
+  }
+  if (!input.compactReportStored) blockedReasons.push("compact_report_missing");
+  if (!input.checkRunPublished) blockedReasons.push("check_run_missing");
+  if (!input.checkoutDeleted) blockedReasons.push("checkout_cleanup_missing");
+  if (!input.tokenRemovedBeforeCli) blockedReasons.push("token_boundary_missing");
+  if (input.maxOutputBytes > HOSTED_WORKER_MAX_OUTPUT_BYTES) {
+    blockedReasons.push("output_budget_exceeded");
+  }
+  if (input.timeoutMs > HOSTED_WORKER_MAX_TIMEOUT_MS) {
+    blockedReasons.push("timeout_budget_exceeded");
+  }
+
+  return {
+    readyForHostedTrial: blockedReasons.length === 0,
+    blockedReasons,
+    requestedAt: input.requestedAt,
+    jobKey: input.jobKey,
+    summaryCounts: { ...input.summaryCounts },
+    compactFindingCount: input.compactFindingCount,
+    commandStagesObserved: input.commandStages.filter((stage, index, stages) => stages.indexOf(stage) === index),
+    privacy: {
+      includesRawSource: false,
+      includesRawDiffs: false,
+      includesPrivateCheckoutPath: false,
+      includesInstallationToken: false,
+      claimsCompleteHostedSaas: false
+    }
+  };
 }
 
 export async function runHostedReadOnlyCheckoutScan(
