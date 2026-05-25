@@ -6,10 +6,14 @@ Passing these checks does not make the project a pentest, certification, or full
 
 ## Current Evidence
 
-Recorded on 2026-05-24 from the deployed Cloudflare Worker and a temporary no-file-change GitHub PR smoke.
+Recorded on 2026-05-25 from the deployed Cloudflare Worker plus the earlier temporary no-file-change GitHub PR smoke.
 
 | Check | Evidence | Result |
 | --- | --- | --- |
+| Cloudflare Worker health, v0.38.0 | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned `ok: true`, routes including `/github/app/install-info`, `checkRunPublisher: "configured"`, `scannerVersion: "0.38.0"`, and all privacy flags set to false for raw payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens | Passed |
+| Public install guidance, v0.38.0 | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/github/app/install-info` returned the `ai-saas-guard-hosted` install URL, selected-repository boundary wording, first-slice permissions `checks: write`, `contents: read`, `metadata: read`, `pull_requests: read`, subscribed events `pull_request`, `installation`, and `installation_repositories`, uninstall cleanup wording, `scannerVersion: "0.38.0"`, and no private keys, webhook secrets, installation tokens, source, diffs, or customer payloads | Passed |
+| Deployed Worker version, v0.38.0 | `wrangler deploy` uploaded 36.35 KiB / gzip 9.30 KiB and deployed version `5999ccce-c64d-4f3f-96c9-b46cff5a2aed` at `2026-05-25T10:51:30Z` verification time | Passed |
+| Staging KV cleanup, v0.38.0 | `wrangler kv bulk delete` removed 104 old `delivery:` and `scan:` staging records, then `wrangler kv key list --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote` returned `[]` | Passed |
 | Cloudflare Worker health | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned `ok: true`, `checkRunPublisher: "configured"`, `scannerVersion: "0.28.0"`, and all privacy flags set to false for raw payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens | Passed |
 | Deployed Worker version | `wrangler deployments list` showed current version `531d2286-86c6-4327-bfd0-67cad8693c10`, deployed at `2026-05-24T09:01:25.706Z` | Passed |
 | KV cleanup | `wrangler kv key list --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote` returned `[]` after smoke cleanup | Passed |

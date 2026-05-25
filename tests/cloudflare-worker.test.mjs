@@ -6,6 +6,7 @@ import worker, {
   HOSTED_WORKER_PRIVACY,
   MAX_WEBHOOK_PAYLOAD_BYTES,
   createGitHubAppManifestCallback,
+  createHostedInstallInfo,
   createHostedWorkerHealth,
   parsePullRequestWebhookIdentity,
   verifyGitHubWebhookSignature
@@ -24,6 +25,16 @@ function createKv() {
     },
     async put(key, value) {
       records.set(key, value);
+    },
+    async delete(key) {
+      records.delete(key);
+    },
+    async list({ prefix } = {}) {
+      return {
+        keys: [...records.keys()]
+          .filter((name) => !prefix || name.startsWith(prefix))
+          .map((name) => ({ name }))
+      };
     }
   };
 }
@@ -76,6 +87,38 @@ test("Cloudflare hosted worker health reports configured Check Run publisher wit
   assert.equal(health.checkRunPublisher, "configured");
   assert.equal(health.scannerVersion, "0.28.0");
   assert.doesNotMatch(JSON.stringify(health), /secret-private-key|installation token|raw source|raw diff/i);
+});
+
+test("Cloudflare hosted worker exposes public-safe install guidance", async () => {
+  const env = {
+    GITHUB_APP_SLUG: "ai-saas-guard-hosted",
+    GITHUB_APP_ID: "3834787",
+    GITHUB_APP_PRIVATE_KEY: "secret-private-key",
+    WEBHOOK_SECRET: "local-test-webhook-secret",
+    SCANNER_VERSION: "0.38.0"
+  };
+  const direct = createHostedInstallInfo(env);
+  const response = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/github/app/install-info"),
+    env
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(direct.installUrl, "https://github.com/apps/ai-saas-guard-hosted/installations/new");
+  assert.equal(body.installUrl, direct.installUrl);
+  assert.deepEqual(body.permissions, {
+    checks: "write",
+    contents: "read",
+    metadata: "read",
+    pull_requests: "read"
+  });
+  assert.deepEqual(body.events, ["pull_request", "installation", "installation_repositories"]);
+  assert.match(body.boundary, /selected repositories/i);
+  assert.match(body.boundary, /not an AI reviewer/i);
+  assert.match(body.uninstall, /compact records/i);
+  assert.deepEqual(body.privacy, HOSTED_WORKER_PRIVACY);
+  assert.doesNotMatch(JSON.stringify(body), /secret-private-key|webhook secret|local-test-webhook-secret|installation token|raw source|raw diff/i);
 });
 
 test("Cloudflare hosted worker manifest callback never stores the GitHub one-time code", () => {
@@ -230,6 +273,9 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
         assert.equal(body.status, "completed");
         assert.equal(body.conclusion, "neutral");
         assert.match(body.output.summary, /Review first/i);
+        assert.match(body.output.summary, /Review queue/i);
+        assert.match(body.output.summary, /Manual proof/i);
+        assert.match(body.output.summary, /Selected-repository hosted check/i);
         assert.match(body.output.summary, /app\/api\/stripe\/webhook\/route\.ts/);
         assert.doesNotMatch(JSON.stringify(body), /ghs_test_installation_token|STRIPE_SECRET_KEY|grantSubscription|raw diff/i);
         return Response.json({ id: 777, html_url: "https://github.example/checks/777" });
@@ -266,6 +312,56 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
   assert.match(storedValues, /\"checkRunId\":777/);
   assert.match(storedValues, /billing\/subscription/);
   assert.doesNotMatch(storedValues, /ghs_test_installation_token|STRIPE_SECRET_KEY|grantSubscription|Untrusted title|Untrusted body/i);
+});
+
+test("Cloudflare hosted worker cleans compact records on installation deletion", async () => {
+  const secret = "local-test-webhook-secret";
+  const payload = JSON.stringify({
+    action: "deleted",
+    installation: { id: 12345 },
+    repositories: [{ id: 67890, full_name: "zr9959/ai-saas-guard" }]
+  });
+  const kv = createKv();
+  await kv.put("delivery:old", JSON.stringify({ deliveryId: "old" }));
+  await kv.put("scan:12345:67890:42:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.38.0", JSON.stringify({ status: "completed" }));
+  await kv.put("scan:99999:67890:42:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.38.0", JSON.stringify({ status: "completed" }));
+  let githubCalls = 0;
+  const env = {
+    WEBHOOK_SECRET: secret,
+    HOSTED_EVENTS: kv,
+    SCANNER_VERSION: "0.38.0",
+    GITHUB_APP_ID: "3834787",
+    GITHUB_APP_PRIVATE_KEY: createGitHubAppPrivateKey(),
+    GITHUB_APP_INSTALLATION_ID: "12345",
+    async GITHUB_FETCH() {
+      githubCalls += 1;
+      return Response.json({});
+    }
+  };
+  const response = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "installation",
+        "x-github-delivery": randomUUID(),
+        "x-hub-signature-256": signPayload(payload, secret)
+      },
+      body: payload
+    }),
+    env
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 202);
+  assert.equal(body.accepted, true);
+  assert.equal(body.stage, "cleanup");
+  assert.equal(body.reason, "installation_deleted");
+  assert.equal(body.deletedRecords, 1);
+  assert.equal(githubCalls, 0);
+  assert.equal(kv.records.has("scan:12345:67890:42:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.38.0"), false);
+  assert.equal(kv.records.has("scan:99999:67890:42:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0.38.0"), true);
+  assert.doesNotMatch(JSON.stringify(body), /local-test-webhook-secret|secret-private-key|ghs_|STRIPE_SECRET_KEY|grantSubscription/i);
 });
 
 test("Cloudflare hosted worker blocks unexpected GitHub App installation before network calls", async () => {

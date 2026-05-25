@@ -2343,9 +2343,17 @@ test("public docs describe the live Cloudflare hosted ingress without overclaimi
     assert.match(document, /Check Run|check run/i);
   }
 
+  assert.match(readme, /github\/app\/install-info/);
+  assert.match(readme, /selected-repository hosted check/i);
+  assert.match(readme, /installation deletion/i);
   assert.match(cloudflareReadme, /\/github\/app\/manifest-callback/);
+  assert.match(cloudflareReadme, /\/github\/app\/install-info/);
   assert.match(cloudflareReadme, /1 MiB/);
   assert.match(cloudflareReadme, /shouldCreateCheckRun/);
+  assert.match(cloudflareReadme, /Review queue/i);
+  assert.match(cloudflareReadme, /Manual proof/i);
+  assert.match(cloudflareReadme, /installation deletion/i);
+  assert.match(cloudflareReadme, /repositories_removed/i);
   assert.match(cloudflareReadme, /not yet the complete scan worker/i);
   assert.doesNotMatch(
     `${readme}\n${zhReadme}\n${handoff}\n${cloudflareReadme}`,
