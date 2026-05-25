@@ -211,18 +211,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.35.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.35.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.35.1`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.35.1`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.35.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.35.0` |
+| npm CLI | `ai-saas-guard@0.35.1` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.35.1` |
 | 输出格式 | 短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.35.0` 新增 hosted GitHub App limited-trial gate、read-only checkout scan gate、三种使用路径、真实 AI SaaS case-study fixture 和本地扫描资源预算 helper |
-| Action 标签 | `v0.35.0`、`v0` |
+| 当前版本 | `0.35.1` 将 case-study fixture 升级到已修补的 Next.js 版本，避免 GitHub Dependabot 对包内示例继续报告已知 Next.js advisories |
+| Action 标签 | `v0.35.1`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
