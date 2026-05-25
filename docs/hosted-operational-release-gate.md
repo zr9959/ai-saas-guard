@@ -192,6 +192,28 @@ The gate combines:
 
 It returns `readyForPhase4Beta: true` only when all four layers pass. Otherwise it returns safe blocked reasons and the next action: do not open hosted beta until the missing proof is rerun. The response must remain compact and privacy-safe: no raw source, raw diffs, checkout paths, installation tokens, public hosted scanner claim, private URLs, or PR-authored commands.
 
+### Phase 4 Hosted Beta Readiness Gate
+
+The v0.43 `ai-saas-guard/hosted/beta` export adds `evaluateHostedBetaReadinessGate`. This gate is pre-commercial. It does not enable billing, pricing, usage metering, or a marketplace listing.
+
+It returns `readyForPublicBeta: true` only when:
+
+- Phase 3 source-checkout trial gate already passed
+- installs remain selected-repository only
+- public install and privacy docs are ready
+- rate limits and an abuse kill switch are enabled
+- telemetry records only safe operational metadata
+- uninstall deletion, rollback, incident owner, support path, and beta smoke evidence exist
+- public wording avoids pentest, full-audit, and certification claims
+- raw source, raw diffs, PR-authored text, and installation tokens are not stored
+- repository and concurrency limits stay within the beta caps
+
+### Phase 5 Team Launch Gate
+
+The same export adds `evaluateTeamLaunchGateReadiness`. This gate is also pre-commercial. It exists so design partners can use the hosted launch gate in a team workflow before paid packaging exists.
+
+It returns `readyForTeamUse: true` only when the hosted beta gate passed and the team workflow has org policy config, required status-check documentation, suppression audit, reviewer checklist, release evidence export, team docs, admin-bypass documentation, retention documentation, and proof that commercial billing remains disabled.
+
 ### Log Boundary Evidence
 
 Before exposure, sample ingress, queue, worker, report, and Check Run logs for the release candidate. The sample may contain scan key, installation ID, repository ID, PR number, head SHA, scanner version, duration, summary counts, error class, and cleanup status.
