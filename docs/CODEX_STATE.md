@@ -1,6 +1,6 @@
 # Codex State
 
-Last updated: 2026-05-25, Asia/Shanghai.
+Last updated: 2026-05-26, Asia/Shanghai.
 
 ## Current Running Environment
 
@@ -217,6 +217,8 @@ For `v0.43.0`:
 - post-PR `#96` hosted beta focused test: `npm run build && node --test tests/hosted-beta.test.mjs`, 2 tests passed
 - post-PR `#96` Phase 4 gate recheck: `readyForPublicBeta: false`
 - post-PR `#96` Phase 5 gate recheck: `readyForTeamUse: false`
+- 2026-05-26 ordered evidence recheck: public `/healthz` and `/github/app/install-info` returned HTTP 200 with `scannerVersion: "0.43.0"` and safe privacy flags; Worker version remained `8744d3db-0114-4653-85e2-f1554ff1b26b`; KV had 28 compact records with TTL; issue `#93` still had no real design-partner feedback; issue `#94` still lacked rollback, uninstall/deletion, provider alert, incident, and support evidence
+- 2026-05-26 npm/npx recheck: npm `latest` remained `ai-saas-guard@0.43.0`; `npx --yes ai-saas-guard@latest demo --summary` ran successfully; no npm publish was attempted because no package version or runtime artifact changed
 
 ## Known Failures Or Unverified Items
 
@@ -233,6 +235,7 @@ For `v0.43.0`:
 - Issue `#93` still has no real DP-1, DP-2, or DP-3 feedback.
 - Issue `#94` still lacks provider alert exports, rollback drill, incident owner/backup evidence, uninstall/deletion proof, and support evidence.
 - The post-PR `#96` gate recheck still blocks public beta and team use.
+- The 2026-05-26 ordered evidence recheck was read-only; it did not satisfy rollback, uninstall/deletion, provider monitoring, incident, support, or design-partner evidence.
 - No admin dashboard exists.
 - No mobile UI exists.
 - No SEO/GEO website or analytics exists.

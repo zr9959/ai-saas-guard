@@ -1,6 +1,6 @@
 # Codex TODO
 
-Last updated: 2026-05-25, Asia/Shanghai.
+Last updated: 2026-05-26, Asia/Shanghai.
 
 Do not start commercialization. The current work is pre-commercial evidence, feedback, and operational readiness.
 
@@ -116,6 +116,7 @@ Risks:
 - do not open public beta without real operational proof
 - the latest Phase 4 recheck is blocked on missing Phase 3 deployed proof, rate limits, abuse kill switch, uninstall/deletion proof, rollback, incident owner, and support path
 - the operator runbook is documentation only until exercised against deployed artifacts
+- the 2026-05-26 ordered recheck was read-only and does not replace an approved staging rollback drill, uninstall/deletion proof, provider alert export, incident drill, or real design-partner feedback
 
 ## P1: Deploy Full Source-Checkout Worker Only With Evidence
 

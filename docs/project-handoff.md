@@ -1,6 +1,6 @@
 # Project Handoff
 
-Last updated: 2026-05-25
+Last updated: 2026-05-26
 
 Use this public-safe document when moving `ai-saas-guard` into a new GitHub-facing ChatGPT/Codex Project or a new conversation.
 
@@ -192,6 +192,7 @@ Next work should therefore be feedback and evidence work, not more speculative f
 - collect provider monitoring, rollback, incident-response, uninstall/deletion, and support evidence before public beta
 - keep CLI/Action/docs current
 - only start commercialization after actual usage evidence exists
+- 2026-05-26 update: a read-only ordered evidence recheck confirmed hosted endpoints and npm/npx still work at `0.43.0`, but rollback, uninstall/deletion, provider alert, incident/support, and real design-partner evidence remain missing
 
 ## Latest Deployment And Test Evidence
 
@@ -205,6 +206,8 @@ Latest release:
 - Cloudflare Worker deployed version: `8744d3db-0114-4653-85e2-f1554ff1b26b`
 - Worker health: `https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returns `scannerVersion: "0.43.0"`
 - Real hosted PR smoke: PR `#91`, Check Run `77724168740`, conclusion `success`, temporary branch deleted, KV smoke records cleaned to `[]`
+- 2026-05-26 read-only provider recheck: public health and install-info endpoints returned HTTP 200 with safe privacy flags; `wrangler deployments list` still showed Worker version `8744d3db-0114-4653-85e2-f1554ff1b26b`; KV had 28 compact records with TTL and no deletion was performed
+- 2026-05-26 npm/npx recheck: npm `latest` remained `ai-saas-guard@0.43.0`; `npx --yes ai-saas-guard@latest demo --summary` ran successfully; no npm package was published because this was documentation/evidence-only
 
 Latest release verification passed:
 

@@ -1,6 +1,6 @@
 # Codex Recent Changes
 
-Last updated: 2026-05-25, Asia/Shanghai.
+Last updated: 2026-05-26, Asia/Shanghai.
 
 ## Current Release: v0.43.0
 
@@ -270,3 +270,29 @@ After PR `#96` was merged:
 - `npm run build && node --test tests/hosted-beta.test.mjs` passed with 2 tests
 - Phase 4 remained `readyForPublicBeta: false`
 - Phase 5 remained `readyForTeamUse: false`
+
+## 2026-05-26 Ordered Evidence Recheck
+
+The user asked to execute the next 1-5 plan in order and update GitHub plus npx/npm status.
+
+Completed:
+
+- Step 1: rechecked public hosted `/healthz`, `/github/app/install-info`, current Worker deployment, compact KV key count, and issue `#94`
+- Step 2: confirmed rollback/recovery drill is still blocked until an explicit staging rollback window, target artifact, and operation boundary are provided
+- Step 3: confirmed uninstall/deletion proof is still blocked until an explicit staging/test uninstall or deletion scope is provided
+- Step 4: rechecked issue `#93`; no real DP-1, DP-2, or DP-3 feedback is recorded
+- Step 5: verified npm `latest` remains `ai-saas-guard@0.43.0` and `npx --yes ai-saas-guard@latest demo --summary` runs successfully
+
+Not done:
+
+- no Cloudflare rollback was executed
+- no KV records were deleted
+- no uninstall/repository-removal flow was triggered
+- no npm package was published because the package version remains `0.43.0` and this run is documentation/evidence only
+
+Decision:
+
+- public beta remains blocked
+- team use remains blocked
+- commercialization remains blocked
+- continue only with real provider evidence or real design-partner feedback
