@@ -31,7 +31,19 @@
 
 AI-built SaaS can look ready before it is ready: login works, checkout opens, the dashboard loads, and tests are green. The launch risk is usually hidden in trust-boundary code that decides who gets access, who pays, what data they can see, and whether failures are visible.
 
-Start with the 30-second copy-paste demo: `npx ai-saas-guard@latest demo --summary`. No signup, no code upload, no LLM call. See the [terminal screenshot](docs/demo-terminal-screenshot.svg), [saved output](docs/demo-terminal-output.txt), [compare with alternatives](docs/launch-gate-positioning.md), and the [30-second cold-start review](docs/cold-start-review.md).
+Start with the 30-second copy-paste demo: `npx ai-saas-guard@latest demo --summary`. No signup, no code upload, no LLM call. See the saved output and [compare with alternatives](docs/launch-gate-positioning.md). Then run the same launch gate against your repo in about three minutes:
+
+```bash
+npx ai-saas-guard@latest scan --root /path/to/your-saas --summary
+```
+
+The output is meant to answer three practical questions before you invite users:
+
+- **Can a real user get access they should not have?** Check auth, tenant ownership, Supabase RLS, and Stripe entitlement paths first.
+- **Can the app claim success when something failed?** Check swallowed errors, fake success responses, hardcoded fallback data, and skipped tests.
+- **Can launch infrastructure do too much damage?** Check exposed env vars, overpowered workflows, MCP tools, deploy gaps, and missing request evidence.
+
+See the [terminal screenshot](docs/demo-terminal-screenshot.svg), [saved output](docs/demo-terminal-output.txt), and the [30-second cold-start review](docs/cold-start-review.md).
 
 These are the failures that hurt after real users arrive:
 
@@ -45,6 +57,18 @@ These are the failures that hurt after real users arrive:
 - a large AI PR hides auth, billing, data, deploy, or test changes inside harmless-looking work
 
 `ai-saas-guard` gives you a short local review queue for those risks. It does not prove the app is secure, certify a release, or replace human review. It tells founders, solo builders, small teams, and reviewers what deserves attention first.
+
+## What To Do With The Result
+
+Treat the report as a launch review queue, not a scorecard. Fix or manually prove the highest trust-boundary findings before spending time on low-severity hygiene.
+
+| If you see | Do this first |
+| --- | --- |
+| Critical/high auth, billing, RLS, tenant, webhook, or silent-success findings | Reproduce the manual proof step in staging and confirm the path fails closed |
+| Medium deploy, env, request ID, MCP, or Actions hygiene findings | Decide whether the launch path needs the control now or can be tracked after critical paths are closed |
+| Low/info hints | Clean them up after the user-access, payment, and data-access paths are understood |
+
+For a realistic risky app, scan [examples/case-study-ai-saas](examples/case-study-ai-saas) or read [docs/case-study-ai-saas.md](docs/case-study-ai-saas.md).
 
 ## 30-Second Copy-Paste Demo
 
@@ -219,6 +243,7 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
 | Hosted GitHub App staging | Private App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard`; hosted operations evidence is in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
 | OpenSSF Best Practices | Passing badge, project `12955`; `.bestpractices.json` remains the conservative evidence record |
+| Next roadmap | v0.36.0 plan is tracked in [docs/v0.36-roadmap.md](docs/v0.36-roadmap.md) |
 
 ## Example Finding
 
