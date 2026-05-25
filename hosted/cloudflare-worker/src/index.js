@@ -821,12 +821,14 @@ function summarizeFindings(findings) {
 
 function renderCheckRunSummary({ identity, report, scannerVersion }) {
   const lines = [
-    `Launch-risk gate: ai-saas-guard found ${report.summary.total} PR risk signal(s) for ${identity.repositoryFullName}#${identity.pullRequestNumber}. Review first: inspect the listed trust-boundary files before merge.`,
+    `Launch-risk gate: ai-saas-guard found ${report.summary.total} PR risk signal(s) for ${identity.repositoryFullName}#${identity.pullRequestNumber}.`,
     `Scanner version: ${scannerVersion}.`,
     "",
-    "Selected-repository hosted check: this App uses checks:write, contents:read, pull_requests:read, and metadata:read for the installed repository only.",
+    "Review task: inspect the files below before merge.",
+    "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
+    "Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification.",
     "",
-    "This is not an AI reviewer, pentest, certification, or full security audit. Review the listed files before merge.",
+    "Selected-repository hosted check: this App uses checks:write, contents:read, pull_requests:read, and metadata:read for the installed repository only.",
     "",
     "Launch decision queue:",
     "- Can a real user get access they should not have?",
@@ -841,7 +843,6 @@ function renderCheckRunSummary({ identity, report, scannerVersion }) {
     for (const file of report.topRiskyFiles.slice(0, 5)) {
       lines.push(`- ${file.path}: ${file.categories.join(", ")} (${file.added}+/${file.removed}-)`);
     }
-    lines.push("", "Manual proof:", "- Review the listed files locally and prove auth, billing, data, deploy, or test changes fail closed before merge.");
   }
 
   if (report.truncated) {
