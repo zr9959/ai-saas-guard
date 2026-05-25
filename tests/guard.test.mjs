@@ -1499,13 +1499,38 @@ test("public docs define deployed worker staging evidence without overclaiming h
     assert.match(document, /hosted-deployed-worker-staging\.md/);
   }
   assert.match(deployed, /ai-saas-guard\/hosted\/deployed-staging/);
+  assert.match(deployed, /createHostedDeployedWorkerStagingEvidenceAutomation/);
   assert.match(deployed, /createHostedDeployedWorkerStagingEvidenceBundle/);
   assert.match(deployed, /evaluateHostedDeployedWorkerStagingReleaseGate/);
   assert.match(deployed, /deployed Node\/container read-only checkout worker/i);
   assert.match(deployed, /public HTTPS health/i);
+  assert.match(deployed, /safe log samples/i);
   assert.match(deployed, /not production hosted exposure/i);
   assert.match(deployed, /does not deploy cloud resources/i);
   assert.doesNotMatch(deployed, /full hosted product|complete hosted scanner|certified secure/i);
+});
+
+test("README first screen leads with buyer pain, demo output, and product boundaries", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs", "README.zh-CN.md"), "utf8");
+  const demoOutput = await readFile(resolve(packageRoot, "docs", "demo-terminal-output.txt"), "utf8");
+  const firstScreen = readme.slice(0, 2600);
+
+  assert.match(firstScreen, /AI-built SaaS can look ready/i);
+  assert.match(firstScreen, /30-second copy-paste demo/i);
+  assert.match(firstScreen, /npx ai-saas-guard@latest demo --summary/);
+  assert.match(firstScreen, /No signup/i);
+  assert.match(firstScreen, /no code upload/i);
+  assert.match(firstScreen, /no LLM/i);
+  assert.match(firstScreen, /compare with alternatives/i);
+  assert.match(readme, /docs\/demo-terminal-output\.txt/);
+  assert.match(readme, /docs\/launch-gate-positioning\.md/);
+  assert.match(zhReadme, /docs\/demo-terminal-output\.txt/);
+  assert.match(zhReadme, /和替代方案的区别/);
+  assert.match(demoOutput, /ai-saas-guard demo --summary/i);
+  assert.match(demoOutput, /Risky demo: 19 findings/i);
+  assert.match(demoOutput, /Safe demo: 0 findings/i);
+  assert.doesNotMatch(readme, /certified secure|full audit|pentest replacement/i);
 });
 
 test("public docs define hosted GitHub App deployment planning", async () => {

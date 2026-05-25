@@ -7,10 +7,12 @@ import {
 } from "./contracts.js";
 import { HOSTED_NODE_CONTAINER_PLATFORM, HOSTED_NODE_CONTAINER_ROLES } from "./app.js";
 import type {
+  HostedLogBoundaryForbiddenInput,
   HostedLogBoundaryValidation,
   HostedStagingHarnessReplayResult,
   HostedStagingHarnessWorkerTickResult
 } from "./staging-harness.js";
+import { validateHostedLogBoundary } from "./staging-harness.js";
 
 export interface HostedDeployedWorkerHealthProbe {
   observedAt: string;
@@ -41,6 +43,30 @@ export interface HostedDeployedWorkerStagingEvidenceBundle {
   };
   deployedScenarioSummary: HostedDeployedWorkerStagingScenarioSummary;
   privacy: HostedDeployedWorkerStagingPrivacy;
+}
+
+export interface HostedDeployedWorkerStagingEvidenceAutomationInput
+  extends Omit<HostedDeployedWorkerStagingEvidenceBundleInput, "logBoundary"> {
+  logSamples: unknown[];
+  forbiddenLogMaterial: HostedLogBoundaryForbiddenInput;
+}
+
+export interface HostedDeployedWorkerStagingEvidenceAutomation {
+  readyForReleaseGate: boolean;
+  blockedReasons: string[];
+  logBoundary: HostedLogBoundaryValidation;
+  collectionPlan: HostedDeployedWorkerStagingEvidenceCollectionPlan;
+  bundle: HostedDeployedWorkerStagingEvidenceBundle;
+  releaseGateInput: {
+    evidence: HostedOperationalReleaseGateEvidence[];
+  };
+  privacy: HostedDeployedWorkerStagingPrivacy;
+}
+
+export interface HostedDeployedWorkerStagingEvidenceCollectionPlan {
+  steps: string[];
+  requiredSafeLogFields: string[];
+  requiredFailureReasons: string[];
 }
 
 export interface HostedDeployedWorkerStagingScenarioSummary {
@@ -101,6 +127,38 @@ export function createHostedDeployedWorkerStagingEvidenceBundle(
     evidence,
     releaseGateInput: { evidence },
     deployedScenarioSummary: summary,
+    privacy: deployedPrivacy()
+  };
+}
+
+export function createHostedDeployedWorkerStagingEvidenceAutomation(
+  input: HostedDeployedWorkerStagingEvidenceAutomationInput
+): HostedDeployedWorkerStagingEvidenceAutomation {
+  const logBoundary = validateHostedLogBoundary({
+    samples: input.logSamples,
+    forbidden: input.forbiddenLogMaterial
+  });
+  const bundle = createHostedDeployedWorkerStagingEvidenceBundle({
+    collectedAt: input.collectedAt,
+    evidenceBaseUrl: input.evidenceBaseUrl,
+    owner: input.owner,
+    publicBaseUrl: input.publicBaseUrl,
+    scannerVersion: input.scannerVersion,
+    healthProbe: input.healthProbe,
+    webhookReplays: input.webhookReplays,
+    workerTicks: input.workerTicks,
+    logBoundary,
+    externalEvidence: input.externalEvidence,
+    requiredFailureReasons: input.requiredFailureReasons
+  });
+
+  return {
+    readyForReleaseGate: bundle.readyForReleaseGate,
+    blockedReasons: bundle.blockedReasons,
+    logBoundary,
+    collectionPlan: deployedEvidenceCollectionPlan(input.requiredFailureReasons ?? []),
+    bundle,
+    releaseGateInput: bundle.releaseGateInput,
     privacy: deployedPrivacy()
   };
 }
@@ -294,6 +352,33 @@ function missingEvidence(
     collectedAt: input.collectedAt,
     note: `Missing deployed staging worker evidence for ${id}.`,
     owner: input.owner
+  };
+}
+
+function deployedEvidenceCollectionPlan(
+  requiredFailureReasons: string[]
+): HostedDeployedWorkerStagingEvidenceCollectionPlan {
+  return {
+    steps: [
+      "Collect public HTTPS health metadata from the deployed Node/container candidate.",
+      "Replay a signed webhook and confirm it queues check-run-only worker work.",
+      "Run deployed worker cleanup probes for one success path and the required failure reasons.",
+      "Validate safe log samples before building release-gate evidence.",
+      "Attach external CI, workflow, dependency, container, monitoring, rollback, and incident-response evidence."
+    ],
+    requiredSafeLogFields: [
+      "scanKey",
+      "installationId",
+      "repositoryId",
+      "pullRequestNumber",
+      "headSha",
+      "scannerVersion",
+      "durationMs",
+      "summaryCounts",
+      "errorClass",
+      "cleanupStatus"
+    ],
+    requiredFailureReasons: [...requiredFailureReasons].sort()
   };
 }
 

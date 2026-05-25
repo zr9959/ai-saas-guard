@@ -12,6 +12,7 @@ const requiredFailureReasons = [
 
 async function loadDeployedStaging() {
   const deployed = await import("../dist/hosted/deployed-staging.js");
+  assert.equal(typeof deployed.createHostedDeployedWorkerStagingEvidenceAutomation, "function");
   assert.equal(typeof deployed.createHostedDeployedWorkerStagingEvidenceBundle, "function");
   assert.equal(typeof deployed.evaluateHostedDeployedWorkerStagingReleaseGate, "function");
   return deployed;
@@ -113,6 +114,46 @@ function externalEvidence() {
   }));
 }
 
+function safeLogSamples() {
+  return [
+    {
+      scanKey: "installation-991:repo-881:pull-12:head-b23030b",
+      installationId: 991,
+      repositoryId: 881,
+      pullRequestNumber: 12,
+      headSha: "b23030be462e48f070fcfd40471033fc6ec5eca9",
+      scannerVersion: "0.32.0",
+      durationMs: 1840,
+      summaryCounts: { critical: 0, high: 0, medium: 1, low: 0 },
+      cleanupStatus: "deleted"
+    },
+    {
+      scanKey: "installation-991:repo-881:pull-12:head-failed",
+      installationId: 991,
+      repositoryId: 881,
+      pullRequestNumber: 12,
+      headSha: "f23030be462e48f070fcfd40471033fc6ec5eca9",
+      scannerVersion: "0.32.0",
+      durationMs: 410,
+      errorClass: "scan_runner_failed",
+      cleanupStatus: "deleted"
+    }
+  ];
+}
+
+function forbiddenLogMaterial() {
+  return {
+    rawSource: "export const secret = 'never-log-source';",
+    rawDiff: "diff --git a/app/api/checkout/route.ts b/app/api/checkout/route.ts",
+    secretValues: ["sk_live_never_log"],
+    customerPayloads: ["customer@example.com"],
+    installationTokens: ["ghs_neverlogtoken"],
+    checkoutPaths: ["/tmp/ai-saas-guard-worker/private-checkout"],
+    privateUrls: ["http://localhost:3000"],
+    untrustedPrText: ["command=rm -rf"]
+  };
+}
+
 test("hosted deployed worker staging evidence accepts deployed health webhook worker cleanup and log samples", async () => {
   const {
     createHostedDeployedWorkerStagingEvidenceBundle,
@@ -179,6 +220,43 @@ test("hosted deployed worker staging evidence accepts deployed health webhook wo
   assert.equal(serialized.includes("localhost"), false);
   assert.equal(serialized.includes("rawSource"), false);
   assert.equal(serialized.includes("ghs_"), false);
+  assert.equal(serialized.includes("command=rm -rf"), false);
+});
+
+test("hosted deployed worker staging evidence automation validates safe logs and builds release gate input", async () => {
+  const { createHostedDeployedWorkerStagingEvidenceAutomation } = await loadDeployedStaging();
+  const automation = createHostedDeployedWorkerStagingEvidenceAutomation({
+    collectedAt: "2026-05-24T21:05:00.000Z",
+    evidenceBaseUrl: "https://github.com/zr9959/ai-saas-guard/actions/runs/26359000000",
+    owner: "hosted-staging",
+    publicBaseUrl: "https://guard-staging.example.test/",
+    scannerVersion: "0.32.0",
+    healthProbe: safeHealthProbe(),
+    webhookReplays: [acceptedReplay()],
+    workerTicks: [completedWorker(), ...requiredFailureReasons.map(failedWorker)],
+    logSamples: safeLogSamples(),
+    forbiddenLogMaterial: forbiddenLogMaterial(),
+    externalEvidence: externalEvidence(),
+    requiredFailureReasons
+  });
+  const byId = new Map(automation.bundle.evidence.map((item) => [item.id, item]));
+  const serialized = JSON.stringify(automation);
+
+  assert.equal(automation.readyForReleaseGate, true);
+  assert.equal(automation.logBoundary.accepted, true);
+  assert.equal(automation.bundle.readyForReleaseGate, true);
+  assert.equal(automation.releaseGateInput.evidence.length, automation.bundle.evidence.length);
+  assert.match(automation.collectionPlan.steps.join("\n"), /public HTTPS health/i);
+  assert.match(automation.collectionPlan.steps.join("\n"), /signed webhook/i);
+  assert.match(automation.collectionPlan.steps.join("\n"), /worker cleanup/i);
+  assert.match(automation.collectionPlan.steps.join("\n"), /safe log samples/i);
+  assert.equal(byId.get("webhook_replay").status, "passed");
+  assert.equal(byId.get("queue_worker_cleanup").status, "passed");
+  assert.equal(serialized.includes("never-log-source"), false);
+  assert.equal(serialized.includes("sk_live_never_log"), false);
+  assert.equal(serialized.includes("customer@example.com"), false);
+  assert.equal(serialized.includes("ghs_neverlogtoken"), false);
+  assert.equal(serialized.includes("private-checkout"), false);
   assert.equal(serialized.includes("command=rm -rf"), false);
 });
 

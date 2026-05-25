@@ -29,7 +29,9 @@
 
 ## Before You Invite Users
 
-AI can make a SaaS look finished: login works, checkout opens, the dashboard loads, and tests are green. The launch risk is usually hidden in trust-boundary code that decides who gets access, who pays, what data they can see, and whether failures are visible.
+AI-built SaaS can look ready before it is ready: login works, checkout opens, the dashboard loads, and tests are green. The launch risk is usually hidden in trust-boundary code that decides who gets access, who pays, what data they can see, and whether failures are visible.
+
+Start with the 30-second copy-paste demo: `npx ai-saas-guard@latest demo --summary`. No signup, no code upload, no LLM call. See [docs/demo-terminal-output.txt](docs/demo-terminal-output.txt) and [compare with alternatives](docs/launch-gate-positioning.md).
 
 These are the failures that hurt after real users arrive:
 
@@ -43,6 +45,16 @@ These are the failures that hurt after real users arrive:
 - a large AI PR hides auth, billing, data, deploy, or test changes inside harmless-looking work
 
 `ai-saas-guard` gives you a short local review queue for those risks. It does not prove the app is secure, certify a release, or replace human review. It tells founders, solo builders, small teams, and reviewers what deserves attention first.
+
+## 30-Second Copy-Paste Demo
+
+No signup, no code upload, no LLM call:
+
+```bash
+npx ai-saas-guard@latest demo --summary
+```
+
+The demo scans two packaged fixtures: one risky AI-built SaaS and one safer version. See the saved terminal sample in [docs/demo-terminal-output.txt](docs/demo-terminal-output.txt), then compare with alternatives in [docs/launch-gate-positioning.md](docs/launch-gate-positioning.md).
 
 ## 60-Second Local Check
 
@@ -187,13 +199,13 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.32.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.32.0` |
+| npm CLI | `ai-saas-guard@0.33.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.33.0` |
 | Outputs | Short summary, terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.32.0`, `v0` |
-| Current release | `0.32.0` adds deployed worker staging evidence: public HTTPS health validation, deployed success/failure cleanup probes, log-boundary checks, and release-gate evaluation for a Node/container read-only checkout worker candidate |
+| Versioned Action tags | `v0.33.0`, `v0` |
+| Current release | `0.33.0` sharpens the README first screen, adds a saved terminal demo output, and adds deployed worker staging evidence automation that validates safe logs before building hosted release-gate input |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
@@ -312,7 +324,7 @@ The hosted staging deployment planner is documented in [docs/hosted-staging-depl
 
 The hosted staging harness is documented in [docs/hosted-staging-harness.md](docs/hosted-staging-harness.md). It exports `createFileBackedHostedStagingHarness`, `createHostedStagingHarnessEvidence`, `createHostedStagingReleaseEvidenceBundle`, `evaluateHostedStagingReleaseEvidenceBundle`, and `validateHostedLogBoundary` from `ai-saas-guard/hosted/staging-harness`. It runs signed webhook replay through the provider-independent hosted runtime with local file-backed queue, compact report, and Check Run adapters, verifies worker sandbox cleanup, turns success/failure cleanup probes plus log-boundary samples into release-gate evidence, and evaluates the hosted gate without cloud calls. It is a staging rehearsal tool only; it does not call cloud providers, create a GitHub App, publish live Check Runs, or expose a public hosted service.
 
-Deployed worker staging evidence is documented in [docs/hosted-deployed-worker-staging.md](docs/hosted-deployed-worker-staging.md). It exports `createHostedDeployedWorkerStagingEvidenceBundle` and `evaluateHostedDeployedWorkerStagingReleaseGate` from `ai-saas-guard/hosted/deployed-staging`. It turns public HTTPS health, signed webhook replay, deployed worker cleanup, log-boundary samples, and external CI/scan/rollback evidence into the hosted release gate for a Node/container read-only checkout worker candidate. It does not deploy cloud resources or claim production hosted exposure.
+Deployed worker staging evidence is documented in [docs/hosted-deployed-worker-staging.md](docs/hosted-deployed-worker-staging.md). It exports `createHostedDeployedWorkerStagingEvidenceAutomation`, `createHostedDeployedWorkerStagingEvidenceBundle`, and `evaluateHostedDeployedWorkerStagingReleaseGate` from `ai-saas-guard/hosted/deployed-staging`. It validates safe log samples, then turns public HTTPS health, signed webhook replay, deployed worker cleanup, and external CI/scan/rollback evidence into the hosted release gate for a Node/container read-only checkout worker candidate. It does not deploy cloud resources or claim production hosted exposure.
 
 The first live hosted ingress is deployed on Cloudflare Workers at `https://ai-saas-guard-hosted.zr9959.workers.dev` and documented in [hosted/cloudflare-worker/README.md](hosted/cloudflare-worker/README.md). It exposes `/healthz`, `/github/app/manifest-callback`, and signed `/github/webhook` intake backed by Cloudflare KV. A private staging GitHub App, `ai-saas-guard-hosted`, is installed on `zr9959/ai-saas-guard` with selected-repository access and the first-slice permission contract. The Worker verifies signatures, stores compact pull request identity records, exchanges a scoped installation token, fetches PR file metadata from GitHub, classifies PR-risk hotspots, and publishes a bounded Check Run summary. Current deployed evidence is tracked in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md): health, signed webhook delivery, compact KV records, cleanup, and Check Run publication pass for the staging smoke. The Cloudflare Worker still does not run a full source checkout scan worker or store raw webhook payloads, PR title/body text, raw diffs, source, secrets, checkout paths, or installation tokens.
 
@@ -362,7 +374,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.32.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.33.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard
