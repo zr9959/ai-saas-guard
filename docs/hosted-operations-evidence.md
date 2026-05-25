@@ -176,6 +176,38 @@ The current evidence was mapped into `evaluateHostedBetaReadinessGate` and `eval
 
 Decision: public beta, team use, and commercialization remain blocked.
 
+## 2026-05-26 Ordered Evidence Recheck
+
+Recorded on 2026-05-26 after the user asked to execute the next 1-5 plan in order and update GitHub plus npx/npm status.
+
+Only read-only checks were run. No secrets were read or printed, no KV records were deleted, no rollback was executed, no deployment was changed, and no uninstall/deletion mutation was performed.
+
+| Step | Evidence | Status |
+| --- | --- | --- |
+| 1. Provider evidence recheck | `/healthz` returned HTTP `200`, `ok: true`, `scannerVersion: "0.43.0"`, `checkRunPublisher: "configured"`, and all privacy flags false for raw webhook payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens. `/github/app/install-info` returned HTTP `200`, selected-repository permissions `checks: write`, `contents: read`, `metadata: read`, `pull_requests: read`, events `pull_request`, `installation`, and `installation_repositories`, and the same privacy flags false. `wrangler deployments list` showed current Worker version `8744d3db-0114-4653-85e2-f1554ff1b26b`, created at `2026-05-25T14:00:00.153Z`. `wrangler kv key list --remote` returned 28 compact `delivery:` / `scan:` records with expirations. | Endpoint health passed; provider monitoring evidence still missing |
+| 2. Rollback/recovery drill | The current deployed version and earlier deployment IDs are visible through `wrangler deployments list`, but no rollback or recovery mutation was executed because no explicit staging rollback window, target previous artifact, or approval boundary was provided for this run. | Blocked on approved staging drill |
+| 3. Uninstall/deletion proof | No uninstall, repository-removal, KV delete, or retention cleanup mutation was executed. Existing compact records were observed only by key name and expiration. | Blocked on approved staging/test uninstall or deletion scope |
+| 4. Design-partner feedback | Issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) was rechecked. It still has no real DP-1, DP-2, or DP-3 feedback. | Blocked on real participants |
+| 5. npx/npm and gate status | `npm view ai-saas-guard version dist-tags --json` returned `0.43.0` and `latest: "0.43.0"`. `npx --yes ai-saas-guard@latest demo --summary` ran successfully. `npx --yes ai-saas-guard@latest --version` is not a supported CLI command and returned usage text. No npm publish was attempted because the package version remains `0.43.0` and this run changed documentation/evidence only. | npx latest verified; no new package publish |
+
+Decision: do not open public beta, do not invite teams beyond beta, and do not commercialize. The next valid progress is real provider evidence or real design-partner feedback, not more feature work.
+
+Validation:
+
+```bash
+git diff --check
+npm run build && node --test tests/hosted-beta.test.mjs
+```
+
+Result: docs diff check passed, build passed, and 2 hosted beta tests passed.
+
+Gate recheck with only currently proven evidence still returned:
+
+- Phase 4 `readyForPublicBeta: false`
+- Phase 4 blocked reasons: `phase3_gate_missing`, `rate_limit_missing`, `abuse_kill_switch_missing`, `uninstall_deletion_proof_missing`, `rollback_test_missing`, `incident_owner_missing`, `support_path_missing`
+- Phase 5 `readyForTeamUse: false`
+- Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
