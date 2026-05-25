@@ -58,6 +58,27 @@ This is public beta intake status only. It does not make hosted beta ready, and 
 | Provider monitoring | No provider dashboard or alert evidence has been attached for ingress errors, queue depth, worker failure, Check Run failure, cleanup failure, or retention failure. | Missing |
 | Rollback and incident response | No manual rollback drill, incident owner, backup owner, queue pause, worker pause, credential rotation, status update, or customer communication evidence has been attached for the deployed artifact. | Missing |
 
+## Phase 4 And Phase 5 Gate Recheck
+
+Recorded on 2026-05-25 from the current source checkout after public beta intake issue creation.
+
+Verification command:
+
+```bash
+npm run build && node --test tests/hosted-beta.test.mjs
+```
+
+Result: 2 hosted beta tests passed.
+
+The current evidence was then mapped into `evaluateHostedBetaReadinessGate` and `evaluateTeamLaunchGateReadiness` with only currently proven items set to true. Public endpoint health, selected-repository install wording, safe privacy flags, no-audit-claim wording, no raw source/diff/PR-text storage, and the prior v0.43 hosted smoke were treated as available evidence. Full deployed source-checkout proof, rate limiting, abuse kill switch, uninstall/deletion proof, rollback, incident owner, support path, and team workflow controls were treated as missing because no fresh provider or design-partner evidence has been attached.
+
+| Gate | Result | Blocked reasons |
+| --- | --- | --- |
+| Phase 4 hosted beta readiness | `readyForPublicBeta: false` | `phase3_gate_missing`, `rate_limit_missing`, `abuse_kill_switch_missing`, `uninstall_deletion_proof_missing`, `rollback_test_missing`, `incident_owner_missing`, `support_path_missing` |
+| Phase 5 team launch gate | `readyForTeamUse: false` | `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing` |
+
+Decision: do not open public beta, do not invite teams beyond beta, and do not sell or commercialize. Continue with design-partner feedback issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) and provider evidence issue [#94](https://github.com/zr9959/ai-saas-guard/issues/94).
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.

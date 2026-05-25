@@ -208,3 +208,28 @@ Not deployed:
 
 - handoff docs are documentation only
 - no business code changed during handoff generation
+
+## Step 1-4 Execution After Handoff
+
+The user asked to proceed through the four-step plan in order.
+
+Completed:
+
+- Step 1: committed docs-only handoff and public beta evidence intake as `3177e99 docs: add codex handoff and beta evidence intake`
+- Step 2: opened GitHub issue `#93`, "Design partner feedback intake for public beta readiness"
+- Step 3: checked public hosted health and install info, checked deployed Worker version and compact KV key count, opened GitHub issue `#94`, and committed `58cb8dc docs: record public beta evidence intake status`
+- Step 4: ran `npm run build && node --test tests/hosted-beta.test.mjs`, then mapped current evidence into Phase 4/5 gates and commented the blocked result on issue `#94`
+
+Gate result:
+
+- Phase 4 `readyForPublicBeta: false`
+- Phase 4 blocked reasons: `phase3_gate_missing`, `rate_limit_missing`, `abuse_kill_switch_missing`, `uninstall_deletion_proof_missing`, `rollback_test_missing`, `incident_owner_missing`, `support_path_missing`
+- Phase 5 `readyForTeamUse: false`
+- Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
+
+Decision:
+
+- do not open public beta
+- do not invite teams beyond beta
+- do not commercialize
+- continue with real design-partner feedback and provider evidence collection

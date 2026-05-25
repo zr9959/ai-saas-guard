@@ -7,7 +7,8 @@ Last updated: 2026-05-25, Asia/Shanghai.
 - Project path: `/Volumes/MyPSSD/app/ai-saas-guard`
 - Shell: `zsh`
 - Branch: `main`
-- Latest local main commit: `7318c04f2ade79861c198e00e42ec6c32b90f9b9`
+- Latest release commit: `7318c04f2ade79861c198e00e42ec6c32b90f9b9`
+- Post-release local docs-only commits include `3177e99` and `58cb8dc`; run `git log -3 --oneline` for the current local HEAD.
 - Package version: `0.43.0`
 - Observed Node: `v25.8.0`
 - Package engine: Node `>=20`
@@ -201,6 +202,10 @@ For `v0.43.0`:
 - PR `#92` CI passed: test, fuzz, actionlint, zizmor, CodeQL
 - Cloudflare Worker deployed version: `8744d3db-0114-4653-85e2-f1554ff1b26b`
 - hosted smoke: PR `#91`, Check Run `77724168740`, success, KV cleanup `[]`
+- public beta intake issues opened: GitHub `#93` for design-partner feedback and `#94` for provider evidence
+- hosted beta focused test: `npm run build && node --test tests/hosted-beta.test.mjs`, 2 tests passed
+- Phase 4 gate recheck: `readyForPublicBeta: false`
+- Phase 5 gate recheck: `readyForTeamUse: false`
 
 ## Known Failures Or Unverified Items
 
@@ -209,6 +214,8 @@ For `v0.43.0`:
 - Provider monitoring/rollback/incident evidence is not yet collected.
 - Public beta feedback/provider-evidence intake is documented in `docs/public-beta-evidence-feedback.md`, but no real design-partner feedback or provider evidence has been recorded.
 - Hosted beta/team gates are implemented as readiness checks, but public beta has not started.
+- GitHub issue `#93` has no recorded real participant feedback yet.
+- GitHub issue `#94` has missing provider monitoring, rollback, incident, uninstall/deletion, and support evidence.
 - No admin dashboard exists.
 - No mobile UI exists.
 - No SEO/GEO website or analytics exists.

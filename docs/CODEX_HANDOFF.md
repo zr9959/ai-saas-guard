@@ -23,7 +23,7 @@ Current branch: `main`.
 
 Latest release state:
 
-- latest commit on main: `7318c04 Add v0.43 pre-commercial beta and team gates`
+- latest release commit on main: `7318c04 Add v0.43 pre-commercial beta and team gates`
 - package version: `0.43.0`
 - npm latest: `ai-saas-guard@0.43.0`
 - GitHub Release: `v0.43.0`
@@ -32,7 +32,15 @@ Latest release state:
 - deployed Worker version: `8744d3db-0114-4653-85e2-f1554ff1b26b`
 - real hosted smoke passed on PR `#91`, Check Run `77724168740`, with KV cleanup returning `[]`
 
-Current working tree note: `docs/project-handoff.md` already had an uncommitted documentation update from the prior handoff pass. A later documentation-only follow-up added `docs/public-beta-evidence-feedback.md` and linked it from `docs/hosted-operational-release-gate.md`. Do not treat these as business-code drift. Review them before committing or discarding.
+Post-release docs-only work after `v0.43.0`:
+
+- committed Codex handoff package and public beta evidence intake: `3177e99 docs: add codex handoff and beta evidence intake`
+- committed public beta evidence intake status: `58cb8dc docs: record public beta evidence intake status`
+- opened GitHub issue `#93` for design-partner feedback intake
+- opened GitHub issue `#94` for provider evidence before hosted public beta
+- rechecked Phase 4/5 gates from current evidence; both remain blocked
+
+Current working tree note: `.local/project-handoff.md` is local-only and ignored by git. Do not force-add it.
 
 ## User Latest Requirement
 
@@ -109,6 +117,8 @@ Remaining pre-public-beta proof work:
 - privacy-safe operator/admin workflow for pause, rollback, queue/failure checks, compact record deletion, and support
 - external design-partner/user feedback
 - public beta install/support process review
+- GitHub issue `#93` is open to track design-partner feedback intake
+- GitHub issue `#94` is open to track provider monitoring, rollback, incident, deletion, and support evidence
 
 Not implemented:
 
@@ -130,6 +140,8 @@ Hosted public beta is blocked by evidence, not by the readiness-gate code:
 - provider monitoring/rollback/incident evidence is not collected
 - no design-partner feedback has been collected
 - `docs/public-beta-evidence-feedback.md` defines the intake process, but no real feedback or provider evidence has been recorded yet
+- Phase 4 hosted beta readiness recheck returned `readyForPublicBeta: false`
+- Phase 5 team launch gate recheck returned `readyForTeamUse: false`
 
 ## Key Decisions And Reasons
 
@@ -195,4 +207,5 @@ This handoff package explicitly covers:
 2. Run `git status --short --branch`.
 3. Summarize understanding to the user before modifying code.
 4. Do not start new development unless the user explicitly asks.
-5. If asked for next work, focus on feedback/evidence collection for public beta readiness, not more speculative features.
+5. Check GitHub issue `#93` for design-partner feedback intake and issue `#94` for provider evidence.
+6. If asked for next work, focus on feedback/evidence collection for public beta readiness, not more speculative features.

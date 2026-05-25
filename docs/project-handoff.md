@@ -185,6 +185,8 @@ The newest operating instruction from the user is: keep going automatically unti
 Next work should therefore be feedback and evidence work, not more speculative feature expansion:
 
 - use `docs/public-beta-evidence-feedback.md` as the intake checklist
+- use GitHub issue `#93` for design-partner feedback tracking
+- use GitHub issue `#94` for provider evidence tracking
 - collect real user/design-partner feedback
 - review public installation wording and support path
 - collect provider monitoring, rollback, incident-response, uninstall/deletion, and support evidence before public beta
@@ -221,6 +223,16 @@ node scripts/hosted-pr-smoke.mjs --evidence-file /tmp/ai-saas-guard-hosted-smoke
 ```
 
 CI for PR `#92` passed: test, fuzz, actionlint, zizmor, and CodeQL. The hosted `ai-saas-guard PR risk` Check Run was skipped as expected for the repository's current hosted smoke behavior.
+
+Post-release docs-only execution:
+
+- `3177e99 docs: add codex handoff and beta evidence intake`
+- `58cb8dc docs: record public beta evidence intake status`
+- GitHub issue `#93` tracks design-partner feedback intake
+- GitHub issue `#94` tracks provider evidence before hosted public beta
+- `npm run build && node --test tests/hosted-beta.test.mjs` passed with 2 tests
+- latest Phase 4 recheck returned `readyForPublicBeta: false`
+- latest Phase 5 recheck returned `readyForTeamUse: false`
 
 ## Data, Environment, And Third-Party Configuration
 

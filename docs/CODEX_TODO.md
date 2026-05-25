@@ -71,6 +71,7 @@ Risks:
 Acceptance:
 
 - use `docs/public-beta-evidence-feedback.md` as the privacy-safe feedback intake template
+- use GitHub issue `#93` as the public-safe tracking issue
 - identify at least 3 target users or repositories for feedback
 - record feedback without collecting source, diffs, secrets, PR text, or customer payloads
 - summarize friction points around install, first scan, Check Run readability, false positives, and missing launch risks
@@ -94,6 +95,7 @@ Risks:
 Acceptance:
 
 - use `docs/public-beta-evidence-feedback.md` as the provider evidence matrix before opening beta
+- use GitHub issue `#94` as the public-safe provider evidence tracking issue
 - provider monitoring evidence exists for ingress errors, queue depth, worker failure, Check Run failure, cleanup failure, and rollback
 - incident owner and support path are documented
 - uninstall/deletion proof remains current
@@ -111,6 +113,7 @@ Risks:
 
 - readiness gate passing in code is not the same as provider evidence passing
 - do not open public beta without real operational proof
+- the latest Phase 4 recheck is blocked on missing Phase 3 deployed proof, rate limits, abuse kill switch, uninstall/deletion proof, rollback, incident owner, and support path
 
 ## P1: Deploy Full Source-Checkout Worker Only With Evidence
 
