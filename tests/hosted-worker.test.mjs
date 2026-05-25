@@ -21,6 +21,7 @@ async function loadHostedWorker() {
   assert.equal(typeof worker.evaluateHostedReadOnlyCheckoutScanGate, "function");
   assert.equal(typeof worker.createHostedSourceCheckoutTrialPlan, "function");
   assert.equal(typeof worker.createHostedSourceCheckoutEvidence, "function");
+  assert.equal(typeof worker.evaluateHostedSourceCheckoutTrialGate, "function");
   assert.equal(typeof worker.HostedReadOnlyCheckoutScanError, "function");
   return worker;
 }
@@ -544,4 +545,102 @@ test("hosted checkout scan gate requires full checkout scan check-run and cleanu
     "output_budget_exceeded",
     "timeout_budget_exceeded"
   ]);
+});
+
+test("hosted source checkout trial gate closes phase 3 only with plan evidence scan and operator proof", async () => {
+  const { evaluateHostedSourceCheckoutTrialGate } = await loadHostedWorker();
+  const passed = evaluateHostedSourceCheckoutTrialGate({
+    requestedAt: "2026-05-25T14:00:00.000Z",
+    repositoryFullName: "owner/repo",
+    selectedRepositoryOnly: true,
+    permissions: { contents: "read", checks: "write" },
+    command: [
+      "ai-saas-guard",
+      "pr-risk",
+      "--root",
+      "<worker-checkout>",
+      "--base",
+      "<trusted-base-sha>",
+      "--json"
+    ],
+    jobKey: "job-phase3",
+    stages: [
+      { id: "checkout_start", ok: true, at: "2026-05-25T14:00:01.000Z" },
+      { id: "token_remove", ok: true, at: "2026-05-25T14:00:02.000Z" },
+      { id: "cli_start", ok: true, at: "2026-05-25T14:00:03.000Z" },
+      { id: "cli_end", ok: true, at: "2026-05-25T14:00:04.000Z" },
+      { id: "compact_report_write", ok: true, at: "2026-05-25T14:00:05.000Z" },
+      { id: "check_run_write", ok: true, at: "2026-05-25T14:00:06.000Z" },
+      { id: "cleanup_end", ok: true, at: "2026-05-25T14:00:07.000Z" }
+    ],
+    commandStages: ["git_init", "git_remote_add", "git_fetch_head", "git_fetch_base", "git_checkout", "cli_scan"],
+    summaryCounts: { critical: 0, high: 1, medium: 0, low: 0, info: 0, total: 1 },
+    compactFindingCount: 1,
+    compactReportStored: true,
+    checkRunPublished: true,
+    checkoutDeleted: true,
+    tokenRemovedBeforeCli: true,
+    maxOutputBytes: 1_048_576,
+    timeoutMs: 120_000,
+    cleanupStatus: "deleted",
+    liveSmokePassed: true,
+    rollbackTested: true,
+    monitoringEvidence: true,
+    incidentOwnerRecorded: true,
+    rawSource: "const secret = 'do-not-return';",
+    rawDiff: "diff --git a/private.ts b/private.ts",
+    checkoutPath: "/tmp/private-checkout",
+    installationToken: "ghs_do_not_return"
+  });
+  const blocked = evaluateHostedSourceCheckoutTrialGate({
+    requestedAt: "2026-05-25T14:01:00.000Z",
+    repositoryFullName: "owner/repo",
+    selectedRepositoryOnly: true,
+    permissions: { contents: "read", checks: "write" },
+    command: ["ai-saas-guard", "scan", "--root", "<worker-checkout>", "--json"],
+    jobKey: "job-phase3",
+    stages: [{ id: "checkout_start", ok: true, at: "2026-05-25T14:01:01.000Z" }],
+    commandStages: ["git_init"],
+    summaryCounts: { critical: 0, high: 0, medium: 0, low: 0, info: 0, total: 0 },
+    compactFindingCount: 0,
+    compactReportStored: false,
+    checkRunPublished: false,
+    checkoutDeleted: false,
+    tokenRemovedBeforeCli: false,
+    maxOutputBytes: 2_000_000,
+    timeoutMs: 1_000_000,
+    cleanupStatus: "failed",
+    liveSmokePassed: false,
+    rollbackTested: false,
+    monitoringEvidence: false,
+    incidentOwnerRecorded: false
+  });
+  const serialized = JSON.stringify(passed);
+
+  assert.equal(passed.phase, "phase_3_hosted_source_checkout_trial");
+  assert.equal(passed.readyForPhase4Beta, true);
+  assert.deepEqual(passed.blockedReasons, []);
+  assert.equal(passed.plan.readyForTrial, true);
+  assert.equal(passed.evidence.readyForReleaseGate, true);
+  assert.equal(passed.scanGate.readyForHostedTrial, true);
+  assert.deepEqual(passed.operatorProof, {
+    liveSmokePassed: true,
+    rollbackTested: true,
+    monitoringEvidence: true,
+    incidentOwnerRecorded: true
+  });
+  assert.match(passed.nextAction, /Phase 4 beta/);
+  assert.equal(serialized.includes("do-not-return"), false);
+  assert.equal(serialized.includes("private-checkout"), false);
+  assert.equal(serialized.includes("ghs_"), false);
+  assert.equal(blocked.readyForPhase4Beta, false);
+  assert.ok(blocked.blockedReasons.includes("fixed_pr_risk_json_command_required"));
+  assert.ok(blocked.blockedReasons.includes("missing_token_remove"));
+  assert.ok(blocked.blockedReasons.includes("missing_command_stage_git_remote_add"));
+  assert.ok(blocked.blockedReasons.includes("compact_report_missing"));
+  assert.ok(blocked.blockedReasons.includes("live_smoke_missing"));
+  assert.ok(blocked.blockedReasons.includes("rollback_test_missing"));
+  assert.ok(blocked.blockedReasons.includes("monitoring_evidence_missing"));
+  assert.ok(blocked.blockedReasons.includes("incident_owner_missing"));
+  assert.match(blocked.nextAction, /Do not open hosted beta/);
 });
