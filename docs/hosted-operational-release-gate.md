@@ -49,6 +49,8 @@ Deployed worker staging evidence is documented in [hosted-deployed-worker-stagin
 
 Public beta feedback and provider-evidence intake is documented in [public-beta-evidence-feedback.md](public-beta-evidence-feedback.md). That document defines the privacy-safe design-partner feedback, monitoring, rollback, incident, support, and cleanup records needed before this gate can be treated as beta evidence. It is an intake process only; it does not replace the P0 evidence requirements in this document.
 
+The minimum operator workflow is documented in [hosted-operator-runbook.md](hosted-operator-runbook.md). The runbook explains pause, queue/failure checks, rollback, compact record deletion, incident escalation, support triage, and cleanup. It is not evidence until the steps are exercised against deployed artifacts and recorded.
+
 The evaluator blocks hosted exposure unless every P0 item has fresh evidence, a `sha256:<digest>` container image digest is recorded, and release notes avoid positive pentest, certification, and full-audit claims. Explicit wording such as "not a pentest, certification, or full security audit" remains allowed.
 
 Source-level evidence notes for this release candidate:
