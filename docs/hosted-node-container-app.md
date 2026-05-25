@@ -134,6 +134,6 @@ It does not return:
 
 ## Current Status
 
-The repository can now instantiate a Node/container hosted app skeleton, route signed webhooks into the hosted service runtime, process one worker tick through adapters, compose the real read-only checkout scan runner behind a token-provider boundary, expose clamped worker safety budgets, and validate provider adapter references before deployment.
+The repository can now instantiate a Node/container hosted app skeleton, route signed webhooks into the hosted service runtime, process one worker tick through adapters, compose the real read-only checkout scan runner behind a token-provider boundary, expose clamped worker safety budgets, validate provider adapter references before deployment, and evaluate one Phase 3 source-checkout trial gate through `evaluateHostedSourceCheckoutTrialGate`.
 
-A public hosted environment still requires actual platform infrastructure, a public HTTPS webhook URL, platform secrets, durable queue/storage, worker sandboxing, GitHub Checks API credentials at runtime, monitoring, rollback, incident-response evidence, and the hosted operational release gate. Use [hosted-staging-deployment.md](hosted-staging-deployment.md) to plan and block staging exposure until those provider references and evidence exist.
+A public hosted environment still requires actual platform infrastructure, a public HTTPS webhook URL, platform secrets, durable queue/storage, worker sandboxing, GitHub Checks API credentials at runtime, monitoring, rollback, incident-response evidence, and a passing Phase 3 gate. Use [hosted-staging-deployment.md](hosted-staging-deployment.md) to plan and block staging exposure until those provider references and evidence exist.

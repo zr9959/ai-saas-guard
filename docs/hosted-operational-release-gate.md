@@ -179,6 +179,19 @@ The v0.41 source-checkout trial boundary is executable as a pure contract before
 
 The evidence object must stay compact and privacy-safe. It may contain job key, stage IDs, timestamps, summary counts, compact finding count, cleanup status, and safe blocked reasons. It must not include source, diffs, checkout paths, installation tokens, PR-authored commands, private URLs, or low-level filesystem errors.
 
+### Phase 3 Source Checkout Trial Gate
+
+The v0.42 hosted worker export adds `evaluateHostedSourceCheckoutTrialGate`. This is the single gate for closing Phase 3 and deciding whether the project may move toward Phase 4 hosted beta.
+
+The gate combines:
+
+- source-checkout trial plan checks from `createHostedSourceCheckoutTrialPlan`
+- stage evidence checks from `createHostedSourceCheckoutEvidence`
+- read-only checkout scan checks from `evaluateHostedReadOnlyCheckoutScanGate`
+- operator proof for live smoke, rollback, monitoring evidence, and incident owner recording
+
+It returns `readyForPhase4Beta: true` only when all four layers pass. Otherwise it returns safe blocked reasons and the next action: do not open hosted beta until the missing proof is rerun. The response must remain compact and privacy-safe: no raw source, raw diffs, checkout paths, installation tokens, public hosted scanner claim, private URLs, or PR-authored commands.
+
 ### Log Boundary Evidence
 
 Before exposure, sample ingress, queue, worker, report, and Check Run logs for the release candidate. The sample may contain scan key, installation ID, repository ID, PR number, head SHA, scanner version, duration, summary counts, error class, and cleanup status.

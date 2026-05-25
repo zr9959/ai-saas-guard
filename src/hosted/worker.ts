@@ -204,6 +204,49 @@ export interface HostedReadOnlyCheckoutScanGate {
   };
 }
 
+export interface HostedSourceCheckoutTrialGateInput
+  extends HostedSourceCheckoutTrialPlanInput,
+    Omit<HostedSourceCheckoutEvidenceInput, "requestedAt" | "rawSource" | "rawDiff" | "checkoutPath" | "installationToken">,
+    Omit<
+      HostedReadOnlyCheckoutScanGateInput,
+      "requestedAt" | "jobKey" | "summaryCounts" | "compactFindingCount" | "rawSource" | "rawDiff" | "checkoutPath" | "installationToken"
+    > {
+  liveSmokePassed: boolean;
+  rollbackTested: boolean;
+  monitoringEvidence: boolean;
+  incidentOwnerRecorded: boolean;
+  rawSource?: string;
+  rawDiff?: string;
+  checkoutPath?: string;
+  installationToken?: string;
+}
+
+export interface HostedSourceCheckoutTrialGate {
+  phase: "phase_3_hosted_source_checkout_trial";
+  readyForPhase4Beta: boolean;
+  blockedReasons: string[];
+  requestedAt: string;
+  repositoryFullName: string;
+  jobKey: string;
+  plan: HostedSourceCheckoutTrialPlan;
+  evidence: HostedSourceCheckoutEvidence;
+  scanGate: HostedReadOnlyCheckoutScanGate;
+  operatorProof: {
+    liveSmokePassed: boolean;
+    rollbackTested: boolean;
+    monitoringEvidence: boolean;
+    incidentOwnerRecorded: boolean;
+  };
+  nextAction: string;
+  privacy: {
+    includesRawSource: false;
+    includesRawDiffs: false;
+    includesPrivateCheckoutPath: false;
+    includesInstallationToken: false;
+    claimsPublicHostedScanner: false;
+  };
+}
+
 export type HostedReadOnlyCheckoutScanSafeReason =
   | "invalid_worker_plan"
   | "invalid_repository_full_name"
@@ -385,6 +428,77 @@ export function evaluateHostedReadOnlyCheckoutScanGate(
       includesPrivateCheckoutPath: false,
       includesInstallationToken: false,
       claimsCompleteHostedSaas: false
+    }
+  };
+}
+
+export function evaluateHostedSourceCheckoutTrialGate(
+  input: HostedSourceCheckoutTrialGateInput
+): HostedSourceCheckoutTrialGate {
+  const plan = createHostedSourceCheckoutTrialPlan(input);
+  const evidence = createHostedSourceCheckoutEvidence({
+    requestedAt: input.requestedAt,
+    jobKey: input.jobKey,
+    stages: input.stages,
+    summaryCounts: input.summaryCounts,
+    compactFindingCount: input.compactFindingCount,
+    cleanupStatus: input.cleanupStatus,
+    rawSource: input.rawSource,
+    rawDiff: input.rawDiff,
+    checkoutPath: input.checkoutPath,
+    installationToken: input.installationToken
+  });
+  const scanGate = evaluateHostedReadOnlyCheckoutScanGate({
+    requestedAt: input.requestedAt,
+    jobKey: input.jobKey,
+    commandStages: input.commandStages,
+    summaryCounts: input.summaryCounts,
+    compactFindingCount: input.compactFindingCount,
+    compactReportStored: input.compactReportStored,
+    checkRunPublished: input.checkRunPublished,
+    checkoutDeleted: input.checkoutDeleted,
+    tokenRemovedBeforeCli: input.tokenRemovedBeforeCli,
+    maxOutputBytes: input.maxOutputBytes,
+    timeoutMs: input.timeoutMs,
+    rawSource: input.rawSource,
+    rawDiff: input.rawDiff,
+    checkoutPath: input.checkoutPath,
+    installationToken: input.installationToken
+  });
+  const operatorBlockedReasons = operatorProofBlockedReasons(input);
+  const blockedReasons = [
+    ...plan.blockedReasons,
+    ...evidence.blockedReasons,
+    ...scanGate.blockedReasons,
+    ...operatorBlockedReasons
+  ];
+
+  return {
+    phase: "phase_3_hosted_source_checkout_trial",
+    readyForPhase4Beta: blockedReasons.length === 0,
+    blockedReasons,
+    requestedAt: input.requestedAt,
+    repositoryFullName: input.repositoryFullName,
+    jobKey: input.jobKey,
+    plan,
+    evidence,
+    scanGate,
+    operatorProof: {
+      liveSmokePassed: input.liveSmokePassed,
+      rollbackTested: input.rollbackTested,
+      monitoringEvidence: input.monitoringEvidence,
+      incidentOwnerRecorded: input.incidentOwnerRecorded
+    },
+    nextAction:
+      blockedReasons.length === 0
+        ? "Phase 3 is closed for the selected-repository trial. Continue to Phase 4 beta only with the same privacy boundary."
+        : "Do not open hosted beta. Resolve the blocked reasons and rerun the selected-repository source-checkout trial gate.",
+    privacy: {
+      includesRawSource: false,
+      includesRawDiffs: false,
+      includesPrivateCheckoutPath: false,
+      includesInstallationToken: false,
+      claimsPublicHostedScanner: false
     }
   };
 }
@@ -664,6 +778,15 @@ function isTrustedFixedReadOnlyPlan(input: HostedServiceScanRunnerInput): boolea
 
 function arraysEqual(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function operatorProofBlockedReasons(input: HostedSourceCheckoutTrialGateInput): string[] {
+  const reasons: string[] = [];
+  if (!input.liveSmokePassed) reasons.push("live_smoke_missing");
+  if (!input.rollbackTested) reasons.push("rollback_test_missing");
+  if (!input.monitoringEvidence) reasons.push("monitoring_evidence_missing");
+  if (!input.incidentOwnerRecorded) reasons.push("incident_owner_missing");
+  return reasons;
 }
 
 function compactFinding(value: unknown): CompactHostedFinding[] {

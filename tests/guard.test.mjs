@@ -1576,6 +1576,7 @@ test("public docs define the hosted Node container app skeleton", async () => {
   assert.match(app, /createHostedHttpApp/);
   assert.match(app, /createInMemoryHostedAppPlatform/);
   assert.match(app, /planHostedNodeContainerDeployment/);
+  assert.match(app, /evaluateHostedSourceCheckoutTrialGate/);
   assert.match(app, /node_container/);
   assert.match(app, /webhook-ingress/);
   assert.match(app, /scan-worker/);
@@ -1783,6 +1784,10 @@ test("public docs define the hosted operational release gate", async () => {
   assert.match(gate, /Source Checkout Trial Evidence Contract/i);
   assert.match(gate, /createHostedSourceCheckoutTrialPlan/);
   assert.match(gate, /createHostedSourceCheckoutEvidence/);
+  assert.match(gate, /evaluateHostedSourceCheckoutTrialGate/);
+  assert.match(gate, /readyForPhase4Beta/);
+  assert.match(gate, /live smoke/i);
+  assert.match(gate, /incident owner/i);
   assert.match(gate, /checkout_start/);
   assert.match(gate, /token_remove/);
   assert.match(gate, /compact_report_write/);
