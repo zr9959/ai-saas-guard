@@ -17,6 +17,13 @@ const EVENT_TTL_SECONDS = 60 * 60 * 24 * 30;
 export const MAX_WEBHOOK_PAYLOAD_BYTES = 1024 * 1024;
 const MAX_PR_FILES_PAGES = 3;
 const MAX_PATCH_CHARS_PER_FILE = 20_000;
+const HOSTED_APP_PERMISSIONS = {
+  checks: "write",
+  contents: "read",
+  metadata: "read",
+  pull_requests: "read"
+};
+const HOSTED_APP_EVENTS = ["pull_request", "installation", "installation_repositories"];
 
 const CATEGORY_WEIGHTS = {
   "auth/session": 30,
@@ -36,6 +43,10 @@ export default {
 
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/healthz")) {
       return jsonResponse(200, createHostedWorkerHealth(env));
+    }
+
+    if (request.method === "GET" && url.pathname === "/github/app/install-info") {
+      return jsonResponse(200, createHostedInstallInfo(env));
     }
 
     if (request.method === "GET" && url.pathname === "/github/app/manifest-callback") {
@@ -124,6 +135,38 @@ export default {
         accepted: true,
         stage: "duplicate_delivery",
         deliveryId,
+        shouldCreateCheckRun: false,
+        privacy: HOSTED_WORKER_PRIVACY
+      });
+    }
+
+    if (eventName === "installation" || eventName === "installation_repositories") {
+      let installationPayload;
+      try {
+        installationPayload = JSON.parse(payload);
+      } catch {
+        return jsonResponse(400, {
+          accepted: false,
+          stage: "payload",
+          reason: "invalid_json",
+          deliveryId,
+          privacy: HOSTED_WORKER_PRIVACY
+        });
+      }
+
+      const cleanup = await handleInstallationCleanupEvent({
+        kv: env.HOSTED_EVENTS,
+        deliveryKey,
+        deliveryId,
+        eventName,
+        payload: installationPayload
+      });
+      return jsonResponse(202, {
+        accepted: true,
+        stage: cleanup.cleaned ? "cleanup" : "ignored",
+        reason: cleanup.reason,
+        deliveryId,
+        deletedRecords: cleanup.deletedRecords,
         shouldCreateCheckRun: false,
         privacy: HOSTED_WORKER_PRIVACY
       });
@@ -275,9 +318,27 @@ export function createHostedWorkerHealth(env = {}) {
     ok: true,
     service: "ai-saas-guard-hosted",
     mode: "webhook-ingress",
-    routes: ["/healthz", "/github/app/manifest-callback", "/github/webhook"],
+    routes: ["/healthz", "/github/app/install-info", "/github/app/manifest-callback", "/github/webhook"],
     storage: "cloudflare_kv",
     checkRunPublisher: hasGitHubCheckRunConfig(env) ? "configured" : "not_configured",
+    scannerVersion: env.SCANNER_VERSION || "unknown",
+    privacy: HOSTED_WORKER_PRIVACY
+  };
+}
+
+export function createHostedInstallInfo(env = {}) {
+  const slug = stringValue(env.GITHUB_APP_SLUG) ?? "ai-saas-guard-hosted";
+
+  return {
+    ok: true,
+    service: "ai-saas-guard-hosted",
+    installUrl: `https://github.com/apps/${encodeURIComponent(slug)}/installations/new`,
+    permissions: HOSTED_APP_PERMISSIONS,
+    events: HOSTED_APP_EVENTS,
+    boundary:
+      "Install on selected repositories only. The hosted check turns PR trust-boundary changes into a review queue; it is not an AI reviewer, pentest, full audit, or certification.",
+    uninstall:
+      "Uninstall or repository removal deletes compact records for that installation or repository when GitHub sends the signed event. Local CLI use does not depend on hosted installation.",
     scannerVersion: env.SCANNER_VERSION || "unknown",
     privacy: HOSTED_WORKER_PRIVACY
   };
@@ -385,6 +446,97 @@ function isPayloadTooLarge(contentLength) {
 
 async function storeJson(kv, key, value) {
   await kv.put(key, JSON.stringify(value), { expirationTtl: EVENT_TTL_SECONDS });
+}
+
+async function handleInstallationCleanupEvent({ kv, deliveryKey, deliveryId, eventName, payload }) {
+  const cleanup = resolveInstallationCleanup(payload, eventName);
+  await storeJson(kv, deliveryKey, {
+    deliveryId,
+    eventName,
+    accepted: true,
+    reason: cleanup.reason,
+    installationId: cleanup.installationId,
+    repositoryIds: cleanup.repositoryIds,
+    receivedAt: new Date().toISOString()
+  });
+
+  if (!cleanup.cleaned || cleanup.installationId === undefined) {
+    return { ...cleanup, deletedRecords: 0 };
+  }
+
+  const deletedRecords = await deleteCompactRecordsForInstallation({
+    kv,
+    installationId: cleanup.installationId,
+    repositoryIds: cleanup.repositoryIds
+  });
+  return { ...cleanup, deletedRecords };
+}
+
+function resolveInstallationCleanup(payload, eventName) {
+  const installationId = integerValue(payload?.installation?.id);
+  if (installationId === undefined) {
+    return {
+      cleaned: false,
+      reason: "missing_installation_id",
+      installationId,
+      repositoryIds: []
+    };
+  }
+
+  if (eventName === "installation" && payload?.action === "deleted") {
+    return {
+      cleaned: true,
+      reason: "installation_deleted",
+      installationId,
+      repositoryIds: []
+    };
+  }
+
+  if (eventName === "installation_repositories" && payload?.action === "removed") {
+    const repositoryIds = Array.isArray(payload?.repositories_removed)
+      ? payload.repositories_removed.map((repo) => integerValue(repo?.id)).filter((id) => id !== undefined)
+      : [];
+    return {
+      cleaned: repositoryIds.length > 0,
+      reason: repositoryIds.length > 0 ? "repositories_removed" : "no_removed_repositories",
+      installationId,
+      repositoryIds
+    };
+  }
+
+  return {
+    cleaned: false,
+    reason: "installation_event_ignored",
+    installationId,
+    repositoryIds: []
+  };
+}
+
+async function deleteCompactRecordsForInstallation({ kv, installationId, repositoryIds }) {
+  if (typeof kv?.list !== "function" || typeof kv?.delete !== "function") {
+    return 0;
+  }
+
+  let deleted = 0;
+  const prefixes =
+    repositoryIds.length > 0
+      ? repositoryIds.map((repositoryId) => `scan:${installationId}:${repositoryId}:`)
+      : [`scan:${installationId}:`];
+
+  for (const prefix of prefixes) {
+    let cursor;
+    do {
+      const page = await kv.list({ prefix, cursor });
+      for (const key of page.keys ?? []) {
+        if (typeof key?.name !== "string") continue;
+        await kv.delete(key.name);
+        deleted += 1;
+      }
+      cursor = page.list_complete === false ? page.cursor : undefined;
+    } while (cursor);
+  }
+
+  return deleted;
 }
 
 async function runHostedPrRiskCheck({ env, identity, scanKey, scannerVersion }) {
@@ -672,6 +824,8 @@ function renderCheckRunSummary({ identity, report, scannerVersion }) {
     `Launch-risk gate: ai-saas-guard found ${report.summary.total} PR risk signal(s) for ${identity.repositoryFullName}#${identity.pullRequestNumber}. Review first: inspect the listed trust-boundary files before merge.`,
     `Scanner version: ${scannerVersion}.`,
     "",
+    "Selected-repository hosted check: this App uses checks:write, contents:read, pull_requests:read, and metadata:read for the installed repository only.",
+    "",
     "This is not an AI reviewer, pentest, certification, or full security audit. Review the listed files before merge.",
     "",
     "Launch decision queue:",
@@ -683,10 +837,11 @@ function renderCheckRunSummary({ identity, report, scannerVersion }) {
   ];
 
   if (report.topRiskyFiles.length > 0) {
-    lines.push("", "Top files:");
+    lines.push("", "Review queue:");
     for (const file of report.topRiskyFiles.slice(0, 5)) {
       lines.push(`- ${file.path}: ${file.categories.join(", ")} (${file.added}+/${file.removed}-)`);
     }
+    lines.push("", "Manual proof:", "- Review the listed files locally and prove auth, billing, data, deploy, or test changes fail closed before merge.");
   }
 
   if (report.truncated) {
