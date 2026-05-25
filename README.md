@@ -170,7 +170,7 @@ For a concise comparison with Semgrep, zizmor, OpenSSF Scorecard, Snyk, and GitH
 | --- | --- | --- |
 | Local CLI | Private code, first local launch review, founder or reviewer workflow | Published on npm; local-first, read-only, no code upload, no LLM calls |
 | GitHub Action | CI review queue, SARIF upload, PR summary artifacts, controlled fail thresholds | Available through `zr9959/ai-saas-guard@v0` and fixed version tags |
-| Hosted GitHub App | Future hosted Check Run experience for selected repositories | Limited trial gate with staging ingress, public install-info, compact Check Runs, and cleanup handling; not the complete hosted SaaS, not a public hosted scanner |
+| Hosted GitHub App | Selected-repository Check Run for AI-heavy SaaS PRs | Limited trial gate with [install/privacy notes](docs/hosted-install-privacy.md), public install-info, compact Check Runs, and cleanup handling; not the complete hosted SaaS, not a public hosted scanner |
 
 ## Quick Start
 
@@ -233,16 +233,16 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Area | Status |
 | --- | --- |
 | Public GitHub repository | Available |
-| npm CLI | `ai-saas-guard@0.38.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.38.0` |
+| npm CLI | `ai-saas-guard@0.39.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` or fixed tag `v0.39.0` |
 | Outputs | Launch decision queue, short summary, terminal, JSON, SARIF, and PR-focused markdown |
 | Project config | `.ai-saas-guard.json` rule toggles, severity overrides, suppressions, and fail thresholds |
 | Privacy model | Local-first, read-only scan commands, no LLM calls, no code upload |
-| Versioned Action tags | `v0.38.0`, `v0` |
-| Current release | `0.38.0` closes more of the hosted GitHub App staging loop with public install guidance, selected-repository Check Run wording, signed installation cleanup, and updated hosted docs/tests |
+| Versioned Action tags | `v0.39.0`, `v0` |
+| Current release | `0.39.0` adds a real hosted PR smoke runner, tighter Check Run review wording, hosted install/privacy docs, and a stronger hosted release cleanup gate |
 | npm publishing | Trusted Publisher/OIDC, no long-lived publish token |
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
-| Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
+| Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; public install/privacy notes are in [docs/hosted-install-privacy.md](docs/hosted-install-privacy.md); signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
 | Hosted GitHub App staging | Private App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard`; hosted operations evidence is in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
 | OpenSSF Best Practices | Passing badge, project `12955`; `.bestpractices.json` remains the conservative evidence record |
 | Previous roadmap | v0.36.0 plan is tracked in [docs/v0.36-roadmap.md](docs/v0.36-roadmap.md) |
@@ -365,6 +365,8 @@ Deployed worker staging evidence is documented in [docs/hosted-deployed-worker-s
 
 The first live hosted ingress is deployed on Cloudflare Workers at `https://ai-saas-guard-hosted.zr9959.workers.dev` and documented in [hosted/cloudflare-worker/README.md](hosted/cloudflare-worker/README.md). It exposes `/healthz`, `/github/app/install-info`, `/github/app/manifest-callback`, and signed `/github/webhook` intake backed by Cloudflare KV. A private staging GitHub App, `ai-saas-guard-hosted`, is installed on `zr9959/ai-saas-guard` with selected-repository access and the first-slice permission contract. The Worker verifies signatures, stores compact pull request identity records, exchanges a scoped installation token, fetches PR file metadata from GitHub, classifies PR-risk hotspots, and publishes a bounded selected-repository hosted check with a review queue and manual proof prompt. Signed installation deletion and repository removal events delete matching compact records. Current deployed evidence is tracked in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md): health, signed webhook delivery, compact KV records, cleanup, and Check Run publication pass in staging. The Cloudflare Worker still does not run a full source checkout scan worker or store raw webhook payloads, PR title/body text, raw diffs, source, secrets, checkout paths, or installation tokens.
 
+Hosted install and privacy details are summarized in [docs/hosted-install-privacy.md](docs/hosted-install-privacy.md): selected-repository permissions, supported events, Check Run data boundaries, uninstall cleanup, and why the local CLI remains the private/offline path.
+
 The hosted operational release gate is documented in [docs/hosted-operational-release-gate.md](docs/hosted-operational-release-gate.md). It defines the hosted-specific CI, replay, queue, worker cleanup, privacy, monitoring, rollback, and incident-response evidence required before any hosted environment is exposed to users. The pure gate evaluator exported from `ai-saas-guard/hosted/contracts` blocks hosted exposure unless every P0 evidence item is fresh, a container digest is recorded, and release notes avoid pentest, certification, and full-audit claims.
 
 Hosted uninstall and data deletion behavior is documented in [docs/hosted-uninstall-data-deletion.md](docs/hosted-uninstall-data-deletion.md). It defines repository removal, full app uninstall, compact report deletion, queue cancellation, audit record retention, repeated cleanup, and user-facing deletion wording.
@@ -417,7 +419,7 @@ Use `suppressions` for narrower false-positive handling when one rule is noisy o
 
 ## GitHub Action
 
-The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.38.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
+The repo includes a composite Action. Use `v0` for the latest compatible pre-1.0 Action, a specific release tag such as `v0.39.0` for controlled upgrades, or pin a reviewed commit SHA for stricter supply-chain control:
 
 ```yaml
 name: ai-saas-guard

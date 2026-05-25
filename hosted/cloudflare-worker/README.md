@@ -23,7 +23,7 @@ This Worker is a real hosted ingress with first-slice Check Run publishing code,
 - `HOSTED_EVENTS`: Cloudflare KV namespace for compact delivery and queued scan records.
 - `WEBHOOK_SECRET`: Worker secret matching the GitHub App webhook secret.
 - `GITHUB_APP_PRIVATE_KEY`: Worker secret for the staging GitHub App private key, used only in memory to sign short-lived GitHub App JWTs.
-- `SCANNER_VERSION`: public version string, currently `0.38.0`.
+- `SCANNER_VERSION`: public version string, currently `0.39.0`.
 - `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_INSTALLATION_ID`: public staging identifiers for the private GitHub App installation.
 
 ## Deployment
@@ -83,6 +83,26 @@ The Worker handles signed GitHub cleanup events, including installation deletion
 - repeated cleanup is safe because deleting an already-removed compact record is a no-op.
 
 Delivery audit records may remain for the normal KV TTL. They must not contain source, diffs, secrets, customer payloads, PR-authored text, checkout paths, or installation tokens.
+
+## Real PR Smoke Automation
+
+Use the repository smoke runner before each hosted release:
+
+```bash
+node scripts/hosted-pr-smoke.mjs --plan
+node scripts/hosted-pr-smoke.mjs
+```
+
+The real run is intentionally narrow:
+
+- creates a temporary branch named `codex/hosted-smoke-<timestamp>`
+- commits one public smoke marker file with no secrets or source excerpts
+- opens a temporary PR against `zr9959/ai-saas-guard`
+- waits for the `ai-saas-guard PR risk` Check Run on the trusted head SHA
+- records only the Check Run conclusion, URL, and safe output title
+- closes the PR, deletes the branch, restores the local branch, and clears staging KV `delivery:` and `scan:` records with `wrangler kv bulk delete`
+
+The script refuses to run against another repository, requires HTTPS Worker URLs, and keeps the local CLI path available even if hosted smoke fails.
 
 ## Release Boundary
 

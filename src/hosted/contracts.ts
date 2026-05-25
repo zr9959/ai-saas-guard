@@ -1373,7 +1373,12 @@ export function createHostedCheckRunSummary(
     conclusion,
     output: {
       title: formatCheckRunTitle(totalFindings, conclusion, input.failOnSeverity),
-      summary: `Launch-risk gate: ${launchGate}. Launch gate: ${launchGate}. Review first: What changed at the launch boundary? Manual proof required before release. This is not an AI reviewer and not a full security audit, pentest, or certification.`,
+      summary: [
+        `Launch-risk gate: ${launchGate}. Launch gate: ${launchGate}.`,
+        "Review task: inspect the files below before merge.",
+        "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
+        "Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification."
+      ].join(" "),
       text: truncateMarkdown(
         formatCheckRunMarkdown(report, conclusion, localCliCommand, launchGate),
         input.maxMarkdownChars
@@ -2265,7 +2270,9 @@ function formatCheckRunMarkdown(
   return [
     "### AI SaaS Guard Launch-risk gate",
     "",
-    "Review first: verify findings locally before launch or merge. Not an AI reviewer or full security audit.",
+    "Review task: inspect the files below before merge.",
+    "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
+    "Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification.",
     "",
     `Launch gate: ${launchGate}`,
     `Conclusion: ${conclusion}`,
@@ -2276,9 +2283,9 @@ function formatCheckRunMarkdown(
     ...(categories.length === 0 ? ["- None"] : categories.map((category) => `- ${category}`)),
     "",
     "Verification steps:",
-    "- Review listed files before release or merge.",
+    "- Inspect the listed files locally before release or merge.",
     "- Reproduce locally with the CLI command above.",
-    "- Confirm behavior with app-specific tests.",
+    "- Prove changed auth, billing, data, deploy, or tests fail closed.",
     "",
     "Launch decision queue:",
     "- Can a real user get access they should not have?",

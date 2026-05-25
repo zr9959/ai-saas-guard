@@ -853,11 +853,42 @@ test("npm package excludes macOS AppleDouble metadata files", async () => {
     assert.ok(packedPaths.includes("docs/README.zh-CN.md"));
     assert.ok(!packedPaths.includes("README.zh-CN.md"));
     assert.ok(packedPaths.includes("hosted/cloudflare-worker/README.md"));
+    assert.ok(packedPaths.includes("scripts/hosted-pr-smoke.mjs"));
     assert.ok(!packedPaths.some((filePath) => filePath.startsWith("._") || filePath.includes("/._")));
     assert.ok(!packedPaths.some((filePath) => filePath.startsWith(".wrangler") || filePath.includes("/.wrangler/")));
   } finally {
     await rm(appleDoubleFile, { force: true });
   }
+});
+
+test("hosted real PR smoke runner has a safe plan and cleanup boundary", async () => {
+  const scriptPath = resolve(packageRoot, "scripts", "hosted-pr-smoke.mjs");
+  const script = await readFile(scriptPath, "utf8");
+  const { stdout } = await execFileAsync("node", [scriptPath, "--plan"], { cwd: packageRoot });
+  const plan = JSON.parse(stdout);
+
+  assert.equal(plan.repo, "zr9959/ai-saas-guard");
+  assert.match(plan.branch, /^codex\/hosted-smoke-\d+/);
+  assert.equal(plan.checkName, "ai-saas-guard PR risk");
+  assert.equal(plan.installInfoUrl, "https://ai-saas-guard-hosted.zr9959.workers.dev/github/app/install-info");
+  assert.equal(plan.privacy.writesSourceToLogs, false);
+  assert.equal(plan.privacy.writesTokensToLogs, false);
+  assert.equal(plan.privacy.closesTemporaryPullRequest, true);
+  assert.equal(plan.privacy.deletesTemporaryBranch, true);
+  assert.equal(plan.privacy.clearsHostedKvSmokeRecords, true);
+  assert.match(script, /Refusing hosted smoke outside/);
+  assert.match(script, /Refusing hosted smoke with dirty working tree/);
+  assert.match(script, /async function gh\(args\)/);
+  assert.match(script, /return run\("gh", args\)/);
+  assert.match(script, /"pr",\s*"create"/);
+  assert.match(script, /"pr",\s*"close"/);
+  assert.match(script, /--delete-branch/);
+  assert.match(script, /"push",\s*"origin",\s*"--delete"/);
+  assert.match(script, /check-runs/);
+  assert.match(script, /"--method",\s*"GET"/);
+  assert.match(script, /"kv",\s*"bulk",\s*"delete"/);
+  assert.match(script, /delivery\|scan/);
+  assert.doesNotMatch(script, /sk_(?:live|test)_|whsec_|ghs_[A-Za-z0-9]/);
 });
 
 test(".ai-saas-guardignore excludes matching files from scans", async () => {
@@ -1747,7 +1778,13 @@ test("public docs define the hosted operational release gate", async () => {
   assert.match(gate, /manual_rollback/i);
   assert.match(gate, /incident_response/i);
   assert.match(gate, /release_cleanup/i);
+  assert.match(gate, /hosted_pr_smoke/i);
+  assert.match(gate, /scripts\/hosted-pr-smoke\.mjs/);
+  assert.match(gate, /codex\/hosted-smoke-\*/);
+  assert.match(gate, /Check Runs with a GET request/i);
+  assert.match(gate, /delivery:.*scan:/is);
   assert.match(gate, /temporary files/i);
+  assert.match(gate, /temporary smoke PRs/i);
   assert.match(gate, /worker checkouts/i);
   assert.match(gate, /long-running processes/i);
   assert.match(gate, /no raw source/i);
@@ -1784,6 +1821,35 @@ test("public docs define hosted uninstall and data deletion behavior", async () 
   assert.doesNotMatch(deletion, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
 });
 
+test("public docs explain hosted install and privacy boundaries", async () => {
+  const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
+  const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
+  const installPrivacy = await readFile(resolve(packageRoot, "docs", "hosted-install-privacy.md"), "utf8");
+
+  assert.match(readme, /docs\/hosted-install-privacy\.md/);
+  assert.match(zhReadme, /hosted-install-privacy\.md/);
+  assert.match(installPrivacy, /Hosted Install And Privacy/i);
+  assert.match(installPrivacy, /ai-saas-guard-hosted\.zr9959\.workers\.dev\/github\/app\/install-info/);
+  assert.match(installPrivacy, /https:\/\/github\.com\/apps\/ai-saas-guard-hosted\/installations\/new/);
+  assert.match(installPrivacy, /3834787/);
+  assert.match(installPrivacy, /selected-repository access/i);
+  assert.match(installPrivacy, /checks.*write/is);
+  assert.match(installPrivacy, /contents.*read/is);
+  assert.match(installPrivacy, /pull_requests.*read/is);
+  assert.match(installPrivacy, /metadata.*read/is);
+  assert.match(installPrivacy, /pull_request/);
+  assert.match(installPrivacy, /installation_repositories/);
+  assert.match(installPrivacy, /no raw source/i);
+  assert.match(installPrivacy, /no raw diffs/i);
+  assert.match(installPrivacy, /no webhook payload bodies/i);
+  assert.match(installPrivacy, /no PR title or body text/i);
+  assert.match(installPrivacy, /no installation tokens/i);
+  assert.match(installPrivacy, /no LLM calls/i);
+  assert.match(installPrivacy, /hosted-uninstall-data-deletion\.md/);
+  assert.match(installPrivacy, /not yet the complete source checkout scan worker/i);
+  assert.doesNotMatch(installPrivacy, /client_secret|private key|webhook secret|sk_(?:live|test)_|whsec_/i);
+});
+
 test("public docs record hosted operations evidence without overclaiming delivery", async () => {
   const readme = await readFile(resolve(packageRoot, "README.md"), "utf8");
   const zhReadme = await readFile(resolve(packageRoot, "docs/README.zh-CN.md"), "utf8");
@@ -1801,6 +1867,10 @@ test("public docs record hosted operations evidence without overclaiming deliver
   assert.match(evidence, /failure cleanup/i);
   assert.match(evidence, /log boundary/i);
   assert.match(evidence, /source-candidate executable evidence/i);
+  assert.match(evidence, /scripts\/hosted-pr-smoke\.mjs/);
+  assert.match(evidence, /dirty working tree/i);
+  assert.match(evidence, /gh api --method GET/i);
+  assert.match(evidence, /remote branch deletion/i);
   assert.match(evidence, /validateHostedLogBoundary/i);
   assert.match(evidence, /askpass/i);
   assert.match(evidence, /no raw source/i);

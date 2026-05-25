@@ -10,6 +10,10 @@ Recorded on 2026-05-25 from the deployed Cloudflare Worker plus the earlier temp
 
 | Check | Evidence | Result |
 | --- | --- | --- |
+| Cloudflare Worker health, v0.39.0 | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned `ok: true`, routes including `/github/app/install-info`, `checkRunPublisher: "configured"`, `scannerVersion: "0.39.0"`, and all privacy flags set to false for raw payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens | Passed |
+| Public install guidance, v0.39.0 | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/github/app/install-info` returned the `ai-saas-guard-hosted` install URL, selected-repository boundary wording, first-slice permissions `checks: write`, `contents: read`, `metadata: read`, `pull_requests: read`, subscribed events `pull_request`, `installation`, and `installation_repositories`, uninstall cleanup wording, `scannerVersion: "0.39.0"`, and no private keys, webhook secrets, installation tokens, source, diffs, or customer payloads | Passed |
+| Deployed Worker version, v0.39.0 | `wrangler deploy` uploaded 36.25 KiB / gzip 9.26 KiB and deployed version `91aebf30-4c25-4639-bf5c-6f8be4e85690` at `2026-05-25T12:26:24Z` verification time | Passed |
+| Real hosted PR smoke, v0.39.0 | `node scripts/hosted-pr-smoke.mjs` opened temporary PR `#82`, waited for Check Run `77711358510` on head SHA `64fa25f631a78131b19ee33094c9469736f151dc`, received conclusion `success`, closed the PR, deleted branch `codex/hosted-smoke-20260525122732`, and `wrangler kv key list --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote` returned `[]` after cleanup | Passed |
 | Cloudflare Worker health, v0.38.0 | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned `ok: true`, routes including `/github/app/install-info`, `checkRunPublisher: "configured"`, `scannerVersion: "0.38.0"`, and all privacy flags set to false for raw payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens | Passed |
 | Public install guidance, v0.38.0 | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/github/app/install-info` returned the `ai-saas-guard-hosted` install URL, selected-repository boundary wording, first-slice permissions `checks: write`, `contents: read`, `metadata: read`, `pull_requests: read`, subscribed events `pull_request`, `installation`, and `installation_repositories`, uninstall cleanup wording, `scannerVersion: "0.38.0"`, and no private keys, webhook secrets, installation tokens, source, diffs, or customer payloads | Passed |
 | Deployed Worker version, v0.38.0 | `wrangler deploy` uploaded 36.35 KiB / gzip 9.30 KiB and deployed version `5999ccce-c64d-4f3f-96c9-b46cff5a2aed` at `2026-05-25T10:51:30Z` verification time | Passed |
@@ -66,3 +70,14 @@ npx wrangler kv key list --namespace-id fa5344fbd7944de6a776bf8731d58460 --remot
 Then open a temporary no-file-change PR, wait for an `ai-saas-guard PR risk` Check Run on the smoke commit, and close the PR plus delete the branch. After the smoke run, verify no temporary KV records remain unless a retained compact report is intentionally part of that test.
 
 Do not leave smoke PRs, scratch branches, package tarballs, SARIF files, or test KV records behind.
+
+The executable path for this procedure is:
+
+```bash
+node scripts/hosted-pr-smoke.mjs --plan
+node scripts/hosted-pr-smoke.mjs
+```
+
+The script is the preferred release-gate evidence path for the current Cloudflare hosted ingress. It creates a temporary `codex/hosted-smoke-*` branch and PR, waits for the hosted `ai-saas-guard PR risk` Check Run, records only public-safe Check Run metadata, closes the PR, deletes the branch, restores the local branch, and bulk-deletes staging KV `delivery:` and `scan:` records. It refuses to target repositories outside `zr9959/ai-saas-guard` and does not print source, diffs, secrets, installation tokens, customer payloads, or checkout paths.
+
+The script also refuses to run against a dirty working tree, queries the trusted head SHA Check Run through `gh api --method GET`, and attempts remote branch deletion even if PR creation or Check Run polling fails. That makes it suitable for release evidence because failure paths still exercise cleanup instead of leaving smoke resources behind.

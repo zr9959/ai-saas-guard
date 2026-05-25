@@ -21,6 +21,8 @@ Every hosted release must record:
 - privacy and retention evidence
 - monitoring and alerting checks
 - manual rollback result
+- real hosted PR smoke result, when a live GitHub App ingress is deployed
+- staging KV cleanup result for `delivery:` and `scan:` smoke records
 - incident response owner and escalation path
 
 ## P0 Gate Summary
@@ -35,6 +37,7 @@ Every hosted release must record:
 8. Retention checks prove compact reports expire according to policy.
 9. Monitoring and alerting checks cover ingress, queue depth, worker failures, check run failures, and cleanup failures.
 10. Manual rollback is tested against the release candidate.
+11. Any deployed GitHub App ingress passes a real temporary PR smoke with Check Run evidence and post-smoke branch, PR, and KV cleanup.
 
 ## Current Source Candidate Evidence Notes
 
@@ -58,6 +61,7 @@ Source-level evidence notes for this release candidate:
 | `container_scan` | Container image scan has no unresolved high or critical runtime-layer findings | No hosted container image exists in the public package release | Not applicable to current non-hosted release; required before hosted exposure |
 | `queue_worker_cleanup` | Queue dedupe, running cancellation, terminal cleanup, worker checkout deletion, and no long-running processes | Pure queue, worker, checkout, retention cleanup planner tests, staging harness success/failure cleanup probes, and deployed worker staging cleanup evidence helper | Passed for source candidate; deployed helper can record success/failure cleanup before exposure |
 | `privacy_retention` | No raw source, raw diffs, secrets, customer payloads, private URLs, or full file contents; retention and uninstall cleanup are proven | Compact report, Check Run publication, retention/deletion cleanup, docs tests, `validateHostedLogBoundary` source-candidate log checks, and deployed log-boundary staging evidence | Passed for source candidate; deployed log sampling still required before exposure |
+| `hosted_pr_smoke` | Deployed GitHub App ingress creates a temporary PR, publishes `ai-saas-guard PR risk`, closes the PR, deletes the branch, and clears staging `delivery:` / `scan:` KV records | `node scripts/hosted-pr-smoke.mjs --plan` plus `node scripts/hosted-pr-smoke.mjs` after deployment | Required for any release that changes the live hosted Worker or GitHub App wiring |
 | `monitoring_alerting` | Ingress, queue depth, worker failures, Check Run failures, cleanup failures, retention failures, and credential rotation alerts | Required alert list remains in this document | Documented; must attach provider evidence before exposure |
 | `manual_rollback` | Worker pause, previous artifact redeploy, queue resume, controlled ingress failure, and affected Check Run identification | Manual rollback procedure remains in this document | Documented; must execute against deployed artifact before exposure |
 | `incident_response` | Owner, backup, credential rotation, queue pause, customer communication, status path, and privacy-safe evidence collection | Incident response checklist remains in this document | Documented; must name live owners before exposure |
@@ -79,6 +83,7 @@ node dist/cli.js scan --root . --sarif
 node dist/cli.js pr-risk --root . --json
 npm audit --audit-level=high --registry=https://registry.npmjs.org
 npm pack --dry-run --json
+node scripts/hosted-pr-smoke.mjs --plan
 ```
 
 CI must also run GitHub Actions static checks:
@@ -89,6 +94,14 @@ uvx zizmor --offline .github/workflows
 ```
 
 For a hosted release candidate, CI must additionally verify the built container image or deployment artifact rather than only source files.
+
+For any release that changes the deployed Cloudflare GitHub App ingress, run the real smoke after deployment:
+
+```bash
+node scripts/hosted-pr-smoke.mjs
+```
+
+The script must refuse a dirty working tree, target only `zr9959/ai-saas-guard`, create a `codex/hosted-smoke-*` branch, query Check Runs with a GET request on the trusted head SHA, close the temporary PR, delete the remote and local branch, and bulk-delete staging KV `delivery:` / `scan:` records.
 
 ## Hosted Security Tests
 
@@ -241,9 +254,11 @@ Each hosted release run must clean:
 
 - temporary files
 - package tarballs that are not release assets
+- temporary smoke PRs and `codex/hosted-smoke-*` branches
 - worker checkouts
 - generated SARIF and JSON scratch files
 - dead test queues or local stores
+- staging KV `delivery:` and `scan:` smoke records
 - long-running processes started during verification
 
 After cleanup, `git status --short --branch` should be clean, and process checks should show no test, build, watch, queue, worker, or dev-server processes left behind.
