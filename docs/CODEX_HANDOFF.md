@@ -36,6 +36,8 @@ Post-release docs-only work after `v0.43.0`:
 
 - committed Codex handoff package and public beta evidence intake: `3177e99 docs: add codex handoff and beta evidence intake`
 - committed public beta evidence intake status: `58cb8dc docs: record public beta evidence intake status`
+- opened draft PR `#95` from branch `codex/beta-evidence-readiness`
+- added hosted operator runbook on PR `#95`
 - opened GitHub issue `#93` for design-partner feedback intake
 - opened GitHub issue `#94` for provider evidence before hosted public beta
 - rechecked Phase 4/5 gates from current evidence; both remain blocked
@@ -142,6 +144,7 @@ Hosted public beta is blocked by evidence, not by the readiness-gate code:
 - `docs/public-beta-evidence-feedback.md` defines the intake process, but no real feedback or provider evidence has been recorded yet
 - Phase 4 hosted beta readiness recheck returned `readyForPublicBeta: false`
 - Phase 5 team launch gate recheck returned `readyForTeamUse: false`
+- `docs/hosted-operator-runbook.md` documents operator workflow, but it is not evidence until exercised against deployed artifacts
 
 ## Key Decisions And Reasons
 
@@ -208,4 +211,5 @@ This handoff package explicitly covers:
 3. Summarize understanding to the user before modifying code.
 4. Do not start new development unless the user explicitly asks.
 5. Check GitHub issue `#93` for design-partner feedback intake and issue `#94` for provider evidence.
-6. If asked for next work, focus on feedback/evidence collection for public beta readiness, not more speculative features.
+6. Check draft PR `#95` for the docs-only handoff/evidence/runbook branch.
+7. If asked for next work, focus on feedback/evidence collection for public beta readiness, not more speculative features.

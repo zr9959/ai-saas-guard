@@ -209,16 +209,17 @@ Not deployed:
 - handoff docs are documentation only
 - no business code changed during handoff generation
 
-## Step 1-4 Execution After Handoff
+## Step 1-5 Execution After Handoff
 
-The user asked to proceed through the four-step plan in order.
+The user asked to proceed through the five-step plan in order.
 
 Completed:
 
 - Step 1: committed docs-only handoff and public beta evidence intake as `3177e99 docs: add codex handoff and beta evidence intake`
 - Step 2: opened GitHub issue `#93`, "Design partner feedback intake for public beta readiness"
 - Step 3: checked public hosted health and install info, checked deployed Worker version and compact KV key count, opened GitHub issue `#94`, and committed `58cb8dc docs: record public beta evidence intake status`
-- Step 4: ran `npm run build && node --test tests/hosted-beta.test.mjs`, then mapped current evidence into Phase 4/5 gates and commented the blocked result on issue `#94`
+- Step 4: added `docs/hosted-operator-runbook.md` for health checks, pause, queue/failure checks, rollback, compact record deletion, incident escalation, support triage, and cleanup
+- Step 5: ran `npm run build && node --test tests/hosted-beta.test.mjs`, then mapped current evidence into Phase 4/5 gates and commented the blocked result on issue `#94`
 
 Gate result:
 

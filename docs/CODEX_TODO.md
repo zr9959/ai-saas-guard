@@ -105,6 +105,7 @@ Files/modules:
 
 - `src/hosted/beta.ts`
 - `docs/public-beta-evidence-feedback.md`
+- `docs/hosted-operator-runbook.md`
 - `docs/hosted-operational-release-gate.md`
 - `docs/hosted-operations-evidence.md`
 - `hosted/cloudflare-worker/src/index.js`
@@ -114,6 +115,7 @@ Risks:
 - readiness gate passing in code is not the same as provider evidence passing
 - do not open public beta without real operational proof
 - the latest Phase 4 recheck is blocked on missing Phase 3 deployed proof, rate limits, abuse kill switch, uninstall/deletion proof, rollback, incident owner, and support path
+- the operator runbook is documentation only until exercised against deployed artifacts
 
 ## P1: Deploy Full Source-Checkout Worker Only With Evidence
 

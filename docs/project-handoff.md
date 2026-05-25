@@ -230,6 +230,8 @@ Post-release docs-only execution:
 - `58cb8dc docs: record public beta evidence intake status`
 - GitHub issue `#93` tracks design-partner feedback intake
 - GitHub issue `#94` tracks provider evidence before hosted public beta
+- draft PR `#95` contains the docs-only handoff/evidence/runbook branch
+- `docs/hosted-operator-runbook.md` documents the minimum operator workflow, but still needs deployed-artifact exercises before it counts as provider evidence
 - `npm run build && node --test tests/hosted-beta.test.mjs` passed with 2 tests
 - latest Phase 4 recheck returned `readyForPublicBeta: false`
 - latest Phase 5 recheck returned `readyForTeamUse: false`

@@ -206,6 +206,8 @@ For `v0.43.0`:
 - hosted beta focused test: `npm run build && node --test tests/hosted-beta.test.mjs`, 2 tests passed
 - Phase 4 gate recheck: `readyForPublicBeta: false`
 - Phase 5 gate recheck: `readyForTeamUse: false`
+- draft PR `#95` contains the docs-only handoff/evidence/runbook branch
+- `docs/hosted-operator-runbook.md` is documented but not yet exercised as provider evidence
 
 ## Known Failures Or Unverified Items
 
@@ -216,6 +218,7 @@ For `v0.43.0`:
 - Hosted beta/team gates are implemented as readiness checks, but public beta has not started.
 - GitHub issue `#93` has no recorded real participant feedback yet.
 - GitHub issue `#94` has missing provider monitoring, rollback, incident, uninstall/deletion, and support evidence.
+- Operator runbook evidence is missing until the runbook is exercised against deployed artifacts.
 - No admin dashboard exists.
 - No mobile UI exists.
 - No SEO/GEO website or analytics exists.

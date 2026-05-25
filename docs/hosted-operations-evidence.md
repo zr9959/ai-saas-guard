@@ -79,6 +79,29 @@ The current evidence was then mapped into `evaluateHostedBetaReadinessGate` and 
 
 Decision: do not open public beta, do not invite teams beyond beta, and do not sell or commercialize. Continue with design-partner feedback issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) and provider evidence issue [#94](https://github.com/zr9959/ai-saas-guard/issues/94).
 
+## Operator Runbook Recheck
+
+Recorded on 2026-05-25 after adding [hosted-operator-runbook.md](hosted-operator-runbook.md) on PR [#95](https://github.com/zr9959/ai-saas-guard/pull/95).
+
+The runbook now documents health checks, pause workflow, queue and failure checks, rollback workflow, compact record deletion, incident escalation, support triage, evidence templates, and cleanup expectations. This improves operator readiness documentation, but it is not provider evidence by itself.
+
+Verification command:
+
+```bash
+npm run build && node --test tests/hosted-beta.test.mjs
+```
+
+Result: 2 hosted beta tests passed.
+
+The Phase 4 and Phase 5 gate recheck still returned the same blocked result:
+
+- Phase 4 `readyForPublicBeta: false`
+- Phase 4 blocked reasons: `phase3_gate_missing`, `rate_limit_missing`, `abuse_kill_switch_missing`, `uninstall_deletion_proof_missing`, `rollback_test_missing`, `incident_owner_missing`, `support_path_missing`
+- Phase 5 `readyForTeamUse: false`
+- Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
+
+Decision: keep public beta, team use, and commercialization blocked until issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) has real design-partner feedback and issue [#94](https://github.com/zr9959/ai-saas-guard/issues/94) has real provider evidence.
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
