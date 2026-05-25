@@ -6,6 +6,48 @@ Use `zr9959/ai-saas-guard@v0` for the latest compatible pre-1.0 Action. Use a sp
 
 The Action runs the same local scanner inside the GitHub-hosted runner. It reads the checked-out repository, does not call an LLM, and does not upload source code. For `pr-risk`, always use `actions/checkout` with `fetch-depth: 0` so the base branch comparison is available.
 
+## Copy-paste PR launch gate workflow
+
+Use this when you want one PR job to act as the launch-risk middle layer: Markdown goes to `$GITHUB_STEP_SUMMARY` for reviewers, while SARIF goes to GitHub code scanning for alert tracking. This is not an AI reviewer and it does not approve a PR; it translates trust-boundary changes into a reviewer queue.
+
+```yaml
+name: ai-saas-guard-pr-launch-gate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  launch-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: zr9959/ai-saas-guard@v0
+        with:
+          command: pr-risk
+          root: ${{ github.workspace }}
+          base: origin/main
+          config: .ai-saas-guard.json
+          format: markdown
+          output: ai-saas-guard-pr.md
+      - run: cat ai-saas-guard-pr.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: zr9959/ai-saas-guard@v0
+        with:
+          command: scan
+          root: ${{ github.workspace }}
+          config: .ai-saas-guard.json
+          format: sarif
+          output: ai-saas-guard.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ai-saas-guard.sarif
+```
+
 ## PR Summary
 
 Use markdown when reviewers need a short, evidence-first launch decision queue: risky files, required verification, reviewer checklist, ranking explanation, and suggested PR split.

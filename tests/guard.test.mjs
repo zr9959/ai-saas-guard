@@ -1277,6 +1277,13 @@ test("public docs explain PR summary, SARIF, and the v0 Action tag", async () =>
   assert.match(actionDocs, /config:\s*\.ai-saas-guard\.json/);
   assert.match(actionDocs, /Use SARIF/i);
   assert.match(actionDocs, /Use markdown/i);
+  assert.match(actionDocs, /Copy-paste PR launch gate workflow/i);
+  assert.match(actionDocs, /name:\s*ai-saas-guard-pr-launch-gate/);
+  assert.match(actionDocs, /GITHUB_STEP_SUMMARY/);
+  assert.match(actionDocs, /security-events:\s*write/);
+  assert.match(actionDocs, /github\/codeql-action\/upload-sarif@v3/);
+  assert.match(actionDocs, /launch-risk middle layer/i);
+  assert.match(actionDocs, /not an AI reviewer/i);
   assert.match(rulesDocs, /Stability/i);
   assert.match(rulesDocs, /Strict/i);
   assert.match(rulesDocs, /Experimental/i);
@@ -1641,6 +1648,9 @@ test("README first screen leads with buyer pain, demo output, and product bounda
   assert.match(firstScreen, /no code upload/i);
   assert.match(firstScreen, /no LLM/i);
   assert.match(firstScreen, /compare with alternatives/i);
+  assert.match(firstScreen, /AI-heavy PRs/i);
+  assert.match(firstScreen, /GitHub Actions/i);
+  assert.match(firstScreen, /reviewer queue/i);
   assert.match(readme, /docs\/demo-terminal-output\.txt/);
   assert.match(readme, /docs\/demo-terminal-screenshot\.svg/);
   assert.match(readme, /docs\/launch-gate-positioning\.md/);

@@ -211,24 +211,24 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.36.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.36.0`。
+CLI 已发布到 npm：`ai-saas-guard@0.37.0`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.37.0`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.36.0` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.36.0` |
+| npm CLI | `ai-saas-guard@0.37.0` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.37.0` |
 | 输出格式 | 上线决策队列、短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.36.0` 将 Markdown 和 summary 输出升级成更清楚的上线决策队列，加入排序解释、reviewer checklist、case-study flow 和本地 trust/resource statement |
-| Action 标签 | `v0.36.0`、`v0` |
+| 当前版本 | `0.37.0` 让 GitHub Action PR workflow 更容易复制使用，优化 hosted Check Run 的 launch-risk middle layer 文案，并让 README 首屏更直接指向 AI 大 PR review 场景 |
+| Action 标签 | `v0.37.0`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；签名 GitHub App webhook delivery 和 compact Check Run staging smoke 已通过 |
 | Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`；hosted operations evidence 见 [docs/hosted-operations-evidence.md](hosted-operations-evidence.md) |
 | OpenSSF Best Practices | 已获得 passing badge，项目 `12955`；`.bestpractices.json` 继续作为保守证据记录 |
-| 下一版路线 | v0.36.0 计划见 [v0.36-roadmap.md](v0.36-roadmap.md) |
+| 上一版路线 | v0.36.0 计划见 [v0.36-roadmap.md](v0.36-roadmap.md) |
 
 ## 主要命令
 

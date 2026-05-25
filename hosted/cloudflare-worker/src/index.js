@@ -669,10 +669,15 @@ function summarizeFindings(findings) {
 
 function renderCheckRunSummary({ identity, report, scannerVersion }) {
   const lines = [
-    `Review first: ai-saas-guard found ${report.summary.total} PR risk signal(s) for ${identity.repositoryFullName}#${identity.pullRequestNumber}.`,
+    `Launch-risk gate: ai-saas-guard found ${report.summary.total} PR risk signal(s) for ${identity.repositoryFullName}#${identity.pullRequestNumber}. Review first: inspect the listed trust-boundary files before merge.`,
     `Scanner version: ${scannerVersion}.`,
     "",
-    "This is not a pentest, certification, or full security audit. Review the listed files before merge.",
+    "This is not an AI reviewer, pentest, certification, or full security audit. Review the listed files before merge.",
+    "",
+    "Launch decision queue:",
+    "- Can a real user get access they should not have?",
+    "- Can the app claim success when something failed?",
+    "- Can launch infrastructure do too much damage?",
     "",
     "Privacy: this Check Run stores compact file/category signals only. It does not store webhook payload bodies, PR title/body text, diff contents, source, secrets, checkout paths, or installation tokens."
   ];
