@@ -139,6 +139,43 @@ The current evidence was mapped into `evaluateHostedBetaReadinessGate` and `eval
 
 Decision: public beta, team use, and commercialization remain blocked.
 
+## Post-PR 96 Safe Provider And Feedback Recheck
+
+Recorded on 2026-05-25 after PR [#96](https://github.com/zr9959/ai-saas-guard/pull/96) was merged into `main`.
+
+Only read-only checks were run. No secrets were read or printed, no KV records were deleted, and no rollback or deployment mutation was performed.
+
+| Area | Evidence | Status |
+| --- | --- | --- |
+| PR merge | PR `#96` was merged with commit `ab86824bbb91f49bc69c0e8890295f62838ed7db`. CI, CodeQL, and the hosted `ai-saas-guard PR risk` Check Run completed successfully. | Passed |
+| Public hosted health | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned HTTP `200`, `ok: true`, `scannerVersion: "0.43.0"`, `checkRunPublisher: "configured"`, and privacy flags set to false for raw webhook payloads, PR text, raw source, raw diffs, secrets, customer payloads, private checkout paths, and installation tokens. | Passed for public endpoint health only |
+| Public install info | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/github/app/install-info` returned HTTP `200`, selected-repository permissions `checks: write`, `contents: read`, `metadata: read`, `pull_requests: read`, events `pull_request`, `installation`, and `installation_repositories`, and the same privacy flags set to false. | Passed for public install wording only |
+| Deployed Worker version | `wrangler deployments list` still showed current deployed version `8744d3db-0114-4653-85e2-f1554ff1b26b`, created at `2026-05-25T14:00:00.153Z`. | Passed for deployed version lookup |
+| Compact KV records | `wrangler kv key list --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote` returned 21 compact `delivery:` / `scan:` records with TTL, including PR `#96` records. They were not deleted because this was not a smoke cleanup, uninstall cleanup, retention job, or approved deletion request. | Present; not a cleanup proof |
+| Design-partner feedback | Issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) was rechecked and still contains no real DP-1, DP-2, or DP-3 feedback. A sanitized feedback template was added as a comment. | Missing |
+| Provider drills | Issue [#94](https://github.com/zr9959/ai-saas-guard/issues/94) was updated with the safe check result and remaining provider evidence blockers. No provider alert export, rollback drill, incident owner/backup evidence, uninstall/deletion proof, or support evidence has been attached. | Missing |
+
+## Post-PR 96 Phase 4 And Phase 5 Recheck
+
+Recorded on 2026-05-25 after the post-PR `#96` provider and feedback recheck.
+
+Verification command:
+
+```bash
+npm run build && node --test tests/hosted-beta.test.mjs
+```
+
+Result: 2 hosted beta tests passed.
+
+The current evidence was mapped into `evaluateHostedBetaReadinessGate` and `evaluateTeamLaunchGateReadiness` with only currently proven items set to true. The read-only provider check still does not prove rate limits, abuse kill switch, uninstall/deletion cleanup, rollback, incident ownership, support path, or provider alerting. Issue `#93` still has no real design-partner feedback.
+
+| Gate | Result | Blocked reasons |
+| --- | --- | --- |
+| Phase 4 hosted beta readiness | `readyForPublicBeta: false` | `phase3_gate_missing`, `rate_limit_missing`, `abuse_kill_switch_missing`, `uninstall_deletion_proof_missing`, `rollback_test_missing`, `incident_owner_missing`, `support_path_missing` |
+| Phase 5 team launch gate | `readyForTeamUse: false` | `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing` |
+
+Decision: public beta, team use, and commercialization remain blocked.
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
