@@ -2,6 +2,32 @@
 
 This project should compete by being narrow, trustworthy, and review-oriented.
 
+## North Star
+
+`ai-saas-guard` should become the launch-risk middle layer between AI-generated SaaS code and real users.
+
+The product is not trying to be the lowest-level static-analysis engine, and it is not trying to be a top-level full security audit service. Its job is to translate messy AI-built SaaS code and AI-heavy PRs into a founder-readable, reviewer-ready launch gate:
+
+```text
+AI-built SaaS code
+        ↓
+ai-saas-guard: launch-risk middle layer
+        ↓
+founder, reviewer, CI, or GitHub App makes the final launch decision
+```
+
+The long-term product sentence:
+
+> The launch gate between AI-generated code and real users.
+
+Every major feature should support this middle-layer role:
+
+- translate code changes into launch-risk language
+- prioritize trust-boundary paths: auth, billing, tenant data, RLS, webhooks, env, CI, MCP, and deploy
+- turn findings into manual proof steps a human can actually run
+- keep the default trust model local-first, deterministic, read-only, no code upload, and no LLM calls
+- avoid claiming pentest, certification, full audit, or complete vulnerability discovery
+
 ## Public Position
 
 `ai-saas-guard` is a local-first launch preflight for AI-built SaaS apps. It finds common production-readiness risks and produces concrete verification steps.
