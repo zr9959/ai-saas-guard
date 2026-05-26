@@ -12,7 +12,7 @@ inputs:
     required: false
     default: ${{ github.workspace }}
   format:
-    description: "Output format: terminal, json, sarif, or markdown. Use markdown for PR summaries and sarif for code scanning."
+    description: "Output format: terminal, json, sarif, markdown, or summary. Use summary for first-run CLI output, markdown for PR summaries, and sarif for code scanning."
     required: false
     default: terminal
   fail-on:
@@ -67,7 +67,7 @@ runs:
         esac
 
         case "${INPUT_FORMAT}" in
-          terminal|json|sarif|markdown) ;;
+          terminal|json|sarif|markdown|summary) ;;
           *)
             echo "Invalid format input: ${INPUT_FORMAT}" >&2
             exit 2
@@ -100,6 +100,8 @@ runs:
           args+=("--sarif")
         elif [ "${INPUT_FORMAT}" = "markdown" ]; then
           args+=("--markdown")
+        elif [ "${INPUT_FORMAT}" = "summary" ]; then
+          args+=("--summary")
         fi
 
         if [ "${INPUT_FAIL_ON}" != "none" ]; then

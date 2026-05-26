@@ -314,6 +314,49 @@ test("Cloudflare hosted worker rate limits pull request webhooks per installatio
   assert.doesNotMatch(JSON.stringify(secondBody), /local-test-webhook-secret|raw source|raw diff|Untrusted title|Untrusted body/i);
 });
 
+test("Cloudflare hosted worker fails closed when repository rate-limit state is corrupt", async () => {
+  const secret = "local-test-webhook-secret";
+  const payload = JSON.stringify(createPullRequestPayload());
+  const kv = createKv();
+  await kv.put("rate:pull_request:12345:67890", "{not-json");
+  const env = {
+    WEBHOOK_SECRET: secret,
+    HOSTED_EVENTS: kv,
+    SCANNER_VERSION: "0.43.0",
+    RATE_LIMIT_MAX_EVENTS_PER_REPOSITORY_PER_MINUTE: "30",
+    RATE_LIMIT_WINDOW_SECONDS: "60"
+  };
+  const deliveryId = randomUUID();
+
+  const response = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "pull_request",
+        "x-github-delivery": deliveryId,
+        "x-hub-signature-256": signPayload(payload, secret)
+      },
+      body: payload
+    }),
+    env
+  );
+  const body = await response.json();
+  const repairedCounter = JSON.parse(kv.records.get("rate:pull_request:12345:67890"));
+
+  assert.equal(response.status, 429);
+  assert.equal(body.accepted, false);
+  assert.equal(body.stage, "rate_limit");
+  assert.equal(body.reason, "repository_rate_limited");
+  assert.equal(body.shouldCreateCheckRun, false);
+  assert.equal(body.retryAfterSeconds, 60);
+  assert.equal(repairedCounter.count, 30);
+  assert.equal(repairedCounter.windowSeconds, 60);
+  assert.equal(kv.records.has(`delivery:${deliveryId}`), false);
+  assert.equal([...kv.records.keys()].some((key) => key.startsWith("scan:12345:67890:42:")), false);
+  assert.doesNotMatch(JSON.stringify(body), /local-test-webhook-secret|raw source|raw diff|Untrusted title|Untrusted body/i);
+});
+
 test("Cloudflare hosted worker pauses pull request processing with abuse kill switch", async () => {
   const secret = "local-test-webhook-secret";
   const payload = JSON.stringify(createPullRequestPayload());
@@ -366,6 +409,7 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
     WEBHOOK_SECRET: secret,
     HOSTED_EVENTS: createKv(),
     SCANNER_VERSION: "0.28.0",
+    GITHUB_API_BASE_URL: "https://user:pass@127.0.0.1:8443/api?token=should-not-appear#fragment",
     GITHUB_APP_ID: "3834787",
     GITHUB_APP_PRIVATE_KEY: createGitHubAppPrivateKey(),
     GITHUB_APP_INSTALLATION_ID: "12345",
@@ -447,6 +491,9 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
   assert.equal(body.shouldCreateCheckRun, true);
   assert.equal(body.checkRunConclusion, "neutral");
   assert.equal(githubRequests.length, 3);
+  assert.equal(githubRequests.every((request) => request.url.startsWith("https://api.github.com/")), true);
+  assert.equal(githubRequests.every((request) => request.init.headers["x-github-api-version"] === "2022-11-28"), true);
+  assert.equal(githubRequests.every((request) => !("github-api-version" in request.init.headers)), true);
 
   const storedValues = [...env.HOSTED_EVENTS.records.values()].join("\n");
   assert.match(storedValues, /\"status\":\"completed\"/);

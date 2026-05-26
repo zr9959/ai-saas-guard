@@ -13,6 +13,7 @@ export const HOSTED_GITHUB_APP_JWT_CLOCK_SKEW_SECONDS = 60;
 export const HOSTED_WORKER_MAX_TIMEOUT_MS = 600_000;
 export const HOSTED_WORKER_DEFAULT_TIMEOUT_MS = 300_000;
 export const HOSTED_WORKER_MAX_OUTPUT_BYTES = 1_048_576;
+const HOSTED_GITHUB_API_BASE_URL = "https://api.github.com";
 
 export type HostedGitHubInstallationTokenPurpose =
   | "worker_checkout"
@@ -381,17 +382,87 @@ function safeApiUrlBlockedReasons(apiBaseUrl?: string): string[] {
     return [];
   }
 
-  try {
-    const url = new URL(apiBaseUrl);
-    return url.protocol === "https:" ? [] : ["invalid_github_api_url"];
-  } catch {
-    return ["invalid_github_api_url"];
-  }
+  return safeGitHubApiBaseUrl(apiBaseUrl) ? [] : ["invalid_github_api_url"];
 }
 
 function normalizeApiBaseUrl(apiBaseUrl?: string): string {
-  const value = apiBaseUrl?.trim() || "https://api.github.com";
-  return trimTrailingSlashes(value);
+  return safeGitHubApiBaseUrl(apiBaseUrl) ?? HOSTED_GITHUB_API_BASE_URL;
+}
+
+function safeGitHubApiBaseUrl(apiBaseUrl?: string): string | undefined {
+  if (!apiBaseUrl) {
+    return undefined;
+  }
+
+  const trimmed = trimTrailingSlashes(apiBaseUrl.trim());
+  try {
+    const url = new URL(trimmed);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !isRootPath(url.pathname) ||
+      isUnsafeHostedHostname(url.hostname)
+    ) {
+      return undefined;
+    }
+    return trimmed;
+  } catch {
+    return undefined;
+  }
+}
+
+function isRootPath(pathname: string): boolean {
+  return pathname === "" || pathname === "/";
+}
+
+function isUnsafeHostedHostname(hostname: string): boolean {
+  const normalized = normalizeHostname(hostname);
+  return (
+    normalized === "localhost" ||
+    normalized.endsWith(".localhost") ||
+    isUnsafeIpv4Hostname(normalized) ||
+    isUnsafeIpv6Hostname(normalized)
+  );
+}
+
+function normalizeHostname(hostname: string): string {
+  const lower = hostname.toLowerCase().replace(/\.$/, "");
+  return lower.startsWith("[") && lower.endsWith("]") ? lower.slice(1, -1) : lower;
+}
+
+function isUnsafeIpv4Hostname(hostname: string): boolean {
+  const parts = hostname.split(".");
+  if (parts.length !== 4 || !parts.every((part) => /^\d+$/.test(part))) return false;
+
+  const octets = parts.map((part) => Number(part));
+  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+    return false;
+  }
+
+  const [first, second] = octets;
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    (first === 100 && second >= 64 && second <= 127) ||
+    first >= 224
+  );
+}
+
+function isUnsafeIpv6Hostname(hostname: string): boolean {
+  return (
+    hostname === "::" ||
+    hostname === "::1" ||
+    hostname.startsWith("fc") ||
+    hostname.startsWith("fd") ||
+    hostname.startsWith("fe80:")
+  );
 }
 
 function trimTrailingSlashes(value: string): string {

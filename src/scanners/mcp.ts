@@ -306,7 +306,7 @@ function buildPolicyTemplate(servers: McpServerInventory[]): NonNullable<McpRepo
       "    decision: allow",
       "    reason: repo-local read scope",
       "  - match: { sideEffectClass: shell }",
-      "decision: deny",
+      "    decision: deny",
       "    reason: shell tools require explicit human approval before launch work"
     ],
     receiptFormat: [

@@ -735,7 +735,8 @@ test("MCP policy template classifies tool side effects and flags missing boundar
   assert.ok(ruleIds.includes("mcp.tool.missing-scope"));
   assert.ok(report.policyTemplate.servers.some((server) => server.sideEffects.includes("filesystem-write")));
   assert.ok(report.policyTemplate.receiptFormat.includes("normalizedArgumentDigest"));
-  assert.ok(report.policyTemplate.localPolicyTemplate.includes("decision: deny"));
+  assert.ok(report.policyTemplate.localPolicyTemplate.includes("    decision: deny"));
+  assert.equal(report.policyTemplate.localPolicyTemplate.includes("decision: deny"), false);
 });
 
 test("MCP policy template accepts tools with explicit side effects and local scopes", async () => {
@@ -1366,9 +1367,11 @@ test("GitHub Action validates enumerated inputs before invoking the CLI", async 
 
   assert.ok(runStep, "expected action.yml to contain the Run ai-saas-guard step");
   assert.match(runStep[1], /case "\$\{INPUT_COMMAND\}" in[\s\S]*scan\|check-supabase\|check-stripe\|check-mcp\|check-actions\|pr-risk/);
-  assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif\|markdown/);
+  assert.match(action, /Output format: terminal, json, sarif, markdown, or summary/);
+  assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif\|markdown\|summary/);
   assert.match(runStep[1], /case "\$\{INPUT_FAIL_ON\}" in[\s\S]*none\|critical\|high\|medium\|low\|info/);
   assert.match(runStep[1], /--markdown/);
+  assert.match(runStep[1], /--summary/);
   assert.match(runStep[1], /--config/);
   assert.match(runStep[1], /Root path does not exist or is not a directory/);
   assert.match(runStep[1], /Config file not found/);

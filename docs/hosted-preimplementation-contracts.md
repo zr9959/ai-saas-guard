@@ -247,7 +247,7 @@ Default behavior:
 - return `failure` only when `failOnSeverity` is set and matching findings are present
 - include review-first language that tells readers to verify findings before release
 - state that the result is not a full security audit, pentest, or certification
-- include a local CLI link through the exact `npx ai-saas-guard@<version> pr-risk --root .` command
+- include a local CLI link through the exact `npx ai-saas-guard@<version> pr-risk --root . --base <baseSha> --json` command
 - include review categories, files to review first, and verification steps
 - cap check-run text with bounded Markdown so oversized reports cannot create unbounded API payloads
 

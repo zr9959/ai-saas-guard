@@ -58,6 +58,13 @@ function externalEvidence() {
   }));
 }
 
+test("hosted staging harness implementation does not persist rawSource into worker sandbox files", async () => {
+  const source = await readFile(new URL("../src/hosted/staging-harness.ts", import.meta.url), "utf8");
+
+  assert.doesNotMatch(source, /writeFile\([\s\S]*rawSource/);
+  assert.doesNotMatch(source, /"source\.ts"/);
+});
+
 test("hosted staging harness replays a signed webhook through file-backed queue store check run and cleanup", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "ai-saas-guard-harness-"));
   try {

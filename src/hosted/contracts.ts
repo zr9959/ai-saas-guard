@@ -1364,7 +1364,7 @@ export function createHostedCheckRunSummary(
 ): HostedCheckRunSummary {
   const { report } = input;
   const totalFindings = getHostedReportFindingTotal(report);
-  const localCliCommand = `npx ai-saas-guard@${report.scannerVersion} pr-risk --root .`;
+  const localCliCommand = `npx ai-saas-guard@${report.scannerVersion} pr-risk --root . --base ${report.baseSha} --json`;
   const conclusion = resolveCheckRunConclusion(report, input.failOnSeverity);
   const launchGate = hostedLaunchGateVerdict(report);
 

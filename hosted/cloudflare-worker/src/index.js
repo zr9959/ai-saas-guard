@@ -18,6 +18,8 @@ export const MAX_WEBHOOK_PAYLOAD_BYTES = 1024 * 1024;
 const MAX_PR_FILES_PAGES = 3;
 const MAX_PATCH_CHARS_PER_FILE = 20_000;
 const DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60;
+const DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com";
+const CORRUPT_RATE_LIMIT_COUNTER = Symbol("corrupt_rate_limit_counter");
 const HOSTED_PROCESSING_PAUSED_KEY = "control:hosted_processing_paused";
 const HOSTED_APP_PERMISSIONS = {
   checks: "write",
@@ -493,15 +495,29 @@ async function checkRepositoryRateLimit({ env, identity, kv }) {
   const now = Date.now();
   const windowMs = config.windowSeconds * 1000;
   const existing = await readJson(kv, key);
+  const corruptResetAtEpochMs = now + windowMs;
+  if (existing === CORRUPT_RATE_LIMIT_COUNTER || (existing !== null && !isRateLimitCounter(existing))) {
+    await storeRateLimitCounter(kv, key, {
+      count: config.maxEvents,
+      resetAtEpochMs: corruptResetAtEpochMs,
+      windowSeconds: config.windowSeconds,
+      maxEvents: config.maxEvents
+    });
+    return {
+      allowed: false,
+      retryAfterSeconds: config.windowSeconds
+    };
+  }
+
   const current =
     existing && existing.resetAtEpochMs > now
       ? {
-          count: safeNonNegativeInteger(existing.count),
+          count: existing.count,
           resetAtEpochMs: existing.resetAtEpochMs
         }
       : {
           count: 0,
-          resetAtEpochMs: now + windowMs
+          resetAtEpochMs: corruptResetAtEpochMs
         };
 
   if (current.count >= config.maxEvents) {
@@ -526,7 +542,7 @@ async function readJson(kv, key) {
   try {
     return JSON.parse(value);
   } catch {
-    return null;
+    return CORRUPT_RATE_LIMIT_COUNTER;
   }
 }
 
@@ -549,8 +565,18 @@ function positiveIntegerValue(value) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-function safeNonNegativeInteger(value) {
-  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+function isRateLimitCounter(value) {
+  return (
+    isRecord(value) &&
+    Number.isSafeInteger(value.count) &&
+    value.count >= 0 &&
+    Number.isSafeInteger(value.resetAtEpochMs) &&
+    value.resetAtEpochMs > 0
+  );
+}
+
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 async function isHostedProcessingPaused(env, kv) {
@@ -1184,7 +1210,7 @@ function getGitHubFetch(env = {}) {
 }
 
 function githubApiBaseUrl(env = {}) {
-  return String(env.GITHUB_API_BASE_URL || "https://api.github.com").replace(/\/+$/g, "");
+  return safeGitHubApiBaseUrl(env.GITHUB_API_BASE_URL) ?? DEFAULT_GITHUB_API_BASE_URL;
 }
 
 function githubHeaders(authorization) {
@@ -1192,9 +1218,86 @@ function githubHeaders(authorization) {
     accept: "application/vnd.github+json",
     authorization,
     "content-type": "application/json",
-    "github-api-version": "2022-11-28",
+    "x-github-api-version": "2022-11-28",
     "user-agent": "ai-saas-guard-hosted"
   };
+}
+
+function safeGitHubApiBaseUrl(value) {
+  if (!value) return undefined;
+  const trimmed = trimTrailingSlashes(String(value).trim());
+  try {
+    const url = new URL(trimmed);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !isRootPath(url.pathname) ||
+      isUnsafeHostedHostname(url.hostname)
+    ) {
+      return undefined;
+    }
+    return trimmed;
+  } catch {
+    return undefined;
+  }
+}
+
+function isRootPath(pathname) {
+  return pathname === "" || pathname === "/";
+}
+
+function isUnsafeHostedHostname(hostname) {
+  const normalized = normalizeHostname(hostname);
+  return (
+    normalized === "localhost" ||
+    normalized.endsWith(".localhost") ||
+    isUnsafeIpv4Hostname(normalized) ||
+    isUnsafeIpv6Hostname(normalized)
+  );
+}
+
+function normalizeHostname(hostname) {
+  const lower = hostname.toLowerCase().replace(/\.$/, "");
+  return lower.startsWith("[") && lower.endsWith("]") ? lower.slice(1, -1) : lower;
+}
+
+function isUnsafeIpv4Hostname(hostname) {
+  const parts = hostname.split(".");
+  if (parts.length !== 4 || !parts.every((part) => /^\d+$/.test(part))) return false;
+  const octets = parts.map((part) => Number(part));
+  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return false;
+  const [first, second] = octets;
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    (first === 100 && second >= 64 && second <= 127) ||
+    first >= 224
+  );
+}
+
+function isUnsafeIpv6Hostname(hostname) {
+  return (
+    hostname === "::" ||
+    hostname === "::1" ||
+    hostname.startsWith("fc") ||
+    hostname.startsWith("fd") ||
+    hostname.startsWith("fe80:")
+  );
+}
+
+function trimTrailingSlashes(value) {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") {
+    end -= 1;
+  }
+  return value.slice(0, end);
 }
 
 function splitRepositoryFullName(fullName) {
