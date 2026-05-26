@@ -17,6 +17,8 @@ const EVENT_TTL_SECONDS = 60 * 60 * 24 * 30;
 export const MAX_WEBHOOK_PAYLOAD_BYTES = 1024 * 1024;
 const MAX_PR_FILES_PAGES = 3;
 const MAX_PATCH_CHARS_PER_FILE = 20_000;
+const DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60;
+const HOSTED_PROCESSING_PAUSED_KEY = "control:hosted_processing_paused";
 const HOSTED_APP_PERMISSIONS = {
   checks: "write",
   contents: "read",
@@ -42,7 +44,9 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/healthz")) {
-      return jsonResponse(200, createHostedWorkerHealth(env));
+      return jsonResponse(200, createHostedWorkerHealth(env, {
+        processingPaused: await isHostedProcessingPaused(env, env?.HOSTED_EVENTS)
+      }));
     }
 
     if (request.method === "GET" && url.pathname === "/github/app/install-info") {
@@ -243,6 +247,34 @@ export default {
       });
     }
 
+    if (await isHostedProcessingPaused(env, env.HOSTED_EVENTS)) {
+      return jsonResponse(202, {
+        accepted: true,
+        stage: "paused",
+        reason: "hosted_processing_paused",
+        deliveryId,
+        shouldCreateCheckRun: false,
+        privacy: HOSTED_WORKER_PRIVACY
+      });
+    }
+
+    const rateLimit = await checkRepositoryRateLimit({
+      env,
+      identity,
+      kv: env.HOSTED_EVENTS
+    });
+    if (!rateLimit.allowed) {
+      return jsonResponse(429, {
+        accepted: false,
+        stage: "rate_limit",
+        reason: "repository_rate_limited",
+        deliveryId,
+        retryAfterSeconds: rateLimit.retryAfterSeconds,
+        shouldCreateCheckRun: false,
+        privacy: HOSTED_WORKER_PRIVACY
+      });
+    }
+
     const scannerVersion = env.SCANNER_VERSION || "unknown";
     const scanKey = [
       "scan",
@@ -313,7 +345,7 @@ export default {
   }
 };
 
-export function createHostedWorkerHealth(env = {}) {
+export function createHostedWorkerHealth(env = {}, state = {}) {
   return {
     ok: true,
     service: "ai-saas-guard-hosted",
@@ -321,6 +353,9 @@ export function createHostedWorkerHealth(env = {}) {
     routes: ["/healthz", "/github/app/install-info", "/github/app/manifest-callback", "/github/webhook"],
     storage: "cloudflare_kv",
     checkRunPublisher: hasGitHubCheckRunConfig(env) ? "configured" : "not_configured",
+    rateLimit: getRepositoryRateLimitConfig(env) ? "configured" : "not_configured",
+    abuseKillSwitch: "configured",
+    processingPaused: state.processingPaused ?? booleanFlag(env.HOSTED_PROCESSING_PAUSED),
     scannerVersion: env.SCANNER_VERSION || "unknown",
     privacy: HOSTED_WORKER_PRIVACY
   };
@@ -446,6 +481,93 @@ function isPayloadTooLarge(contentLength) {
 
 async function storeJson(kv, key, value) {
   await kv.put(key, JSON.stringify(value), { expirationTtl: EVENT_TTL_SECONDS });
+}
+
+async function checkRepositoryRateLimit({ env, identity, kv }) {
+  const config = getRepositoryRateLimitConfig(env);
+  if (!config) {
+    return { allowed: true };
+  }
+
+  const key = `rate:pull_request:${identity.installationId}:${identity.repositoryId}`;
+  const now = Date.now();
+  const windowMs = config.windowSeconds * 1000;
+  const existing = await readJson(kv, key);
+  const current =
+    existing && existing.resetAtEpochMs > now
+      ? {
+          count: safeNonNegativeInteger(existing.count),
+          resetAtEpochMs: existing.resetAtEpochMs
+        }
+      : {
+          count: 0,
+          resetAtEpochMs: now + windowMs
+        };
+
+  if (current.count >= config.maxEvents) {
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil((current.resetAtEpochMs - now) / 1000))
+    };
+  }
+
+  await storeRateLimitCounter(kv, key, {
+    count: current.count + 1,
+    resetAtEpochMs: current.resetAtEpochMs,
+    windowSeconds: config.windowSeconds,
+    maxEvents: config.maxEvents
+  });
+  return { allowed: true };
+}
+
+async function readJson(kv, key) {
+  const value = await kv.get(key);
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+async function storeRateLimitCounter(kv, key, value) {
+  await kv.put(key, JSON.stringify(value), { expirationTtl: value.windowSeconds });
+}
+
+function getRepositoryRateLimitConfig(env = {}) {
+  const maxEvents = positiveIntegerValue(env.RATE_LIMIT_MAX_EVENTS_PER_REPOSITORY_PER_MINUTE);
+  if (maxEvents === undefined) return null;
+
+  return {
+    maxEvents,
+    windowSeconds: positiveIntegerValue(env.RATE_LIMIT_WINDOW_SECONDS) ?? DEFAULT_RATE_LIMIT_WINDOW_SECONDS
+  };
+}
+
+function positiveIntegerValue(value) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function safeNonNegativeInteger(value) {
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+
+async function isHostedProcessingPaused(env, kv) {
+  if (booleanFlag(env.HOSTED_PROCESSING_PAUSED)) {
+    return true;
+  }
+
+  if (typeof kv?.get !== "function") {
+    return false;
+  }
+
+  return booleanFlag(await kv.get(HOSTED_PROCESSING_PAUSED_KEY));
+}
+
+function booleanFlag(value) {
+  if (typeof value !== "string") return false;
+  return ["1", "true", "yes", "on", "paused"].includes(value.trim().toLowerCase());
 }
 
 async function handleInstallationCleanupEvent({ kv, deliveryKey, deliveryId, eventName, payload }) {

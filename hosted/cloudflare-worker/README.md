@@ -14,6 +14,8 @@ It is intentionally narrow:
 - The Check Run summary names the selected-repository hosted check, the Review queue, and a Manual proof prompt so reviewers know which trust-boundary files to inspect before merge.
 - Signed `installation` deletion events and `installation_repositories` `repositories_removed` events delete matching compact `scan:<installation>:...` records from KV when KV list/delete bindings are available.
 - Duplicate GitHub delivery IDs are accepted idempotently.
+- Configured pull request webhooks are rate limited per installation and repository with compact KV counters.
+- A hosted processing pause can stop eligible pull request webhook side effects before compact delivery/scan records or Check Runs are written.
 - Responses and KV records do not include raw webhook payloads, PR title/body text, source code, diffs, secrets, customer payloads, checkout paths, or installation tokens.
 
 This Worker is a real hosted ingress with first-slice Check Run publishing code, not yet the complete scan worker. `shouldCreateCheckRun` is `true` only when the GitHub App bindings are present and the event passes installation scope checks. Current operations evidence is tracked in [docs/hosted-operations-evidence.md](../../docs/hosted-operations-evidence.md); the Worker health check, signed webhook delivery, KV cleanup, and compact Check Run smoke pass in staging. Full source checkout scanning remains gated behind the hosted operational release gate and the Node/container checkout worker deployment path.
@@ -25,6 +27,8 @@ This Worker is a real hosted ingress with first-slice Check Run publishing code,
 - `GITHUB_APP_PRIVATE_KEY`: Worker secret for the staging GitHub App private key, used only in memory to sign short-lived GitHub App JWTs.
 - `SCANNER_VERSION`: public version string, currently `0.43.0`.
 - `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_INSTALLATION_ID`: public staging identifiers for the private GitHub App installation.
+- `RATE_LIMIT_MAX_EVENTS_PER_REPOSITORY_PER_MINUTE`, `RATE_LIMIT_WINDOW_SECONDS`: public staging rate-limit controls for eligible pull request webhooks.
+- `HOSTED_PROCESSING_PAUSED`: public fail-closed switch for deployed configuration. The runtime KV key `control:hosted_processing_paused` can also pause processing without a redeploy.
 
 ## Deployment
 
@@ -50,6 +54,8 @@ Current public staging endpoint:
 - GitHub App installation ID: `135085075`
 - Installed repository: `zr9959/ai-saas-guard`
 - Mode: signed webhook ingress, compact queueing, PR file metadata classification, and bounded Check Run publishing
+- Rate limit: 30 eligible pull request webhooks per installation and repository per 60 seconds
+- Hosted processing pause default: `false`
 
 ## Public Install Guidance
 
