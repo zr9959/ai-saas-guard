@@ -118,6 +118,7 @@ Risks:
 - the operator runbook is documentation only until exercised against deployed artifacts
 - the 2026-05-26 staging rollback drill now provides rollback evidence, and exact compact-record deletion was proven for a dedicated test key
 - full GitHub App uninstall/repository-removal cleanup proof still needs a safe test repository or authorized App-management session; do not remove the current `ai-saas-guard` installation because it would delete existing scan evidence
+- the 2026-05-26 App-management attempt proved the current session cannot modify the `ai-saas-guard-hosted` installation; the temporary test repo was deleted after HTTP 403
 - provider alert exports and real design-partner feedback remain missing
 - primary incident owner and public-safe support path evidence now exist; backup coverage is a pause-hosted fallback, not a staffed second operator
 

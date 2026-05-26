@@ -347,3 +347,21 @@ Decision:
 - incident owner and support path can be treated as recorded for staging
 - do not treat the pause fallback as a staffed second human
 - public beta and team launch remain blocked until the remaining real evidence exists
+
+## 2026-05-26 GitHub App Management Attempt
+
+The user authorized an app-management session attempt.
+
+Completed:
+
+- created temporary private repository `zr9959/ai-saas-guard-app-proof-20260526`
+- recorded temporary repository ID `1249767506`
+- attempted to add the temporary repository to installation `135085075` with `PUT /user/installations/135085075/repositories/1249767506`
+- received HTTP `403`: `You do not have permission to modify this app on zr9959.`
+- deleted the temporary repository afterward
+- updated issue `#94` with the blocked proof attempt
+
+Decision:
+
+- do not remove the current `zr9959/ai-saas-guard` installation because it would delete existing evidence
+- full GitHub App add/remove proof remains blocked until a session can modify the `ai-saas-guard-hosted` installation, or a separate safe test installation exists
