@@ -91,6 +91,7 @@
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test tests/*.test.mjs tests/*.test.js",
     "test:fuzz": "npm run build && node --test tests/fuzz.test.js",
+    "metrics:snapshot": "node scripts/metrics-snapshot.mjs",
     "check": "npm run test"
   },
   "engines": {

@@ -1,0 +1,19 @@
+{
+  "downloads": [
+    {
+      "downloads": 0,
+      "day": "2026-05-22"
+    },
+    {
+      "downloads": 2441,
+      "day": "2026-05-23"
+    },
+    {
+      "downloads": 3538,
+      "day": "2026-05-24"
+    }
+  ],
+  "start": "2026-04-25",
+  "end": "2026-05-24",
+  "package": "ai-saas-guard"
+}
