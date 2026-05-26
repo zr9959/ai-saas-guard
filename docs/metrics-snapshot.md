@@ -40,3 +40,5 @@ The script writes:
 `.github/workflows/metrics-snapshot.yml` runs daily at 08:00 Asia/Shanghai, which is 00:00 UTC for GitHub Actions cron, and also supports manual dispatch. It uses read-only repository contents permission, pinned actions, and uploads the sanitized snapshot as a 30-day Actions artifact instead of committing metrics back to `main`.
 
 If the default `github.token` cannot read GitHub traffic endpoints, configure a read-only `METRICS_GITHUB_TOKEN` repository secret with the minimum access required to read repository traffic. Never print the token, commit it, or put it in `.env.example`.
+
+Without `METRICS_GITHUB_TOKEN`, the workflow still succeeds and saves npm/package metadata plus public repository counters. In that case the JSON sets `github.trafficAvailable` to `false`, leaves views/clones/top traffic arrays empty, and includes a warning so the missing traffic permission is visible in the artifact.

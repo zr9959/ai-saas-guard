@@ -21,6 +21,9 @@ const PRIVACY = {
   includesSecrets: false
 };
 
+const GITHUB_TRAFFIC_UNAVAILABLE_WARNING =
+  "GitHub traffic unavailable; configure METRICS_GITHUB_TOKEN with the minimum read access required for repository traffic endpoints to capture views and clones.";
+
 function parseArgs(argv) {
   const options = {
     output: DEFAULT_OUTPUT,
@@ -159,12 +162,14 @@ function buildSnapshot({ generatedAt, repo, packageName, sources }) {
     packageName,
     privacy: PRIVACY,
     limitations: LIMITATIONS,
+    warnings: sources.warnings ?? [],
     github: {
       defaultBranch: toStringOrNull(sources.repo.default_branch),
       stars: toNumber(sources.repo.stargazers_count),
       forks: toNumber(sources.repo.forks_count),
       watchers: toNumber(sources.repo.subscribers_count),
       openIssues: toNumber(sources.repo.open_issues_count),
+      trafficAvailable: sources.trafficAvailable ?? true,
       views: normalizeTraffic(sources.views, "views"),
       clones: normalizeTraffic(sources.clones, "clones"),
       topPaths: normalizeTopPaths(sources.paths),
@@ -194,13 +199,61 @@ async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
+async function readJsonIfExists(path) {
+  try {
+    return await readJson(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+function emptyTraffic(key) {
+  return {
+    count: 0,
+    uniques: 0,
+    [key]: []
+  };
+}
+
+function addUnavailableTrafficWarning(warnings) {
+  if (!warnings.includes(GITHUB_TRAFFIC_UNAVAILABLE_WARNING)) {
+    warnings.push(GITHUB_TRAFFIC_UNAVAILABLE_WARNING);
+  }
+}
+
+function emptyTrafficSources() {
+  return {
+    views: emptyTraffic("views"),
+    clones: emptyTraffic("clones"),
+    paths: [],
+    referrers: [],
+    trafficAvailable: false
+  };
+}
+
+function unavailableTrafficSources(warnings) {
+  addUnavailableTrafficWarning(warnings);
+  return emptyTrafficSources();
+}
+
 async function readFixtureSources(fixtureDir) {
+  const warnings = [];
+  const views = await readJsonIfExists(resolve(fixtureDir, "views.json"));
+  const clones = await readJsonIfExists(resolve(fixtureDir, "clones.json"));
+  const paths = await readJsonIfExists(resolve(fixtureDir, "paths.json"));
+  const referrers = await readJsonIfExists(resolve(fixtureDir, "referrers.json"));
+  const traffic =
+    views && clones && paths && referrers
+      ? { views, clones, paths, referrers, trafficAvailable: true }
+      : unavailableTrafficSources(warnings);
+
   return {
     repo: await readJson(resolve(fixtureDir, "repo.json")),
-    views: await readJson(resolve(fixtureDir, "views.json")),
-    clones: await readJson(resolve(fixtureDir, "clones.json")),
-    paths: await readJson(resolve(fixtureDir, "paths.json")),
-    referrers: await readJson(resolve(fixtureDir, "referrers.json")),
+    ...traffic,
+    warnings,
     npmLastWeek: await readJson(resolve(fixtureDir, "npm-last-week.json")),
     npmLastMonth: await readJson(resolve(fixtureDir, "npm-last-month.json")),
     npmRangeLastMonth: await readJson(resolve(fixtureDir, "npm-range-last-month.json")),
@@ -230,27 +283,67 @@ async function fetchJson(url, options = {}) {
 
   const response = await fetch(url, { headers });
   if (!response.ok) {
-    throw new Error(`Request failed for ${url}: ${response.status} ${response.statusText}`);
+    const error = new Error(`Request failed for ${url}: ${response.status} ${response.statusText}`);
+    error.status = response.status;
+    error.statusText = response.statusText;
+    throw error;
   }
   return response.json();
 }
 
+async function fetchOptionalGitHubTraffic(url, options, warnings) {
+  try {
+    return await fetchJson(url, options);
+  } catch (error) {
+    if (error?.status === 403 || error?.status === 404) {
+      addUnavailableTrafficWarning(warnings);
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 async function readLiveSources({ repo, packageName }) {
   const githubToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
-  if (!githubToken) {
-    throw new Error("Set GH_TOKEN or GITHUB_TOKEN so GitHub traffic endpoints can be read.");
-  }
-
   const repoPath = encodeRepoPath(repo);
   const npmPackage = encodeNpmPackage(packageName);
   const githubOptions = { githubToken };
+  const warnings = [];
+  let traffic = unavailableTrafficSources(warnings);
+
+  if (githubToken) {
+    warnings.length = 0;
+    const views = await fetchOptionalGitHubTraffic(
+      `https://api.github.com/repos/${repoPath}/traffic/views`,
+      githubOptions,
+      warnings
+    );
+    const clones = await fetchOptionalGitHubTraffic(
+      `https://api.github.com/repos/${repoPath}/traffic/clones`,
+      githubOptions,
+      warnings
+    );
+    const paths = await fetchOptionalGitHubTraffic(
+      `https://api.github.com/repos/${repoPath}/traffic/popular/paths`,
+      githubOptions,
+      warnings
+    );
+    const referrers = await fetchOptionalGitHubTraffic(
+      `https://api.github.com/repos/${repoPath}/traffic/popular/referrers`,
+      githubOptions,
+      warnings
+    );
+
+    traffic =
+      views && clones && paths && referrers
+        ? { views, clones, paths, referrers, trafficAvailable: true }
+        : unavailableTrafficSources(warnings);
+  }
 
   return {
     repo: await fetchJson(`https://api.github.com/repos/${repoPath}`, githubOptions),
-    views: await fetchJson(`https://api.github.com/repos/${repoPath}/traffic/views`, githubOptions),
-    clones: await fetchJson(`https://api.github.com/repos/${repoPath}/traffic/clones`, githubOptions),
-    paths: await fetchJson(`https://api.github.com/repos/${repoPath}/traffic/popular/paths`, githubOptions),
-    referrers: await fetchJson(`https://api.github.com/repos/${repoPath}/traffic/popular/referrers`, githubOptions),
+    ...traffic,
+    warnings,
     npmLastWeek: await fetchJson(`https://api.npmjs.org/downloads/point/last-week/${npmPackage}`),
     npmLastMonth: await fetchJson(`https://api.npmjs.org/downloads/point/last-month/${npmPackage}`),
     npmRangeLastMonth: await fetchJson(`https://api.npmjs.org/downloads/range/last-month/${npmPackage}`),
@@ -276,6 +369,7 @@ function printSummary(snapshot) {
     github: {
       stars: snapshot.github.stars,
       openIssues: snapshot.github.openIssues,
+      trafficAvailable: snapshot.github.trafficAvailable,
       views: snapshot.github.views.total,
       viewUniques: snapshot.github.views.uniques,
       clones: snapshot.github.clones.total,
@@ -285,7 +379,8 @@ function printSummary(snapshot) {
       latestVersion: snapshot.npm.latestVersion,
       downloadsLastWeek: snapshot.npm.downloads.lastWeek,
       downloadsLastMonth: snapshot.npm.downloads.lastMonth
-    }
+    },
+    warnings: snapshot.warnings
   };
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 }

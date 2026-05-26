@@ -2466,6 +2466,7 @@ test("metrics snapshot script writes privacy-safe JSON and JSONL from fixtures",
     assert.equal(snapshot.privacy.includesCustomerData, false);
     assert.equal(snapshot.github.stars, 1);
     assert.equal(snapshot.github.openIssues, 3);
+    assert.equal(snapshot.github.trafficAvailable, true);
     assert.equal(snapshot.github.views.total, 80);
     assert.equal(snapshot.github.views.uniques, 7);
     assert.equal(snapshot.github.clones.total, 1948);
@@ -2475,6 +2476,7 @@ test("metrics snapshot script writes privacy-safe JSON and JSONL from fixtures",
     assert.equal(snapshot.npm.latestVersion, "0.43.1");
     assert.equal(snapshot.npm.downloads.lastWeek, 5979);
     assert.equal(snapshot.npm.downloads.lastMonth, 5979);
+    assert.deepEqual(snapshot.warnings, []);
     assert.match(snapshot.limitations.join("\n"), /14-day GitHub traffic window/i);
     assert.match(snapshot.limitations.join("\n"), /downloads, not unique human users/i);
     assert.match(snapshot.limitations.join("\n"), /not design-partner feedback/i);
@@ -2485,6 +2487,47 @@ test("metrics snapshot script writes privacy-safe JSON and JSONL from fixtures",
       .map((line) => JSON.parse(line));
     assert.equal(jsonl.length, 1);
     assert.equal(jsonl[0].github.clones.uniques, 468);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("metrics snapshot records unavailable GitHub traffic without failing", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-metrics-no-traffic-"));
+
+  try {
+    const outputPath = resolve(rootDir, "latest.json");
+    const jsonlPath = resolve(rootDir, "snapshots.jsonl");
+
+    await execFileAsync(
+      "node",
+      [
+        resolve(packageRoot, "scripts", "metrics-snapshot.mjs"),
+        "--repo",
+        "zr9959/ai-saas-guard",
+        "--package",
+        "ai-saas-guard",
+        "--output",
+        outputPath,
+        "--jsonl",
+        jsonlPath,
+        "--fixture-dir",
+        resolve(fixtureRoot, "metrics-snapshot-no-traffic")
+      ],
+      { cwd: packageRoot, env: { ...process.env, GH_TOKEN: "" } }
+    );
+
+    const snapshot = JSON.parse(await readFile(outputPath, "utf8"));
+
+    assert.equal(snapshot.github.stars, 1);
+    assert.equal(snapshot.github.trafficAvailable, false);
+    assert.equal(snapshot.github.views.total, 0);
+    assert.equal(snapshot.github.clones.total, 0);
+    assert.deepEqual(snapshot.github.topPaths, []);
+    assert.deepEqual(snapshot.github.topReferrers, []);
+    assert.equal(snapshot.npm.downloads.lastWeek, 5979);
+    assert.match(snapshot.warnings.join("\n"), /GitHub traffic unavailable/i);
+    assert.match(snapshot.warnings.join("\n"), /METRICS_GITHUB_TOKEN/i);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
@@ -2526,6 +2569,7 @@ test("public docs describe metrics snapshots as platform analytics, not user fee
   assert.match(docs, /design-partner feedback/i);
   assert.match(docs, /\.local\/metrics/);
   assert.match(docs, /METRICS_GITHUB_TOKEN/);
+  assert.match(docs, /trafficAvailable/);
 });
 
 test("repository exposes Scorecard-detectable fuzzing", async () => {
