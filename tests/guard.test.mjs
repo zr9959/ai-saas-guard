@@ -2548,7 +2548,7 @@ test("repository defines a least-privilege metrics snapshot workflow", async () 
   assert.match(workflow, /node scripts\/metrics-snapshot\.mjs/);
   assert.match(workflow, /\.local\/metrics\/latest\.json/);
   assert.match(workflow, /\.local\/metrics\/snapshots\.jsonl/);
-  assert.match(workflow, /actions\/upload-artifact@[a-f0-9]{40}/);
+  assert.match(workflow, /actions\/upload-artifact@[a-f0-9]{40} # v5/);
   assert.match(workflow, /retention-days:\s*30/);
   assert.doesNotMatch(workflow, /contents:\s*write|id-token:\s*write|NPM_TOKEN|npm publish|git push/i);
 });
