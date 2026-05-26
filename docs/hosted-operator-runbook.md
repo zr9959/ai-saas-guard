@@ -6,6 +6,7 @@ Use this with:
 
 - [hosted-operational-release-gate.md](hosted-operational-release-gate.md)
 - [hosted-operations-evidence.md](hosted-operations-evidence.md)
+- [hosted-support-incident-ownership.md](hosted-support-incident-ownership.md)
 - [public-beta-evidence-feedback.md](public-beta-evidence-feedback.md)
 - GitHub issue [#94](https://github.com/zr9959/ai-saas-guard/issues/94)
 
@@ -169,6 +170,8 @@ Evidence to record:
 
 ## Incident Escalation
 
+Ownership and support routing are recorded in [hosted-support-incident-ownership.md](hosted-support-incident-ownership.md). During staging, `@zr9959` is the primary incident and support triage owner. If no independent backup is staffed, hosted beta must stay paused or closed rather than rely on unattended operations.
+
 Open an incident when any of these happen:
 
 - privacy flag unexpectedly changes
@@ -196,6 +199,8 @@ Minimum incident record:
 Do not include raw source, raw diffs, PR prose, secrets, customer payloads, private URLs, checkout paths, installation tokens, or raw provider logs.
 
 ## Support Triage
+
+Public-safe hosted support requests use the `Hosted support request` GitHub issue template. Sensitive reports must use GitHub private vulnerability reporting instead of public issues.
 
 For install failures, false positives, false negatives, Check Run confusion, or deletion requests:
 

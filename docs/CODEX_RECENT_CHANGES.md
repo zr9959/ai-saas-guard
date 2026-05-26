@@ -322,3 +322,28 @@ Decision:
 - rollback evidence is now present for staging
 - exact compact-record deletion evidence is present for a dedicated test key
 - public beta and team launch remain blocked until the remaining real evidence exists
+
+## 2026-05-26 Human Support Routing
+
+The user asked to process the remaining human blockers.
+
+Completed:
+
+- added `docs/hosted-support-incident-ownership.md`
+- recorded `@zr9959` as primary hosted staging incident and support triage owner
+- recorded a pause-hosted fallback when no independent backup operator is staffed
+- added `.github/ISSUE_TEMPLATE/hosted_support.yml`
+- added private vulnerability reporting as the sensitive-report route in issue template config
+- updated hosted operator, release gate, public beta evidence, operations evidence, CODEX state, and TODO docs
+
+Still blocked:
+
+- no real DP-1, DP-2, or DP-3 feedback has been received
+- provider alert/export evidence is still missing
+- full GitHub App uninstall/repository-removal proof still needs a safe test installation or authorized App-management session
+
+Decision:
+
+- incident owner and support path can be treated as recorded for staging
+- do not treat the pause fallback as a staffed second human
+- public beta and team launch remain blocked until the remaining real evidence exists

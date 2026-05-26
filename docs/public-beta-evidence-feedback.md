@@ -7,6 +7,7 @@ Use this document together with:
 - [hosted-operational-release-gate.md](hosted-operational-release-gate.md)
 - [hosted-operations-evidence.md](hosted-operations-evidence.md)
 - [hosted-install-privacy.md](hosted-install-privacy.md)
+- [hosted-support-incident-ownership.md](hosted-support-incident-ownership.md)
 
 ## Current Status
 
@@ -135,9 +136,9 @@ Collect provider evidence from the deployed artifact before opening public beta.
 | Cleanup failures | Checkout, scratch file, and compact record cleanup failures create operator-review events | metric or event name, cleanup status counts, owner | yes |
 | Retention failures | Compact record deletion or expiry failures are observable | retention job name, failure count, latest safe run timestamp | yes |
 | Rollback | Manual rollback was tested against the deployed artifact | previous artifact reference, pause/resume summary, result, affected Check Run identification method | yes |
-| Incident response | Owner, backup, queue pause, worker pause, credential rotation, status path, and customer communication path are documented | owner roles, runbook reference, drill timestamp, result | yes |
+| Incident response | Owner, backup or pause fallback, queue pause, worker pause, credential rotation, status path, and customer communication path are documented | owner roles, runbook reference, drill timestamp, result | yes |
 | Uninstall deletion | Repository removal and app uninstall cleanup were verified against deployed provider stores | sanitized repository ID or test label, compact record count before/after, result | yes |
-| Public support | A support path exists for install failure, false positives, false negatives, and deletion requests | support channel, response owner, first response expectation | yes |
+| Public support | A support path exists for install failure, false positives, false negatives, Check Run confusion, and deletion requests | support channel, response owner, first response expectation | yes |
 
 Do not attach raw provider logs unless they have been reviewed for the privacy boundary in this document.
 
@@ -171,7 +172,7 @@ Public beta remains blocked when any of these are true:
 - hosted install or privacy wording is unclear to a participant
 - provider monitoring evidence is missing for ingress, queue, worker, Check Run, cleanup, or retention failures
 - rollback has not been tested against the deployed artifact
-- incident owner, backup, support path, or deletion workflow is missing
+- incident owner, backup or pause fallback, support path, or deletion workflow is missing
 - any evidence path requires storing source, raw diffs, PR prose, secrets, customer payloads, private URLs, checkout paths, or installation tokens
 - product wording drifts into pentest, full audit, certification, or generic AI reviewer claims
 - billing, pricing, paid packaging, or sales funnel work becomes a dependency for the beta decision

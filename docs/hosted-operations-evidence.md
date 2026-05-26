@@ -244,6 +244,40 @@ Gate recheck with the new rollback evidence set to true still returned:
 - Phase 5 `readyForTeamUse: false`
 - Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
 
+## 2026-05-26 Human Support And Incident Routing
+
+Recorded on 2026-05-26 after the user asked to process the remaining human blockers.
+
+This evidence covers human routing and support ownership only. It does not fabricate design-partner feedback, provider alert exports, or GitHub App uninstall/repository-removal proof.
+
+| Area | Evidence | Status |
+| --- | --- | --- |
+| Incident owner | [hosted-support-incident-ownership.md](hosted-support-incident-ownership.md) records `@zr9959` as primary incident owner for hosted staging Worker, GitHub App selected-repository install, compact KV records, and public docs. | Passed for primary ownership |
+| Backup coverage | The same document records a pause-hosted fallback: if no independent backup human is available, hosted beta must stay paused or closed rather than rely on unattended operations. | Passed as safety fallback; not a staffed second operator |
+| Support path | Public-safe support routes now include GitHub issue templates for bug reports, false positives, false negatives, quickstart feedback, rule requests, security-safe reports, and hosted support requests. Sensitive reports route to GitHub private vulnerability reporting. | Passed |
+| Response expectations | Hosted install failure and deletion requests have a 2-business-day staging first-response expectation; false positives and false negatives have a 5-business-day staging first-response expectation; incidents require same-day action when actively operating hosted staging. | Passed |
+| Public safety boundary | Support and incident docs forbid source files, raw diffs, PR title/body/comments, secrets, tokens, cookies, certificates, database URLs, customer payloads, private URLs, checkout paths, installation tokens, and raw provider logs in public issues. | Passed |
+| Design-partner feedback | Issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) still has no real DP-1, DP-2, or DP-3 feedback. | Still blocked on real participants |
+
+Gate impact: `incident_owner_missing` and `support_path_missing` can now be treated as resolved for staging gate rechecks that accept a pause fallback instead of an independent backup operator. Public beta remains blocked on missing provider controls, full deletion proof, provider alert evidence, and real design-partner feedback.
+
+Validation:
+
+```bash
+git diff --check
+ruby -e 'require "yaml"; Dir[".github/ISSUE_TEMPLATE/*.yml"].each { |f| YAML.load_file(f); puts "ok #{f}" }'
+npm run build && node --test tests/hosted-beta.test.mjs
+```
+
+Result: docs diff check passed, GitHub issue template YAML parsed, build passed, and 2 hosted beta tests passed.
+
+Gate recheck with rollback, primary incident owner, and support path evidence set to true still returned:
+
+- Phase 4 `readyForPublicBeta: false`
+- Phase 4 blocked reasons: `phase3_gate_missing`, `rate_limit_missing`, `abuse_kill_switch_missing`, `uninstall_deletion_proof_missing`
+- Phase 5 `readyForTeamUse: false`
+- Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.

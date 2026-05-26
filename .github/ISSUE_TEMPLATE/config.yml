@@ -9,3 +9,6 @@ contact_links:
   - name: Rule documentation
     url: https://github.com/zr9959/ai-saas-guard/blob/main/docs/rules.md
     about: Review existing rule IDs, severity, stability, and evidence before filing a false positive, false negative, or rule request.
+  - name: Sensitive vulnerability report
+    url: https://github.com/zr9959/ai-saas-guard/security/advisories/new
+    about: Use private vulnerability reporting if a report requires secrets, private code, customer data, exploit details, or private URLs.

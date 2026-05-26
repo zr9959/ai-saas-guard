@@ -221,6 +221,7 @@ For `v0.43.0`:
 - 2026-05-26 npm/npx recheck: npm `latest` remained `ai-saas-guard@0.43.0`; `npx --yes ai-saas-guard@latest demo --summary` ran successfully; no npm publish was attempted because no package version or runtime artifact changed
 - 2026-05-26 staging rollback drill: Worker rollback from `8744d3db-0114-4653-85e2-f1554ff1b26b` to previous known-good `6de0811e-11bf-46a6-9b7b-cbecda409695` passed health/privacy checks, then restored to `8744d3db-0114-4653-85e2-f1554ff1b26b` and passed health/privacy checks again
 - 2026-05-26 provider-store deletion drill: dedicated test compact key prefix `scan:135085075:900000526:` was created, listed, deleted by exact key, and verified empty; no existing project `scan:` evidence was deleted
+- 2026-05-26 human support routing: `docs/hosted-support-incident-ownership.md` records `@zr9959` as primary hosted staging incident/support owner, defines a pause-hosted fallback when no independent backup is staffed, adds a public-safe hosted support issue template, and routes sensitive reports to GitHub private vulnerability reporting
 
 ## Known Failures Or Unverified Items
 
@@ -235,9 +236,9 @@ For `v0.43.0`:
 - The post-merge provider check was read-only and did not satisfy rollback, incident, uninstall/deletion, support, or alert evidence.
 - The post-merge gate recheck still blocks public beta and team use.
 - Issue `#93` still has no real DP-1, DP-2, or DP-3 feedback.
-- Issue `#94` still lacks provider alert exports, incident owner/backup evidence, support evidence, and full GitHub App uninstall/repository-removal proof. Staging Worker rollback evidence and exact compact-record deletion evidence now exist.
+- Issue `#94` still lacks provider alert exports and full GitHub App uninstall/repository-removal proof. Staging Worker rollback evidence, exact compact-record deletion evidence, primary incident owner evidence, and public-safe support path evidence now exist.
 - The post-PR `#96` gate recheck still blocks public beta and team use.
-- The 2026-05-26 ordered evidence recheck was read-only; it did not satisfy provider monitoring, incident, support, or design-partner evidence. The later 2026-05-26 staging drill satisfied rollback evidence and exact compact-record deletion only.
+- The 2026-05-26 ordered evidence recheck was read-only; it did not satisfy provider monitoring or design-partner evidence. The later 2026-05-26 staging drills satisfied rollback evidence, exact compact-record deletion, and human support routing.
 - No admin dashboard exists.
 - No mobile UI exists.
 - No SEO/GEO website or analytics exists.

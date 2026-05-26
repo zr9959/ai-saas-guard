@@ -118,7 +118,8 @@ Risks:
 - the operator runbook is documentation only until exercised against deployed artifacts
 - the 2026-05-26 staging rollback drill now provides rollback evidence, and exact compact-record deletion was proven for a dedicated test key
 - full GitHub App uninstall/repository-removal cleanup proof still needs a safe test repository or authorized App-management session; do not remove the current `ai-saas-guard` installation because it would delete existing scan evidence
-- provider alert exports, incident drill, support owner evidence, and real design-partner feedback remain missing
+- provider alert exports and real design-partner feedback remain missing
+- primary incident owner and public-safe support path evidence now exist; backup coverage is a pause-hosted fallback, not a staffed second operator
 
 ## P1: Deploy Full Source-Checkout Worker Only With Evidence
 
