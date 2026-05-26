@@ -7,7 +7,10 @@ import { lineAt, lineNumberForIndex } from "../utils/files.js";
 const sensitiveRoutePattern = /(login|register|auth|checkout|stripe|webhook|upload|ai|generate|admin|password|reset|token)/i;
 const rateLimitPattern = /(rateLimit|ratelimit|rate-limit|throttle|limiter|upstash|slowDown)/i;
 const authPattern = /(auth|session|currentUser|getUser|jwt|cookies|authorization)/i;
-const ownershipPattern = /(user_id|owner_id|tenant_id|organization_id|workspace_id|resource\.user|resource\.owner|where\s*:\s*{[\s\S]{0,100}(user|owner|tenant))/i;
+const ownershipPattern = /(user_id|userId|owner_id|ownerId|tenant_id|tenantId|organization_id|organizationId|workspace_id|workspaceId|resource\.user|resource\.owner|req\.user(?:Id|\.id)|where\s*:\s*{[\s\S]{0,140}(user|owner|tenant|organization|workspace))/i;
+const providerDebugPathPattern = /(paypal|stripe|github|oauth|openai|anthropic|resend|sendgrid).*(token|config|status|test|probe|debug)|(token|config|status|test|probe|debug).*(paypal|stripe|github|oauth|openai|anthropic|resend|sendgrid)/i;
+const providerCredentialProbePattern =
+  /(client_credentials|oauth2\/token|access_token|PAYPAL_SECRET|PAYPAL_CLIENT_SECRET|STRIPE_SECRET|GITHUB_APP_PRIVATE_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|SENDGRID_API_KEY|RESEND_API_KEY)/i;
 
 export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
   const files = (await resolveScanContext(input)).getFiles((file) => isApiRoute(file.path));
@@ -19,6 +22,7 @@ export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
 
     findings.push(...scanClerkUnsafeMetadata(file.path, file.content));
     findings.push(...scanPrismaTenantScope(file.path, file.content));
+    findings.push(...scanProviderDebugEndpoint(file.path, file.content));
 
     if (isSensitive && hasPostOrMutation && !rateLimitPattern.test(file.content)) {
       findings.push(
@@ -36,7 +40,12 @@ export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
       );
     }
 
-    if (authPattern.test(file.content) && /params\.|searchParams|get\(|findUnique|findFirst|update|delete/i.test(file.content) && !ownershipPattern.test(file.content)) {
+    if (
+      authPattern.test(file.content) &&
+      /params\.|searchParams|get\(|findUnique|findFirst|update|delete/i.test(file.content) &&
+      !ownershipPattern.test(file.content) &&
+      !hasExplicitAdminGuard(file.content)
+    ) {
       findings.push(
         finding({
           ruleId: "api.route.auth-without-ownership",
@@ -54,6 +63,31 @@ export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
   }
 
   return uniqueFindings(findings);
+}
+
+function scanProviderDebugEndpoint(filePath: string, content: string): Finding[] {
+  if (!/\bGET\b|export\s+async\s+function\s+GET/i.test(content)) return [];
+  if (!providerDebugPathPattern.test(filePath) && !providerDebugPathPattern.test(content)) return [];
+  if (!providerCredentialProbePattern.test(content)) return [];
+  if (hasExplicitAdminGuard(content) && rateLimitPattern.test(content)) return [];
+
+  return [
+    finding({
+      ruleId: "api.route.provider-debug-exposed",
+      title: `Public provider token or configuration probe endpoint: ${filePath}`,
+      severity: "high",
+      evidence: [{ file: filePath, line: firstLine(content, providerCredentialProbePattern), snippet: firstSnippet(content, providerCredentialProbePattern) }],
+      why: "A public debug endpoint can spend provider quota, reveal integration mode or configuration state, and exercise server-side credentials even when it does not return the token.",
+      suggestedVerification:
+        "Call the route without a session in staging and confirm it cannot trigger provider authentication or reveal provider configuration state.",
+      suggestedFix:
+        "Remove the endpoint before launch, or require admin authentication, add a dedicated rate limit, emit an audit log, and disable it in production."
+    })
+  ];
+}
+
+function hasExplicitAdminGuard(content: string): boolean {
+  return /\b(requireAdmin|adminMiddleware|isAdmin|requireRole\s*\(\s*["']admin|role\s*[:=]\s*["']admin)/i.test(content);
 }
 
 function scanClerkUnsafeMetadata(filePath: string, content: string): Finding[] {

@@ -46,6 +46,7 @@ const expectedRuleIds = [
   "actions.unpinned-action",
   "api.route.auth-without-ownership",
   "api.route.missing-rate-limit",
+  "api.route.provider-debug-exposed",
   "auth.clerk.unsafe-metadata",
   "data.prisma.tenant-scope-missing",
   "deploy.edge-runtime-node-api",
@@ -467,6 +468,51 @@ test("Supabase scanner accepts scoped storage object policies", async () => {
   });
 
   assert.deepEqual(report.findings, []);
+});
+
+test("Supabase scanner ignores generic SQL schemas when no Supabase context exists", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "sqlite-express-schema")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId.startsWith("supabase.")),
+    []
+  );
+});
+
+test("API route ownership heuristic accepts admin guards and req.userId scoping", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "express-api-ownership-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "api.route.auth-without-ownership"),
+    []
+  );
+});
+
+test("API scanner flags public provider token and configuration probe endpoints", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "provider-debug-risk")
+  });
+  const finding = report.findings.find((item) => item.ruleId === "api.route.provider-debug-exposed");
+
+  assert.ok(finding);
+  assert.equal(finding.severity, "high");
+  assert.match(finding.title, /provider.*probe/i);
+  assert.match(finding.suggestedFix, /admin.*rate limit.*production/i);
+});
+
+test("secret scanner ignores obvious example placeholders", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "placeholder-secrets-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "secrets.detected"),
+    []
+  );
 });
 
 test("silent-success guard flags fake success, mock data, bypasses, and weakened tests", async () => {

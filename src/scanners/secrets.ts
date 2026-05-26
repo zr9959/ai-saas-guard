@@ -78,6 +78,7 @@ export async function scanSecrets(input: ScanInput): Promise<Finding[]> {
       secretPattern.pattern.lastIndex = 0;
       for (const match of file.content.matchAll(secretPattern.pattern)) {
         const matchedText = match[0] ?? "";
+        if (isObviousPlaceholderSecret(file.path, matchedText)) continue;
         const line = lineNumberForIndex(file.content, match.index ?? 0);
         findings.push(
           finding({
@@ -104,6 +105,18 @@ export async function scanSecrets(input: ScanInput): Promise<Finding[]> {
   }
 
   return findings;
+}
+
+function isObviousPlaceholderSecret(filePath: string, matchedText: string): boolean {
+  const lowerPath = filePath.toLowerCase();
+  const lower = matchedText.toLowerCase();
+  const isExampleFile = /(^|\/)(\.env\.example|\.env\.sample|example\.env|sample\.env)$/.test(lowerPath) || lowerPath.includes("/examples/");
+  const hasPlaceholderValue =
+    /\b(your|replace[-_]?me|placeholder|example|sample|dummy|fake|test[-_]?token|do[-_]?not[-_]?use|changeme)\b/i.test(lower) ||
+    /<[^>\n]*(key|secret|token|password|client)[^>\n]*>/i.test(matchedText) ||
+    /\b(?:1x|2x)0{10,}[A-Za-z0-9_-]*\b/.test(matchedText);
+
+  return hasPlaceholderValue && (isExampleFile || !/sk_(?:live|test)_|gh[pousr]_|-----BEGIN|SUPABASE_SERVICE_ROLE_KEY\s*=\s*eyJ/i.test(matchedText));
 }
 
 export async function scanNextPublicEnv(input: ScanInput): Promise<Finding[]> {

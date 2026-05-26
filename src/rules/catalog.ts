@@ -200,6 +200,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "Login, checkout, upload, AI, and webhook routes are common abuse targets.",
     stability: "experimental"
   },
+  "api.route.provider-debug-exposed": {
+    ruleId: "api.route.provider-debug-exposed",
+    severity: "high",
+    title: "Provider debug endpoint exposes server-side credential probe",
+    why: "Public provider probe endpoints can spend quota, reveal integration state, or exercise server credentials without returning the token.",
+    stability: "default"
+  },
   "api.route.auth-without-ownership": {
     ruleId: "api.route.auth-without-ownership",
     severity: "high",

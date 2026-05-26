@@ -32,6 +32,16 @@ interface ScannedPolicy extends PolicyInfo {
 
 export async function checkSupabase(input: ScanInput, options: { doctor?: boolean } = {}): Promise<SupabaseReport> {
   const context = await resolveScanContext(input);
+  const doctor = buildDoctorReport(options.doctor ?? true);
+  if (!hasSupabaseContext(context.files)) {
+    return createReport<SupabaseReport>("check-supabase", context.rootDir, [], {
+      riskyTables: [],
+      riskyPolicies: [],
+      manualAuthorizationTest: [],
+      doctor
+    });
+  }
+
   const files = context.getFiles((file) => {
     const path = file.path.toLowerCase();
     return path.includes("supabase") || path.includes("migration") || path.endsWith(".sql") || path.endsWith(".prisma");
@@ -187,7 +197,6 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
   }
 
   findings.push(...buildDoctorFindings(files, tables, rlsEnabledTables, policies));
-  const doctor = buildDoctorReport(options.doctor ?? true);
 
   return createReport<SupabaseReport>("check-supabase", context.rootDir, uniqueFindings(findings), {
     riskyTables: [...new Set(tables.filter((table) => table.sensitive && !rlsEnabledTables.has(table.name)).map((table) => table.name))],
@@ -200,6 +209,15 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
       "Repeat for tenant/member resources and storage objects, not only top-level tables."
     ],
     doctor
+  });
+}
+
+function hasSupabaseContext(files: readonly TextFile[]): boolean {
+  return files.some((file) => {
+    const path = file.path.toLowerCase();
+    if (path.includes("supabase")) return true;
+    if (path === "package.json" && /@supabase\/supabase-js|supabase/i.test(file.content)) return true;
+    return /\bfrom\s+["']@supabase\/|create\s+policy\b|enable\s+row\s+level\s+security|auth\.uid\s*\(|storage\.objects/i.test(file.content);
   });
 }
 
