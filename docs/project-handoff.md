@@ -208,6 +208,8 @@ Latest release:
 - Real hosted PR smoke: PR `#91`, Check Run `77724168740`, conclusion `success`, temporary branch deleted, KV smoke records cleaned to `[]`
 - 2026-05-26 read-only provider recheck: public health and install-info endpoints returned HTTP 200 with safe privacy flags; `wrangler deployments list` still showed Worker version `8744d3db-0114-4653-85e2-f1554ff1b26b`; KV had 28 compact records with TTL and no deletion was performed
 - 2026-05-26 npm/npx recheck: npm `latest` remained `ai-saas-guard@0.43.0`; `npx --yes ai-saas-guard@latest demo --summary` ran successfully; no npm package was published because this was documentation/evidence-only
+- 2026-05-26 staging rollback drill: rollback to v0.42 Worker version `6de0811e-11bf-46a6-9b7b-cbecda409695` passed health/privacy checks, then restore to v0.43 Worker version `8744d3db-0114-4653-85e2-f1554ff1b26b` passed health/privacy checks
+- 2026-05-26 deletion drill: dedicated test compact KV key under `scan:135085075:900000526:` was created and deleted by exact key; existing project scan evidence was not deleted; full GitHub App uninstall/repository-removal proof still needs a safe test installation
 
 Latest release verification passed:
 
