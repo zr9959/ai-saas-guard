@@ -2,6 +2,26 @@
 
 Last updated: 2026-05-26, Asia/Shanghai.
 
+## Private Pilot Rule-Quality Feedback Update
+
+Why:
+
+- A real local scan of a private SaaS worktree produced a sanitized feedback summary with several high-noise false-positive categories and one useful provider debug endpoint risk.
+- The repository should capture the feedback as public-safe rule-quality evidence without copying private source, raw reports, private paths, credentials, or customer data.
+
+Changed:
+
+- added synthetic regression fixtures for the reported patterns
+- tuned Supabase RLS checks to require Supabase context before flagging generic SQL schemas
+- tuned API ownership heuristics for admin guards and `req.userId` scoping
+- added `api.route.provider-debug-exposed`
+- tuned obvious placeholder/test-token secret handling
+- recorded the sanitized feedback in public-beta evidence docs as rule-quality evidence, not public beta readiness evidence
+
+Tested:
+
+- `npm test`: 195 pass
+
 ## Current Release: v0.43.0
 
 Latest main commit:

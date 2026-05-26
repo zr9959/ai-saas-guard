@@ -71,6 +71,8 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 
 `check-supabase --doctor` keeps this static and local. It adds a doctor section with two-account/cross-tenant verification steps and SQL cookbook prompts for staging databases. It does not connect to Supabase or inspect production state.
 
+Supabase RLS checks require Supabase context, such as Supabase paths, dependencies, policy syntax, `auth.uid()`, storage policies, or row-level-security statements. Generic SQLite or Express SQL schemas should not trigger Supabase RLS findings only because a table is named `users` or `subscriptions`.
+
 ## Silent Success
 
 | Rule ID | Severity | Why it exists |
@@ -87,6 +89,7 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 | --- | --- | --- |
 | `api.route.missing-rate-limit` | medium | Login, checkout, upload, AI, and webhook routes are common abuse targets. |
 | `api.route.auth-without-ownership` | high | Login checks do not prove resource ownership checks. |
+| `api.route.provider-debug-exposed` | high | Public provider token/configuration probe endpoints can spend quota, reveal integration state, or exercise server credentials without returning the token. |
 | `auth.clerk.unsafe-metadata` | high | Clerk unsafe metadata is user-writable and should not hold roles, plans, tenant membership, or entitlements. |
 | `data.prisma.tenant-scope-missing` | high | Authenticated Prisma reads or mutations on tenant-like resources need tenant, owner, organization, or workspace predicates. |
 | `deploy.next.static-export-api-risk` | medium | Static export can conflict with runtime API assumptions. |
@@ -130,6 +133,15 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 | `actions.unpinned-action` | info | Pinned actions make launch-preflight workflows more reproducible. |
 
 These checks are intentionally small and launch-readiness-focused. They do not try to replace actionlint, zizmor, Scorecard, or CI analytics.
+
+## Rule-Quality Notes From Private Pilot Feedback
+
+Use sanitized private pilot feedback to improve rule quality, not to claim public beta readiness. The current regression suite includes synthetic coverage for these feedback categories:
+
+- generic SQL schemas without Supabase context should not trigger Supabase RLS rules
+- admin-guarded routes and `req.userId`-scoped routes should avoid generic ownership false positives
+- public provider token/configuration probe endpoints should be reviewed or removed before launch
+- obvious example placeholders and known test tokens should not be treated as leaked credentials
 
 ## PR Risk
 

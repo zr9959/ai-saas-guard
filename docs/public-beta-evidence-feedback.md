@@ -246,6 +246,36 @@ When feedback arrives:
 
 Do not convert a recruitment reply into evidence until the participant has actually run or reviewed the tool output.
 
+## Sanitized Private Pilot Feedback: 2026-05-26
+
+Status: received as a public-safe summary from the project owner after a real local CLI scan of a private SaaS worktree. The private worktree, source, raw report, raw paths, customer data, and credentials were not copied into this repository.
+
+This record is useful as rule-quality evidence, not as public beta readiness evidence. It does not count as one of the three external design-partner contexts because it came through the project owner and was not a public-beta participant session.
+
+Safe summary:
+
+- Scanner path: local read-only CLI scan.
+- Repository category: private SaaS worktree.
+- Findings summary: 121 total findings; 2 critical, 47 high, 27 medium, 7 low, 38 info.
+- False-positive category: Supabase RLS findings on a non-Supabase SQLite/Express schema.
+- False-positive category: broad `api.route.auth-without-ownership` findings where routes already used admin guards or `req.userId` scoping.
+- False-positive category: `secrets.detected` findings on obvious placeholders, variable names, and test/fallback tokens rather than real credentials.
+- Useful true-positive category: public provider token/configuration probe endpoint that exercised server-side provider credentials and returned configuration state.
+- Follow-up category: stricter targeted rate limits and observable error handling for password changes, admin configuration tests, provider probes, and swallowed-error paths.
+
+Actions taken from this feedback:
+
+- Added synthetic regression fixtures instead of copying private code.
+- Tuned Supabase RLS detection to require Supabase context before treating generic SQL schemas as RLS surfaces.
+- Tuned API ownership heuristics to accept explicit admin guards and `req.userId` ownership scoping.
+- Added `api.route.provider-debug-exposed` for public provider token/configuration probe endpoints.
+- Tuned secret placeholder handling for clearly fake example values and known test tokens.
+
+Remaining follow-up:
+
+- Run two-account IDOR regression tests on real participant projects when a participant can do that safely.
+- Continue collecting false-positive and false-negative summaries by rule ID without source, diffs, raw logs, private repository URLs, checkout paths, or customer payloads.
+
 ## Task Cleanup
 
 Every evidence-collection task must end with:
