@@ -2436,6 +2436,7 @@ test("metrics snapshot script writes privacy-safe JSON and JSONL from fixtures",
   try {
     const outputPath = resolve(rootDir, "latest.json");
     const jsonlPath = resolve(rootDir, "snapshots.jsonl");
+    const summaryPath = resolve(rootDir, "summary.md");
 
     await execFileAsync(
       "node",
@@ -2449,6 +2450,8 @@ test("metrics snapshot script writes privacy-safe JSON and JSONL from fixtures",
         outputPath,
         "--jsonl",
         jsonlPath,
+        "--summary-markdown",
+        summaryPath,
         "--fixture-dir",
         resolve(fixtureRoot, "metrics-snapshot")
       ],
@@ -2481,6 +2484,15 @@ test("metrics snapshot script writes privacy-safe JSON and JSONL from fixtures",
     assert.match(snapshot.limitations.join("\n"), /downloads, not unique human users/i);
     assert.match(snapshot.limitations.join("\n"), /not design-partner feedback/i);
 
+    const summary = await readFile(summaryPath, "utf8");
+    assert.match(summary, /ai-saas-guard Metrics Snapshot/);
+    assert.match(summary, /Repository:\s+`zr9959\/ai-saas-guard`/);
+    assert.match(summary, /GitHub traffic:\s+available/i);
+    assert.match(summary, /Views:\s+80 total \/ 7 unique/i);
+    assert.match(summary, /Clones:\s+1948 total \/ 468 unique/i);
+    assert.match(summary, /npm latest:\s+`0\.43\.1`/i);
+    assert.match(summary, /npm downloads last week:\s+5979/i);
+
     const jsonl = (await readFile(jsonlPath, "utf8"))
       .trim()
       .split("\n")
@@ -2498,6 +2510,7 @@ test("metrics snapshot records unavailable GitHub traffic without failing", asyn
   try {
     const outputPath = resolve(rootDir, "latest.json");
     const jsonlPath = resolve(rootDir, "snapshots.jsonl");
+    const summaryPath = resolve(rootDir, "summary.md");
 
     await execFileAsync(
       "node",
@@ -2511,6 +2524,8 @@ test("metrics snapshot records unavailable GitHub traffic without failing", asyn
         outputPath,
         "--jsonl",
         jsonlPath,
+        "--summary-markdown",
+        summaryPath,
         "--fixture-dir",
         resolve(fixtureRoot, "metrics-snapshot-no-traffic")
       ],
@@ -2528,6 +2543,10 @@ test("metrics snapshot records unavailable GitHub traffic without failing", asyn
     assert.equal(snapshot.npm.downloads.lastWeek, 5979);
     assert.match(snapshot.warnings.join("\n"), /GitHub traffic unavailable/i);
     assert.match(snapshot.warnings.join("\n"), /METRICS_GITHUB_TOKEN/i);
+
+    const summary = await readFile(summaryPath, "utf8");
+    assert.match(summary, /GitHub traffic:\s+unavailable/i);
+    assert.match(summary, /METRICS_GITHUB_TOKEN/);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
@@ -2549,6 +2568,9 @@ test("repository defines a least-privilege metrics snapshot workflow", async () 
   assert.match(workflow, /node scripts\/metrics-snapshot\.mjs/);
   assert.match(workflow, /\.local\/metrics\/latest\.json/);
   assert.match(workflow, /\.local\/metrics\/snapshots\.jsonl/);
+  assert.match(workflow, /--summary-markdown \.local\/metrics\/summary\.md/);
+  assert.match(workflow, /cat \.local\/metrics\/summary\.md >> "\$GITHUB_STEP_SUMMARY"/);
+  assert.match(workflow, /\.local\/metrics\/summary\.md/);
   assert.match(workflow, /actions\/upload-artifact@[a-f0-9]{40} # v5/);
   assert.match(workflow, /retention-days:\s*30/);
   assert.doesNotMatch(workflow, /contents:\s*write|id-token:\s*write|NPM_TOKEN|npm publish|git push/i);
@@ -2569,7 +2591,10 @@ test("public docs describe metrics snapshots as platform analytics, not user fee
   assert.match(docs, /does not collect customer data/i);
   assert.match(docs, /design-partner feedback/i);
   assert.match(docs, /\.local\/metrics/);
+  assert.match(docs, /summary\.md/);
+  assert.match(docs, /GitHub Actions step summary/i);
   assert.match(docs, /METRICS_GITHUB_TOKEN/);
+  assert.match(docs, /Administration.*read/i);
   assert.match(docs, /trafficAvailable/);
 });
 

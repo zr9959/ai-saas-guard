@@ -56,6 +56,8 @@ function parseArgs(argv) {
       options.output = value;
     } else if (key === "jsonl") {
       options.jsonl = value;
+    } else if (key === "summary-markdown") {
+      options.summaryMarkdown = value;
     } else if (key === "fixture-dir") {
       options.fixtureDir = value;
     } else if (key === "generated-at") {
@@ -86,6 +88,8 @@ function usage() {
     "Options:",
     `  --output <path>       JSON snapshot path. Default: ${DEFAULT_OUTPUT}`,
     `  --jsonl <path>        Append-only JSONL history path. Default: ${DEFAULT_JSONL}`,
+    "  --summary-markdown <path>",
+    "                        Write a public-safe Markdown summary for Actions artifacts.",
     "  --fixture-dir <path>  Read test fixtures instead of live GitHub/npm APIs.",
     "  --generated-at <iso>  Override generatedAt for deterministic tests."
   ].join("\n");
@@ -361,6 +365,52 @@ async function appendSnapshot(path, snapshot) {
   await appendFile(path, `${JSON.stringify(snapshot)}\n`);
 }
 
+function formatMarkdownSummary(snapshot) {
+  const trafficStatus = snapshot.github.trafficAvailable ? "available" : "unavailable";
+  const warnings =
+    snapshot.warnings.length > 0
+      ? snapshot.warnings.map((warning) => `- ${warning}`).join("\n")
+      : "- None";
+
+  return [
+    "# ai-saas-guard Metrics Snapshot",
+    "",
+    `Generated: ${snapshot.generatedAt}`,
+    `Repository: \`${snapshot.repository}\``,
+    `Package: \`${snapshot.packageName}\``,
+    "",
+    "## GitHub",
+    "",
+    `GitHub traffic: ${trafficStatus}`,
+    `Stars: ${snapshot.github.stars}`,
+    `Forks: ${snapshot.github.forks}`,
+    `Watchers: ${snapshot.github.watchers}`,
+    `Open issues: ${snapshot.github.openIssues}`,
+    `Views: ${snapshot.github.views.total} total / ${snapshot.github.views.uniques} unique`,
+    `Clones: ${snapshot.github.clones.total} total / ${snapshot.github.clones.uniques} unique`,
+    "",
+    "## npm",
+    "",
+    `npm latest: \`${snapshot.npm.latestVersion ?? "unknown"}\``,
+    `npm downloads last week: ${snapshot.npm.downloads.lastWeek}`,
+    `npm downloads last month: ${snapshot.npm.downloads.lastMonth}`,
+    "",
+    "## Warnings",
+    "",
+    warnings,
+    "",
+    "## Limits",
+    "",
+    ...snapshot.limitations.map((limitation) => `- ${limitation}`),
+    ""
+  ].join("\n");
+}
+
+async function writeMarkdownSummary(path, snapshot) {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, formatMarkdownSummary(snapshot));
+}
+
 function printSummary(snapshot) {
   const summary = {
     generatedAt: snapshot.generatedAt,
@@ -405,6 +455,9 @@ async function main() {
 
   await writeSnapshot(options.output, snapshot);
   await appendSnapshot(options.jsonl, snapshot);
+  if (options.summaryMarkdown) {
+    await writeMarkdownSummary(options.summaryMarkdown, snapshot);
+  }
   printSummary(snapshot);
 }
 

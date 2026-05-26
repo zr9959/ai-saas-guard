@@ -32,6 +32,7 @@ The script writes:
 
 - `.local/metrics/latest.json`
 - `.local/metrics/snapshots.jsonl`
+- `.local/metrics/summary.md` when `--summary-markdown` is provided
 
 `.local/` is git-ignored, so local snapshots are not committed by default.
 
@@ -39,6 +40,16 @@ The script writes:
 
 `.github/workflows/metrics-snapshot.yml` runs daily at 08:00 Asia/Shanghai, which is 00:00 UTC for GitHub Actions cron, and also supports manual dispatch. It uses read-only repository contents permission, pinned actions, and uploads the sanitized snapshot as a 30-day Actions artifact instead of committing metrics back to `main`.
 
-If the default `github.token` cannot read GitHub traffic endpoints, configure a read-only `METRICS_GITHUB_TOKEN` repository secret with the minimum access required to read repository traffic. Never print the token, commit it, or put it in `.env.example`.
+The workflow writes the same public-safe `summary.md` into the GitHub Actions step summary and uploads it with `latest.json` and `snapshots.jsonl`. The daily review path is: open the latest `Metrics Snapshot` run, read the GitHub Actions step summary, and download the artifact only when the raw JSON is needed.
+
+If the default `github.token` cannot read GitHub traffic endpoints, configure a read-only `METRICS_GITHUB_TOKEN` repository secret with the minimum access required to read repository traffic. GitHub documents the traffic endpoints as requiring `Administration` repository permission with read access for fine-grained tokens. Never print the token, commit it, or put it in `.env.example`.
 
 Without `METRICS_GITHUB_TOKEN`, the workflow still succeeds and saves npm/package metadata plus public repository counters. In that case the JSON sets `github.trafficAvailable` to `false`, leaves views/clones/top traffic arrays empty, and includes a warning so the missing traffic permission is visible in the artifact.
+
+Safe setup boundary:
+
+1. Create a fine-grained personal access token in GitHub with repository access limited to `zr9959/ai-saas-guard`.
+2. Grant only repository `Administration: read` for traffic endpoint access.
+3. Set the repository secret name to `METRICS_GITHUB_TOKEN`.
+4. Run `Metrics Snapshot` manually once and confirm `github.trafficAvailable` is `true`.
+5. Do not reuse a broad local `gh` token for this secret.

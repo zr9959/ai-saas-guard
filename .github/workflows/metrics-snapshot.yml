@@ -41,13 +41,17 @@ jobs:
           --package ai-saas-guard
           --output .local/metrics/latest.json
           --jsonl .local/metrics/snapshots.jsonl
+          --summary-markdown .local/metrics/summary.md
         env:
           GH_TOKEN: ${{ secrets.METRICS_GITHUB_TOKEN || github.token }}
+      - name: Publish metrics summary
+        run: cat .local/metrics/summary.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: ai-saas-guard-metrics-snapshot
           path: |
             .local/metrics/latest.json
             .local/metrics/snapshots.jsonl
+            .local/metrics/summary.md
           if-no-files-found: error
           retention-days: 30
