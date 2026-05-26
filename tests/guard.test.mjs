@@ -2539,6 +2539,7 @@ test("repository defines a least-privilege metrics snapshot workflow", async () 
   assert.match(workflow, /name:\s*Metrics Snapshot/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /schedule:\s*\n\s+-\s+cron:\s*"0 0 \* \* \*"/);
+  assert.match(workflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24:\s*true/);
   assert.match(workflow, /contents:\s*read/);
   assert.match(workflow, /concurrency:/);
   assert.match(workflow, /persist-credentials:\s*false/);
