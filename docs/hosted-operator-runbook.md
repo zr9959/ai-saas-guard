@@ -63,8 +63,22 @@ Use the narrowest pause that stops new hosted side effects without requiring use
 Preferred pause order:
 
 1. Pause or disable worker consumption if a queue-backed worker is deployed.
-2. If only the Cloudflare ingress is deployed, deploy a reviewed controlled-failure Worker build that rejects eligible webhook processing before compact records or Check Runs are written.
+2. If only the Cloudflare ingress is deployed, set the runtime KV pause key so eligible pull request webhooks are accepted as paused before compact records or Check Runs are written.
 3. If the issue is GitHub App-specific, temporarily suspend webhook delivery or selected-repository installation only after recording the affected installation and repository IDs.
+
+Current Cloudflare ingress pause:
+
+```bash
+npx wrangler kv key put control:hosted_processing_paused true --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote
+curl --retry 3 --retry-delay 2 -fsSL https://ai-saas-guard-hosted.zr9959.workers.dev/healthz
+```
+
+Resume after mitigation:
+
+```bash
+npx wrangler kv key put control:hosted_processing_paused false --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote
+curl --retry 3 --retry-delay 2 -fsSL https://ai-saas-guard-hosted.zr9959.workers.dev/healthz
+```
 
 Evidence to record:
 
@@ -85,6 +99,14 @@ For the current Cloudflare KV-backed staging ingress, inspect compact record pre
 ```bash
 npx wrangler kv key list --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote
 ```
+
+Current eligible pull request webhook rate limit:
+
+- key shape: `rate:pull_request:<installation-id>:<repository-id>`
+- configured staging limit: 30 accepted eligible pull request webhooks per installation and repository per 60 seconds
+- rejection response: HTTP 429 with `stage: rate_limit`, `reason: repository_rate_limited`, and a compact retry window
+
+Rate-limit counters are compact operational records only. Do not record PR title/body text, raw webhook payloads, source, diffs, secrets, installation tokens, private URLs, customer payloads, or checkout paths.
 
 For a future durable queue-backed worker, collect provider metrics for:
 

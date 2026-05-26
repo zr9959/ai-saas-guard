@@ -294,6 +294,53 @@ The proof was scoped to a temporary private test repository. The current `zr9959
 
 Result: full GitHub App add/remove uninstall proof remains blocked on an App-management session with permission to modify the `ai-saas-guard-hosted` installation, or on a separate safe test installation controlled for this proof.
 
+## 2026-05-26 Phase 3 Source-Checkout Gate Recheck
+
+Recorded on 2026-05-26 before working on the remaining hosted beta blockers.
+
+This was a read-only recheck against the current live hosted Worker and current repository evidence. It did not change Cloudflare configuration, GitHub App installation state, npm packaging, or compact KV records.
+
+| Area | Evidence | Status |
+| --- | --- | --- |
+| Live hosted endpoint | `https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned `ok: true`, `mode: webhook-ingress`, `storage: cloudflare_kv`, `checkRunPublisher: configured`, and `scannerVersion: 0.43.0`. | Healthy webhook ingress |
+| Privacy flags | The health response reported no raw webhook payload, PR text, source, diffs, secrets, customer payloads, private checkout paths, or installation tokens. | Passed |
+| Phase 3 source-checkout worker shape | The live endpoint did not report the Node/container source-checkout platform or both `webhook-ingress` and `scan-worker` roles required by the deployed source-checkout evidence path. | Still blocked |
+
+Result: `phase3_gate_missing` remains a real blocker. Do not mark `phase3GatePassed` true until a deployed source-checkout worker or equivalent deployed scan-worker evidence proves trusted checkout identity, temporary credential cleanup, fixed scanner command, success and failure cleanup, safe log boundary, and retention/uninstall cleanup.
+
+## 2026-05-26 Hosted Rate Limit And Kill Switch Evidence
+
+Recorded on 2026-05-26 after adding deployed Cloudflare ingress controls.
+
+| Area | Evidence | Status |
+| --- | --- | --- |
+| Rate-limit implementation | `tests/cloudflare-worker.test.mjs` covers per-installation and per-repository pull request webhook rate limiting. Over-limit requests return HTTP `429`, `stage: rate_limit`, `reason: repository_rate_limited`, a compact retry window, no Check Run side effect, and no new `delivery:` or `scan:` record for the blocked delivery. | Passed |
+| Rate-limit deployment | `npx wrangler deploy --dry-run` showed `RATE_LIMIT_MAX_EVENTS_PER_REPOSITORY_PER_MINUTE` and `RATE_LIMIT_WINDOW_SECONDS` bindings. `npx wrangler deploy` published Worker version `83592bb8-1059-4d5e-b581-3e4d44b5d58b`. | Passed |
+| Public health evidence | `GET /healthz` returned `rateLimit: configured`, `abuseKillSwitch: configured`, `processingPaused: false`, `scannerVersion: 0.43.0`, and safe privacy flags. | Passed |
+| Kill switch implementation | `tests/cloudflare-worker.test.mjs` covers `HOSTED_PROCESSING_PAUSED=true`; eligible signed pull request webhooks are accepted as `stage: paused`, no compact delivery/scan records are written, and no GitHub network call is made. | Passed |
+| Runtime pause drill | Set KV key `control:hosted_processing_paused` to `true`; `/healthz` returned `processingPaused: true`. Reset the same key to `false`; `/healthz` returned `processingPaused: false`. | Passed and restored |
+| Privacy review | No raw webhook payloads, PR title/body text, source, diffs, secrets, customer payloads, private checkout paths, installation tokens, or private URLs were recorded. | Passed |
+
+Validation:
+
+```bash
+npm run build && node --test tests/cloudflare-worker.test.mjs tests/hosted-beta.test.mjs
+npx wrangler deploy --dry-run
+npx wrangler deploy
+curl -fsSL https://ai-saas-guard-hosted.zr9959.workers.dev/healthz
+npx wrangler kv key put control:hosted_processing_paused true --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote
+curl -fsSL https://ai-saas-guard-hosted.zr9959.workers.dev/healthz
+npx wrangler kv key put control:hosted_processing_paused false --namespace-id fa5344fbd7944de6a776bf8731d58460 --remote
+curl -fsSL https://ai-saas-guard-hosted.zr9959.workers.dev/healthz
+```
+
+Gate recheck with rate-limit and abuse kill-switch evidence set to true returned:
+
+- Phase 4 `readyForPublicBeta: false`
+- Phase 4 blocked reasons: `phase3_gate_missing`, `uninstall_deletion_proof_missing`
+- Phase 5 `readyForTeamUse: false`
+- Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
