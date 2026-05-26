@@ -216,7 +216,6 @@ export function createFileBackedHostedStagingHarness(
         typeof options.scanResult === "function"
           ? await options.scanResult(input)
           : options.scanResult;
-      await writeFile(join(sandboxPath, "source.ts"), scanResult.rawSource ?? "", "utf8");
       return scanResult;
     },
     now: options.now

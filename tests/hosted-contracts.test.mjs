@@ -774,7 +774,8 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.match(findings.output.text, /Verification steps/i);
   assert.match(findings.output.text, /Files to review first/i);
   assert.match(findings.output.text, /Local CLI/i);
-  assert.match(findings.output.text, /npx ai-saas-guard@0\.10\.0 pr-risk --root \./);
+  assert.match(findings.output.text, /npx ai-saas-guard@0\.10\.0 pr-risk --root \. --base b{40} --json/);
+  assert.equal(findings.localCliCommand, `npx ai-saas-guard@0.10.0 pr-risk --root . --base ${"b".repeat(40)} --json`);
   assert.match(findings.output.text, /stripe\.webhook\.missing-signature/);
   assert.match(findings.output.text, /app\/api\/stripe\/webhook\/route\.ts:12/);
   assert.deepEqual(findings.privacy, {

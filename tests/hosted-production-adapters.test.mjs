@@ -109,6 +109,23 @@ test("hosted installation token request plans scoped GitHub permissions without 
   assert.equal(serialized.includes("ghs_should-not-leak"), false);
 });
 
+test("hosted installation token request rejects unsafe GitHub API base URLs without serializing them", async () => {
+  const { planHostedGitHubInstallationTokenRequest } = await loadProductionAdapters();
+  const plan = planHostedGitHubInstallationTokenRequest({
+    installationId: 123,
+    repositoryId: 456,
+    purpose: "first_slice",
+    requestedAt: "2026-05-24T13:00:00.000Z",
+    apiBaseUrl: "https://user:pass@localhost:8443/api?token=should-not-appear#fragment"
+  });
+  const serialized = JSON.stringify(plan);
+
+  assert.equal(plan.readyToRequestToken, false);
+  assert.deepEqual(plan.blockedReasons, ["invalid_github_api_url"]);
+  assert.equal(plan.request.url, "https://api.github.com/app/installations/123/access_tokens");
+  assert.doesNotMatch(serialized, /localhost|user:pass|should-not-appear|#fragment/);
+});
+
 test("hosted production worker execution fixes command, bounds resources, and plans cleanup for every terminal state", async () => {
   const { planHostedProductionWorkerExecution } = await loadProductionAdapters();
   const plan = planHostedProductionWorkerExecution({
