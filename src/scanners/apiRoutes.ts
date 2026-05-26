@@ -44,7 +44,8 @@ export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
       authPattern.test(file.content) &&
       /params\.|searchParams|get\(|findUnique|findFirst|update|delete/i.test(file.content) &&
       !ownershipPattern.test(file.content) &&
-      !hasExplicitAdminGuard(file.content)
+      !hasExplicitAdminGuard(file.content) &&
+      !hasBenignRouteClassification(file.path, file.content)
     ) {
       findings.push(
         finding({
@@ -69,7 +70,7 @@ function scanProviderDebugEndpoint(filePath: string, content: string): Finding[]
   if (!/\bGET\b|export\s+async\s+function\s+GET/i.test(content)) return [];
   if (!providerDebugPathPattern.test(filePath) && !providerDebugPathPattern.test(content)) return [];
   if (!providerCredentialProbePattern.test(content)) return [];
-  if (hasExplicitAdminGuard(content) && rateLimitPattern.test(content)) return [];
+  if (hasExplicitAdminGuard(content)) return [];
 
   return [
     finding({
@@ -87,7 +88,28 @@ function scanProviderDebugEndpoint(filePath: string, content: string): Finding[]
 }
 
 function hasExplicitAdminGuard(content: string): boolean {
-  return /\b(requireAdmin|adminMiddleware|isAdmin|requireRole\s*\(\s*["']admin|role\s*[:=]\s*["']admin)/i.test(content);
+  return /\b(requireAdmin|adminMiddleware|isAdmin|requireRole\s*\(\s*["']admin|role\s*[:=]\s*["']admin|router\.use\s*\([\s\S]{0,160}requireAdmin)/i.test(content);
+}
+
+function hasBenignRouteClassification(filePath: string, content: string): boolean {
+  return isPublicReadOnlyContentRoute(filePath, content) || isInternalProxyRoute(filePath, content) || isScopedTokenRoute(content);
+}
+
+function isPublicReadOnlyContentRoute(filePath: string, content: string): boolean {
+  if (/\b(POST|PUT|PATCH|DELETE)\b|export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)/.test(content)) return false;
+  const publicContentSurface = /(\/|^)(content|seo|blog|article|articles|sitemap|robots|public)(\/|\.|-|$)/i.test(filePath);
+  const publicPredicate = /\b(published|public|isPublished|visibility)\s*:\s*(true|["']public["'])/i.test(content);
+  return publicContentSurface && publicPredicate;
+}
+
+function isInternalProxyRoute(filePath: string, content: string): boolean {
+  const internalPath = /(\/|^)(internal|proxy|bff)(\/|\.|-|$)/i.test(filePath);
+  const hasServiceTokenGuard = /\b(INTERNAL_[A-Z0-9_]*TOKEN|SERVICE_[A-Z0-9_]*TOKEN|PROXY_[A-Z0-9_]*TOKEN|authorization\s*!==\s*`?Bearer)/i.test(content);
+  return internalPath && hasServiceTokenGuard;
+}
+
+function isScopedTokenRoute(content: string): boolean {
+  return /\b(scopeToken|scopedToken|verifyAgentScopeToken|agentScope|scopes\s*:\s*\[|content-agent:[a-z-]+)/i.test(content);
 }
 
 function scanClerkUnsafeMetadata(filePath: string, content: string): Finding[] {

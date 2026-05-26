@@ -22,6 +22,27 @@ Tested:
 
 - `npm test`: 195 pass
 
+## Stack Inventory And Route Classification Update
+
+Why:
+
+- The user wants at least 90% coverage of common website/SaaS tooling without running every specialized rule against every repository.
+- A second sanitized private pilot recheck showed the previous Supabase gating worked, while remaining noise clustered around API route semantics, placeholder secrets, and admin-only provider configuration routes.
+
+Changed:
+
+- added `detectStackInventory` and exported `StackInventory` types
+- made `scan` build stack inventory once and skip Supabase RLS execution when Supabase is not detected
+- added detection coverage for common frameworks, databases, ORMs, auth providers, payment providers, storage, and deploy targets
+- added route classification for admin-only, public read-only content, internal/proxy, and scoped-token routes
+- kept provider debug findings focused on public provider probes instead of admin-only settings routes
+- added synthetic regression fixtures for stack inventory and route classification
+
+Tested:
+
+- `npm run build && node --test tests/guard.test.mjs`: 111 pass
+- `npm test`: 198 pass
+
 ## Current Release: v0.43.0
 
 Latest main commit:

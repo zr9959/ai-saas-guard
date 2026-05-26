@@ -9,9 +9,12 @@ import { scanNextPublicEnv, scanSecrets } from "../scanners/secrets.js";
 import { scanSilentSuccess } from "../scanners/silentSuccess.js";
 import { checkStripe } from "../scanners/stripe.js";
 import { checkSupabase } from "../scanners/supabase.js";
+import { detectStackInventory } from "../stackInventory.js";
+import type { SupabaseReport } from "../types.js";
 
 export async function scanRepository(options: ScanOptions): Promise<BaseReport> {
   const context = await createScanContext(options.rootDir);
+  const stackInventory = await detectStackInventory(context);
   const [
     secretFindings,
     nextPublicFindings,
@@ -27,7 +30,7 @@ export async function scanRepository(options: ScanOptions): Promise<BaseReport> 
       scanSecrets(context),
       scanNextPublicEnv(context),
       checkStripe(context),
-      checkSupabase(context),
+      stackInventory.databases.includes("supabase") ? checkSupabase(context) : createSkippedSupabaseReport(context.rootDir),
       checkMcp(context),
       scanApiRoutes(context),
       scanDeployConfig(context),
@@ -49,6 +52,19 @@ export async function scanRepository(options: ScanOptions): Promise<BaseReport> 
       ...silentSuccessFindings,
       ...actionsReport.findings
     ]),
-    {}
+    { stackInventory }
   );
+}
+
+function createSkippedSupabaseReport(rootDir: string): SupabaseReport {
+  return createReport<SupabaseReport>("check-supabase", rootDir, [], {
+    riskyTables: [],
+    riskyPolicies: [],
+    manualAuthorizationTest: [],
+    doctor: {
+      staticChecks: [],
+      twoAccountVerificationSteps: [],
+      sqlCookbook: []
+    }
+  });
 }

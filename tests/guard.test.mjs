@@ -15,6 +15,7 @@ import {
   classifyPrRisk,
   createScanContext,
   createLocalScanResourceBudget,
+  detectStackInventory,
   getRuleMetadata,
   RULE_CATALOG,
   scanRepository
@@ -111,6 +112,21 @@ test("scan context exposes one shared text file inventory", async () => {
     context.getFiles((file) => file.path.endsWith(".ts")).map((file) => file.path),
     ["src/client.ts"]
   );
+});
+
+test("stack inventory detects common web SaaS tools before specialized rules run", async () => {
+  const inventory = await detectStackInventory({
+    rootDir: resolve(fixtureRoot, "stack-inventory-kitchen-sink")
+  });
+
+  assert.deepEqual(inventory.frameworks.sort(), ["express", "next", "react"].sort());
+  assert.deepEqual(inventory.databases.sort(), ["firebase", "mongodb", "postgresql", "sqlite", "supabase"].sort());
+  assert.deepEqual(inventory.orms.sort(), ["drizzle", "mongoose", "prisma"].sort());
+  assert.deepEqual(inventory.auth.sort(), ["authjs", "better-auth", "clerk", "firebase-auth", "supabase-auth"].sort());
+  assert.deepEqual(inventory.payments.sort(), ["paypal", "stripe"].sort());
+  assert.deepEqual(inventory.storage.sort(), ["aws-s3", "firebase-storage", "supabase-storage", "uploadthing"].sort());
+  assert.deepEqual(inventory.deploy.sort(), ["cloudflare", "docker", "netlify", "vercel"].sort());
+  assert.ok(inventory.evidence.some((item) => item.tool === "sqlite" && item.file === "package.json"));
 });
 
 test("text file collection can cap file count and total bytes", async () => {
@@ -502,6 +518,28 @@ test("API scanner flags public provider token and configuration probe endpoints"
   assert.equal(finding.severity, "high");
   assert.match(finding.title, /provider.*probe/i);
   assert.match(finding.suggestedFix, /admin.*rate limit.*production/i);
+});
+
+test("API scanner does not call admin-only provider configuration probes public", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "provider-debug-admin-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "api.route.provider-debug-exposed"),
+    []
+  );
+});
+
+test("API route ownership heuristic accepts public content internal proxy and scope-token routes", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "route-classification-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "api.route.auth-without-ownership"),
+    []
+  );
 });
 
 test("secret scanner ignores obvious example placeholders", async () => {
