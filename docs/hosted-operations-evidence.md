@@ -341,6 +341,20 @@ Gate recheck with rate-limit and abuse kill-switch evidence set to true returned
 - Phase 5 `readyForTeamUse: false`
 - Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
 
+## 2026-05-26 Remaining Blocker Recheck
+
+Recorded on 2026-05-26 after PR `#102` merged and the hosted controls deployment was verified.
+
+This recheck followed the remaining work in order. It did not create temporary repositories, delete KV records, mutate the GitHub App installation, change npm package versions, or mark any external-evidence blocker as passed without proof.
+
+| Step | Evidence | Result |
+| --- | --- | --- |
+| 1. Phase 3 source-checkout worker proof | Current public `/healthz` returned `mode: webhook-ingress`, `rateLimit: configured`, `abuseKillSwitch: configured`, `processingPaused: false`, `scannerVersion: 0.43.0`, and safe privacy flags. Running the deployed worker staging gate shape against this health response still blocked on missing `node_container` platform, missing `webhook-ingress`/`scan-worker` roles, missing source-checkout webhook replay, missing worker success probe, missing worker failure cleanup probe, missing cleanup verification, missing Check Run publication from that worker, and missing deployed log-boundary samples. | Still blocked; current live Worker is not the deployed source-checkout worker |
+| 2. GitHub App uninstall/repository-removal deletion proof | A read-only `gh api /user/installations` check returned HTTP `403` requiring a token authorized to the GitHub App installation. The earlier temporary-repository proof attempt also returned HTTP `403` when trying to add a test repo to installation `135085075`. | Still blocked on App-management permission or a separate safe test installation |
+| 3. Provider monitoring/alert evidence | Current ingress health, deployed Worker version, runtime pause, rollback, rate limit, and support ownership have evidence. Full provider monitoring/alert evidence for a deployed source-checkout worker is still missing because no source-checkout worker artifact is deployed. | Partially covered for current ingress; still blocked for source-checkout worker |
+| 4. Source-checkout worker rollback/incident drill | The current Cloudflare ingress rollback drill is recorded, and incident/support ownership is recorded. A source-checkout worker rollback/incident drill cannot run until a deployed source-checkout worker artifact exists. | Still blocked by missing deployed source-checkout artifact |
+| 5. Release health and real feedback path | `npx --yes ai-saas-guard@latest demo --summary` runs against npm `latest` at `0.43.0`; `/healthz` is healthy and not paused. Real design-partner feedback remains missing in issue `#93`; [public-beta-evidence-feedback.md](public-beta-evidence-feedback.md) now records where to find real participants and how to collect sanitized feedback. | Release health passed; real feedback still requires external participants |
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.

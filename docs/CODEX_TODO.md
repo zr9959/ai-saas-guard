@@ -118,6 +118,7 @@ Risks:
 - the operator runbook is documentation only until exercised against deployed artifacts
 - the 2026-05-26 staging rollback drill now provides rollback evidence, and exact compact-record deletion was proven for a dedicated test key
 - the 2026-05-26 hosted controls deployment now provides rate-limit and abuse kill-switch evidence on Worker version `83592bb8-1059-4d5e-b581-3e4d44b5d58b`; runtime pause was drilled and restored to `processingPaused:false`
+- the 2026-05-26 remaining-blocker recheck confirmed the current live Worker is still `webhook-ingress`, not a deployed `node_container` source-checkout worker; GitHub App uninstall/repository-removal proof remains blocked on App-management permission; real design-partner feedback remains blocked on external participants
 - full GitHub App uninstall/repository-removal cleanup proof still needs a safe test repository or authorized App-management session; do not remove the current `ai-saas-guard` installation because it would delete existing scan evidence
 - the 2026-05-26 App-management attempt proved the current session cannot modify the `ai-saas-guard-hosted` installation; the temporary test repo was deleted after HTTP 403
 - provider alert exports and real design-partner feedback remain missing
