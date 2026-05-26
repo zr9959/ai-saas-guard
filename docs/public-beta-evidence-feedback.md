@@ -78,6 +78,38 @@ Collect feedback from at least three independent design-partner contexts before 
 
 Store private participant names, email addresses, private repository names, and meeting links only in local private notes or the user's CRM, not in the public repository. Public repo summaries should use the target labels above unless the participant explicitly approves attribution.
 
+## Where To Find Real Participants
+
+Start with people who can run the local CLI on a low-risk repo. Do not start with hosted installation unless the participant understands the hosted privacy boundary and selected-repository scope.
+
+Use these channels in order:
+
+1. Warm network: friends, previous collaborators, or builders already shipping a Next.js/Supabase/Stripe SaaS. Ask for one 20-minute scan session, not a sales call.
+2. Existing public project surface: GitHub issues, README links, npm package users who voluntarily open feedback issues, and the existing issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93). Do not scrape emails or cold-message people only because they starred the repository.
+3. Founder and indie-builder communities: Indie Hackers feedback/roast-style threads, Hacker News `Show HN` or `Ask HN` only when the post is transparent and non-promotional, and SaaS founder communities where feedback requests are allowed by the rules.
+4. Stack-specific communities: Supabase, Next.js, and Vercel communities where builders already discuss launch friction. Ask for feedback on the local CLI output and docs clarity, not for private source access.
+5. Open-source demo repositories: ask maintainers only when the repo is public, representative, and the maintainer explicitly opts in. Record only rule IDs, severity counts, and file categories.
+
+Do not treat anonymous comments, likes, stars, page views, or simulated scans as design-partner evidence. A valid record needs a real person or team to run or review one workflow and provide sanitized feedback using the template below.
+
+## Outreach Note
+
+Use this short note for warm outreach or community posts. Keep it pre-commercial.
+
+```text
+I'm collecting pre-commercial feedback for ai-saas-guard, a local-first launch-risk gate for AI-built SaaS apps. It is not a pentest, certification, full audit, or generic AI reviewer.
+
+The safest test is local and takes about 10 minutes:
+
+npx --yes ai-saas-guard@latest demo --summary
+npx --yes ai-saas-guard@latest scan --root <your-low-risk-demo-repo> --summary
+
+Please do not share source, diffs, secrets, PR text, customer data, private URLs, or logs. I only need scanner version, stack category, rule IDs/severity counts, what was confusing, false positives/negatives by rule ID, and whether anything would change a launch or merge decision.
+
+Public feedback can go in:
+https://github.com/zr9959/ai-saas-guard/issues/93
+```
+
 ## Feedback Session Script
 
 Use the same narrow script for each participant so feedback is comparable.
