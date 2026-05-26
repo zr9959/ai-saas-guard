@@ -355,6 +355,19 @@ This recheck followed the remaining work in order. It did not create temporary r
 | 4. Source-checkout worker rollback/incident drill | The current Cloudflare ingress rollback drill is recorded, and incident/support ownership is recorded. A source-checkout worker rollback/incident drill cannot run until a deployed source-checkout worker artifact exists. | Still blocked by missing deployed source-checkout artifact |
 | 5. Release health and real feedback path | `npx --yes ai-saas-guard@latest demo --summary` runs against npm `latest` at `0.43.0`; `/healthz` is healthy and not paused. Real design-partner feedback remains missing in issue `#93`; [public-beta-evidence-feedback.md](public-beta-evidence-feedback.md) now records where to find real participants and how to collect sanitized feedback. | Release health passed; real feedback still requires external participants |
 
+## 2026-05-26 Release Health Maintenance Check
+
+Recorded on 2026-05-26 while preparing the design-partner outreach kit and remaining-proof plan.
+
+| Check | Evidence | Result |
+| --- | --- | --- |
+| npm latest | `npm view ai-saas-guard version` returned `0.43.0`. | Passed |
+| npx smoke | `npx --yes ai-saas-guard@latest demo --summary` ran successfully and reported the risky demo blocked with 19 findings and the safe demo with 0 findings. | Passed |
+| hosted health | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned `ok: true`, `mode: webhook-ingress`, `checkRunPublisher: configured`, `rateLimit: configured`, `abuseKillSwitch: configured`, `processingPaused: false`, `scannerVersion: 0.43.0`, and safe privacy flags. | Passed |
+| workspace state | `git status --short --branch` showed only the intentional outreach/proof-plan documentation changes in progress. | Passed |
+
+No npm publish was attempted because the package version remains `0.43.0` and no reviewed release tag for a new version exists.
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
