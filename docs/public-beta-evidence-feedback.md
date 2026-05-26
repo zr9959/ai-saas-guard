@@ -276,6 +276,35 @@ Remaining follow-up:
 - Run two-account IDOR regression tests on real participant projects when a participant can do that safely.
 - Continue collecting false-positive and false-negative summaries by rule ID without source, diffs, raw logs, private repository URLs, checkout paths, or customer payloads.
 
+## Sanitized Private Pilot Feedback Recheck: 2026-05-26
+
+Status: received as a public-safe follow-up summary from the project owner after the same private SaaS worktree was updated and rescanned. The private worktree, source, raw report, raw paths, customer data, and credentials were not copied into this repository.
+
+This recheck remains rule-quality evidence only. It still does not count as public beta readiness evidence or one of the three external design-partner contexts.
+
+Safe summary:
+
+- Supabase RLS false positive category resolved: `check-supabase` returned 0 findings.
+- GitHub Actions check returned 0 findings.
+- Removing the public PayPal token probe removed the corresponding provider debug finding.
+- Remaining high-noise category: `api.route.auth-without-ownership` on admin proxy routes, content-agent scope-token routes, and public SEO content pages that require manual permission tests.
+- Remaining high-noise category: `secrets.detected` on `.env.example` placeholders, variable names, and test-token variables that were not confirmed real secrets.
+- Remaining high-noise category: `api.route.provider-debug-exposed` on an admin-only settings route protected by `authMiddleware` and `requireAdmin`.
+- Remaining review category: `silent-success.*` findings for observability and explicit failure handling.
+
+Actions taken from this recheck:
+
+- Added a `StackInventory` detector for common web/SaaS tools across framework, database, ORM, auth, payment, storage, and deploy categories.
+- Made `scan` generate stack inventory once and skip Supabase RLS rule execution when Supabase is not detected.
+- Added route classification for admin-only, public read-only content, internal/proxy, and scoped-token routes before applying API ownership heuristics.
+- Kept provider debug findings focused on public probes; admin-only provider configuration routes are no longer labeled public.
+- Added synthetic regression fixtures for the reported route categories instead of copying private code.
+
+Remaining follow-up:
+
+- Continue expanding stack-gated rule packs for SQLite/libSQL/D1/Turso, Firebase/Firestore, Mongo/Mongoose, Prisma/Drizzle/Kysely, and common auth/payment providers.
+- Keep `silent-success.*` as a review queue while improving severity wording and observability-specific guidance.
+
 ## Task Cleanup
 
 Every evidence-collection task must end with:

@@ -54,6 +54,7 @@ export interface BaseReport {
   generatedAt: string;
   findings: Finding[];
   summary: Summary;
+  stackInventory?: import("./stackInventory.js").StackInventory;
 }
 
 export interface ShowcaseReport extends BaseReport {

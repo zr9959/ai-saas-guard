@@ -73,6 +73,21 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 
 Supabase RLS checks require Supabase context, such as Supabase paths, dependencies, policy syntax, `auth.uid()`, storage policies, or row-level-security statements. Generic SQLite or Express SQL schemas should not trigger Supabase RLS findings only because a table is named `users` or `subscriptions`.
 
+## Stack Inventory And Rule Gating
+
+`scan` now builds a single stack inventory before running specialized rule packs. The inventory records public-safe evidence only: category, tool, file path, and detection reason. It does not store source, raw diffs, secrets, customer data, private URLs, checkout paths, or provider tokens.
+
+The first inventory categories are:
+
+- frameworks: Next.js, React, Express, Fastify, NestJS, Astro, Nuxt, SvelteKit, Remix, FastAPI, Django, Flask, Laravel, Rails, ASP.NET Core, Spring Boot
+- databases: PostgreSQL, MySQL, MariaDB, SQLite/libSQL, MongoDB, Redis, Supabase, Firebase, DynamoDB, Elasticsearch/OpenSearch, SQL Server, CockroachDB
+- ORMs/query layers: Prisma, Drizzle, Kysely, Mongoose, TypeORM, Sequelize, SQLAlchemy, Django ORM, Eloquent, Active Record, EF Core
+- auth: Clerk, Auth.js/NextAuth, Better Auth, Firebase Auth, Supabase Auth, Auth0, Kinde
+- payments: Stripe, PayPal, Paddle, Lemon Squeezy, Polar
+- storage/deploy: S3, Supabase Storage, Firebase Storage, UploadThing, Vercel, Netlify, Cloudflare, Docker, Kubernetes, GitHub Actions
+
+Specialized rules should declare or enforce required stack evidence before reporting. For example, Supabase RLS findings are skipped in `scan` when Supabase is not detected. Generic launch-risk checks, such as secrets, silent-success, sensitive route rate limits, and provider debug probes, can still run across stacks but should use route classification and placeholder detection to reduce noise.
+
 ## Silent Success
 
 | Rule ID | Severity | Why it exists |
@@ -140,7 +155,9 @@ Use sanitized private pilot feedback to improve rule quality, not to claim publi
 
 - generic SQL schemas without Supabase context should not trigger Supabase RLS rules
 - admin-guarded routes and `req.userId`-scoped routes should avoid generic ownership false positives
+- public read-only content routes, internal/proxy routes, and scoped-token agent routes should avoid generic ownership false positives
 - public provider token/configuration probe endpoints should be reviewed or removed before launch
+- admin-only provider configuration routes should not be labeled as public provider probes
 - obvious example placeholders and known test tokens should not be treated as leaked credentials
 
 ## PR Risk

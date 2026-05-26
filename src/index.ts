@@ -7,6 +7,7 @@ export { checkActions } from "./commands/checkActions.js";
 export { classifyPrRisk } from "./commands/prRisk.js";
 export { applyGuardConfig, defaultConfigFileName, loadGuardConfig } from "./config.js";
 export { createScanContext } from "./context.js";
+export { detectStackInventory } from "./stackInventory.js";
 export { getRuleMetadata, RULE_CATALOG } from "./rules/catalog.js";
 export { formatSummaryReport } from "./report/summary.js";
 export { createLocalScanResourceBudget } from "./performance.js";
@@ -31,6 +32,7 @@ export type {
   SupabaseReport
 } from "./types.js";
 export type { ScanContext, ScanInput } from "./context.js";
+export type { StackCategory, StackEvidence, StackInventory, StackInventoryInput } from "./stackInventory.js";
 export type { FindingSuppression, GuardConfig, RuleConfigValue } from "./config.js";
 export type { RuleMetadata, RuleStability } from "./rules/catalog.js";
 export type { LocalScanResourceBudget, LocalScanResourceBudgetInput } from "./performance.js";
