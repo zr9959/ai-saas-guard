@@ -296,3 +296,29 @@ Decision:
 - team use remains blocked
 - commercialization remains blocked
 - continue only with real provider evidence or real design-partner feedback
+
+## 2026-05-26 Staging Provider Drill
+
+The user approved continuing with staging provider drills.
+
+Completed:
+
+- ran a Cloudflare Worker rollback from current v0.43 Worker version `8744d3db-0114-4653-85e2-f1554ff1b26b` to previous known-good v0.42 Worker version `6de0811e-11bf-46a6-9b7b-cbecda409695`
+- verified `/healthz` and `/github/app/install-info` returned `scannerVersion: "0.42.0"` with safe privacy flags after rollback
+- restored the Worker to v0.43 version `8744d3db-0114-4653-85e2-f1554ff1b26b`
+- verified `/healthz` and `/github/app/install-info` returned `scannerVersion: "0.43.0"` with safe privacy flags after restore
+- created a dedicated test compact KV key under `scan:135085075:900000526:`, deleted only that exact key, and verified the prefix returned `[]`
+- sent a synthetic invalid-signature webhook request and confirmed HTTP `400` with safe privacy flags
+
+Still blocked:
+
+- no full GitHub App uninstall/repository-removal cleanup proof, because the current `gh` token cannot list or manage installation repositories and no safe test installation was available
+- no provider alert/export evidence
+- no incident owner/backup/support evidence
+- no real design-partner feedback
+
+Decision:
+
+- rollback evidence is now present for staging
+- exact compact-record deletion evidence is present for a dedicated test key
+- public beta and team launch remain blocked until the remaining real evidence exists

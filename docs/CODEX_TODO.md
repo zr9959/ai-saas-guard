@@ -116,7 +116,9 @@ Risks:
 - do not open public beta without real operational proof
 - the latest Phase 4 recheck is blocked on missing Phase 3 deployed proof, rate limits, abuse kill switch, uninstall/deletion proof, rollback, incident owner, and support path
 - the operator runbook is documentation only until exercised against deployed artifacts
-- the 2026-05-26 ordered recheck was read-only and does not replace an approved staging rollback drill, uninstall/deletion proof, provider alert export, incident drill, or real design-partner feedback
+- the 2026-05-26 staging rollback drill now provides rollback evidence, and exact compact-record deletion was proven for a dedicated test key
+- full GitHub App uninstall/repository-removal cleanup proof still needs a safe test repository or authorized App-management session; do not remove the current `ai-saas-guard` installation because it would delete existing scan evidence
+- provider alert exports, incident drill, support owner evidence, and real design-partner feedback remain missing
 
 ## P1: Deploy Full Source-Checkout Worker Only With Evidence
 

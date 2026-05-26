@@ -208,6 +208,42 @@ Gate recheck with only currently proven evidence still returned:
 - Phase 5 `readyForTeamUse: false`
 - Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
 
+## 2026-05-26 Staging Rollback And Deletion Drill
+
+Recorded on 2026-05-26 after the user approved doing staging provider drills.
+
+No secrets were read or printed. No source, raw diffs, PR text, customer payloads, checkout paths, installation tokens, or private keys were recorded. No existing `zr9959/ai-saas-guard` compact `scan:` records were deleted.
+
+| Area | Evidence | Status |
+| --- | --- | --- |
+| Rollback target | Current Worker version before the drill was `8744d3db-0114-4653-85e2-f1554ff1b26b` (`scannerVersion: "0.43.0"`). Previous known-good rollback target was `6de0811e-11bf-46a6-9b7b-cbecda409695` (`scannerVersion: "0.42.0"`). | Passed |
+| Rollback execution | `npx wrangler rollback 6de0811e-11bf-46a6-9b7b-cbecda409695 --message "staging rollback drill to previous known-good v0.42"` completed successfully and created active deployment `7b73687d-a6d7-409f-b6f8-fd29f592706e` at `2026-05-26T02:18:38.627515Z`. | Passed |
+| Rollback health | After rollback, `/healthz` and `/github/app/install-info` returned HTTP success with `scannerVersion: "0.42.0"` and all privacy flags false for raw webhook payloads, PR text, source, diffs, secrets, customer payloads, checkout paths, and installation tokens. | Passed |
+| Restore execution | `npx wrangler rollback 8744d3db-0114-4653-85e2-f1554ff1b26b --message "staging rollback drill restore current v0.43"` completed successfully and created active deployment `b6d59d34-5f93-45b9-8777-0ba0aee9273d` at `2026-05-26T02:19:07.697861Z`. | Passed |
+| Restore health | After restore, `/healthz` and `/github/app/install-info` returned HTTP success with `scannerVersion: "0.43.0"`, selected-repository install wording, and all privacy flags false. | Passed |
+| Affected Check Run identification | Hosted `scan:` keys identify records by installation ID, repository ID, PR number, head SHA, and scanner version. The current repository records use prefix `scan:135085075:1247239389:`. | Passed |
+| Provider-store deletion drill | A dedicated test compact key under prefix `scan:135085075:900000526:` was created with TTL, listed, deleted by exact key, and the same prefix listed as `[]` afterward. Existing repository records were not deleted. | Passed for exact compact-record deletion |
+| Webhook rejection check | A synthetic invalid-signature webhook request returned HTTP `400`, `stage: "signature"`, `reason: "invalid_signature"`, and privacy flags false. | Passed for controlled rejection behavior |
+| GitHub App repository-removal cleanup event | Attempting to list installation repositories through the current `gh` user token returned HTTP `403` requiring additional user-to-server App authorization. No temporary GitHub repo was created because deletion could not be guaranteed, and the current `ai-saas-guard` repository installation was not removed because that would delete existing evidence. | Blocked on safe test installation or authorized App-management session |
+
+Gate impact: rollback evidence is now present for the staging Worker, and exact compact-record deletion was proven for a dedicated test key. Full uninstall/repository-removal proof remains blocked until a safe test repository or installation can be added and removed without touching existing project evidence.
+
+Validation:
+
+```bash
+git diff --check
+npm run build && node --test tests/hosted-beta.test.mjs
+```
+
+Result: docs diff check passed, build passed, and 2 hosted beta tests passed.
+
+Gate recheck with the new rollback evidence set to true still returned:
+
+- Phase 4 `readyForPublicBeta: false`
+- Phase 4 blocked reasons: `phase3_gate_missing`, `rate_limit_missing`, `abuse_kill_switch_missing`, `uninstall_deletion_proof_missing`, `incident_owner_missing`, `support_path_missing`
+- Phase 5 `readyForTeamUse: false`
+- Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
