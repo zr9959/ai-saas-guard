@@ -24,6 +24,18 @@ The current release has source-level gates and staging Cloudflare hosted ingress
 
 Do not use this document to claim production hosted readiness, pentest coverage, certification, full audit coverage, or commercial readiness.
 
+## Platform Metrics Boundary
+
+Daily Metrics Snapshot artifacts are useful trend signals, not beta evidence by themselves. They can show GitHub traffic, npm downloads, referrers, and which public docs or releases people view, but they do not prove that a real founder, reviewer, or maintainer understood the output or would change a launch decision.
+
+Use platform metrics only to prioritize outreach and documentation follow-up:
+
+- a spike in npm downloads can suggest when to ask for voluntary feedback
+- a repeated README or release-page path can suggest what docs to clarify
+- a missing `github.trafficAvailable` value means the metrics workflow needs `METRICS_GITHUB_TOKEN`, not that user demand is absent
+
+Do not count stars, clones, downloads, page views, referrers, anonymous comments, or automated CI installs as DP-1, DP-2, or DP-3 feedback. A valid design-partner record still needs a real person or team to run or review one workflow and provide sanitized feedback using the template in this document.
+
 ## Non-Goals
 
 Do not use this phase to build or validate:
