@@ -278,6 +278,22 @@ Gate recheck with rollback, primary incident owner, and support path evidence se
 - Phase 5 `readyForTeamUse: false`
 - Phase 5 blocked reasons: `hosted_beta_gate_missing`, `org_policy_config_missing`, `required_status_check_docs_missing`, `suppression_audit_missing`, `reviewer_checklist_missing`, `release_evidence_export_missing`, `team_docs_missing`, `admin_bypass_docs_missing`, `retention_policy_docs_missing`
 
+## 2026-05-26 GitHub App Management Proof Attempt
+
+Recorded on 2026-05-26 after the user authorized an app-management session attempt.
+
+The proof was scoped to a temporary private test repository. The current `zr9959/ai-saas-guard` repository was not removed from the GitHub App installation, and existing project compact `scan:` records were not deleted.
+
+| Area | Evidence | Status |
+| --- | --- | --- |
+| Temporary test repository | Temporary private repository `zr9959/ai-saas-guard-app-proof-20260526` was created for proof only. Its REST repository ID was `1249767506`. | Created for proof |
+| Add to GitHub App installation | Attempted `PUT /user/installations/135085075/repositories/1249767506` using a classic PAT session with `repo` and `user` scopes. GitHub returned HTTP `403` with message `You do not have permission to modify this app on zr9959.` | Blocked by GitHub App installation management permission |
+| Repository-removal webhook proof | Not attempted because adding the temporary repository to the installation failed. No repository-removal event could be generated safely. | Blocked |
+| Cleanup | The temporary private repository was deleted after the failed add attempt. | Passed |
+| Privacy review | No secrets, tokens, private keys, installation tokens, source, diffs, PR text, checkout paths, customer payloads, private URLs, or raw provider logs were recorded. | Passed |
+
+Result: full GitHub App add/remove uninstall proof remains blocked on an App-management session with permission to modify the `ai-saas-guard-hosted` installation, or on a separate safe test installation controlled for this proof.
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
