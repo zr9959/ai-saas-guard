@@ -8,6 +8,7 @@ Use this document together with:
 - [hosted-operations-evidence.md](hosted-operations-evidence.md)
 - [hosted-install-privacy.md](hosted-install-privacy.md)
 - [hosted-support-incident-ownership.md](hosted-support-incident-ownership.md)
+- [design-partner-outreach-kit.md](design-partner-outreach-kit.md)
 
 ## Current Status
 
@@ -228,7 +229,22 @@ Use local private notes for:
 - meeting links
 - private scheduling details
 
-Do not commit local private notes.
+Do not commit local private notes. A local-only template may live under `.local/`, which is ignored by git.
+
+## Feedback Processing Workflow
+
+When feedback arrives:
+
+1. Copy private contact and scheduling details only into local private notes.
+2. Create a public-safe summary using the template above.
+3. Run the sanitization checklist before posting or committing the summary.
+4. Classify the context as DP-1, DP-2, or DP-3 only when a real person or team ran or reviewed one workflow.
+5. If a false positive is reported, open a public issue with rule ID, severity, file category, and sanitized reason only.
+6. If a possible false negative is reported, mark it as a public-beta blocker until triaged.
+7. Update issue [#93](https://github.com/zr9959/ai-saas-guard/issues/93) with the sanitized result.
+8. Update [hosted-operations-evidence.md](hosted-operations-evidence.md) only when the feedback changes public-beta evidence.
+
+Do not convert a recruitment reply into evidence until the participant has actually run or reviewed the tool output.
 
 ## Task Cleanup
 
