@@ -51,6 +51,8 @@ Public beta feedback and provider-evidence intake is documented in [public-beta-
 
 The minimum operator workflow is documented in [hosted-operator-runbook.md](hosted-operator-runbook.md). The runbook explains pause, queue/failure checks, rollback, compact record deletion, incident escalation, support triage, and cleanup. It is not evidence until the steps are exercised against deployed artifacts and recorded.
 
+Support and incident ownership are documented in [hosted-support-incident-ownership.md](hosted-support-incident-ownership.md). The support path is public-safe GitHub issue triage plus private vulnerability reporting for sensitive reports. If no independent backup human is staffed, hosted beta must stay paused or closed when the primary owner is unavailable.
+
 The evaluator blocks hosted exposure unless every P0 item has fresh evidence, a `sha256:<digest>` container image digest is recorded, and release notes avoid positive pentest, certification, and full-audit claims. Explicit wording such as "not a pentest, certification, or full security audit" remains allowed.
 
 Source-level evidence notes for this release candidate:
@@ -68,7 +70,7 @@ Source-level evidence notes for this release candidate:
 | `hosted_pr_smoke` | Deployed GitHub App ingress creates a temporary PR, publishes `ai-saas-guard PR risk`, closes the PR, deletes the branch, and clears staging `delivery:` / `scan:` KV records | `node scripts/hosted-pr-smoke.mjs --plan` plus `node scripts/hosted-pr-smoke.mjs` after deployment | Required for any release that changes the live hosted Worker or GitHub App wiring |
 | `monitoring_alerting` | Ingress, queue depth, worker failures, Check Run failures, cleanup failures, retention failures, and credential rotation alerts | Required alert list remains in this document | Documented; must attach provider evidence before exposure |
 | `manual_rollback` | Worker pause, previous artifact redeploy, queue resume, controlled ingress failure, and affected Check Run identification | Manual rollback procedure remains in this document | Documented; must execute against deployed artifact before exposure |
-| `incident_response` | Owner, backup, credential rotation, queue pause, customer communication, status path, and privacy-safe evidence collection | Incident response checklist remains in this document | Documented; must name live owners before exposure |
+| `incident_response` | Owner, backup or pause fallback, credential rotation, queue pause, customer communication, status path, and privacy-safe evidence collection | Incident response checklist remains in this document | Documented; must name live owners before exposure |
 | `release_cleanup` | Temporary files, package tarballs, scratch SARIF/JSON, test queues/stores, and long-running processes are removed | Local cleanup checks after each release task | Passed for local release run |
 
 For the current non-hosted package, these notes are enough to keep the repository implementation-ready while still blocking real hosted exposure until the deployment-specific evidence rows are completed with live provider links or notes.
@@ -286,7 +288,7 @@ Rollback must not require users to change repository code or reinstall the GitHu
 
 Before release, confirm:
 
-- incident owner and backup owner are named.
+- incident owner and backup owner or pause fallback are named.
 - credential rotation path is documented for hosted credentials and signing material.
 - queue pause and worker pause commands are documented.
 - customer communication template exists.

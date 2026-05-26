@@ -210,6 +210,7 @@ Latest release:
 - 2026-05-26 npm/npx recheck: npm `latest` remained `ai-saas-guard@0.43.0`; `npx --yes ai-saas-guard@latest demo --summary` ran successfully; no npm package was published because this was documentation/evidence-only
 - 2026-05-26 staging rollback drill: rollback to v0.42 Worker version `6de0811e-11bf-46a6-9b7b-cbecda409695` passed health/privacy checks, then restore to v0.43 Worker version `8744d3db-0114-4653-85e2-f1554ff1b26b` passed health/privacy checks
 - 2026-05-26 deletion drill: dedicated test compact KV key under `scan:135085075:900000526:` was created and deleted by exact key; existing project scan evidence was not deleted; full GitHub App uninstall/repository-removal proof still needs a safe test installation
+- 2026-05-26 human support routing: `@zr9959` is primary hosted staging incident/support owner, public-safe hosted support has a GitHub issue template, sensitive reports route to private vulnerability reporting, and missing independent backup coverage falls back to pausing hosted beta
 
 Latest release verification passed:
 

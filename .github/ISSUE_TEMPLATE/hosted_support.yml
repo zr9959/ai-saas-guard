@@ -1,0 +1,66 @@
+name: Hosted support request
+description: Ask for help with hosted install, Check Run confusion, or deletion cleanup without sharing secrets or private code.
+title: "[Hosted support]: "
+labels: ["support"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for public-safe hosted GitHub App support.
+
+        Do not include source files, raw diffs, PR title/body/comments, secrets, tokens, cookies, certificates, database URLs, customer payloads, private URLs, checkout paths, installation tokens, or raw provider logs.
+
+        If sensitive details are required, do not post them in a public issue.
+  - type: dropdown
+    id: request-type
+    attributes:
+      label: Request type
+      options:
+        - Hosted install failure
+        - Hosted Check Run confusion
+        - Hosted deletion or uninstall request
+        - Hosted privacy wording question
+        - Other public-safe hosted support
+    validations:
+      required: true
+  - type: input
+    id: scanner-version
+    attributes:
+      label: Scanner or hosted version
+      description: Use the version shown in the Check Run, install-info page, or CLI output.
+      placeholder: "0.43.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: repository-category
+    attributes:
+      label: Repository category
+      options:
+        - Public demo repository
+        - Private MVP repository
+        - Internal team repository
+        - Other sanitized category
+    validations:
+      required: true
+  - type: textarea
+    id: safe-summary
+    attributes:
+      label: Public-safe summary
+      description: Describe what happened using only sanitized metadata, status classes, rule IDs, and counts.
+      placeholder: The hosted Check Run did not appear after installation. The install path was selected repository only, scanner version was ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What did you expect the hosted path to do?
+    validations:
+      required: true
+  - type: checkboxes
+    id: public-safety
+    attributes:
+      label: Public safety check
+      options:
+        - label: No source files, raw diffs, PR text, secrets, tokens, cookies, certificates, database URLs, customer payloads, private URLs, checkout paths, installation tokens, or raw provider logs are included.
+          required: true
