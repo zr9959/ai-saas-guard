@@ -2430,6 +2430,104 @@ test("repository runs CodeQL SAST with least privilege", async () => {
   assert.doesNotMatch(workflow, /secrets\.|id-token:\s*write|contents:\s*write/i);
 });
 
+test("metrics snapshot script writes privacy-safe JSON and JSONL from fixtures", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-metrics-"));
+
+  try {
+    const outputPath = resolve(rootDir, "latest.json");
+    const jsonlPath = resolve(rootDir, "snapshots.jsonl");
+
+    await execFileAsync(
+      "node",
+      [
+        resolve(packageRoot, "scripts", "metrics-snapshot.mjs"),
+        "--repo",
+        "zr9959/ai-saas-guard",
+        "--package",
+        "ai-saas-guard",
+        "--output",
+        outputPath,
+        "--jsonl",
+        jsonlPath,
+        "--fixture-dir",
+        resolve(fixtureRoot, "metrics-snapshot")
+      ],
+      { cwd: packageRoot, env: { ...process.env, GH_TOKEN: "" } }
+    );
+
+    const snapshot = JSON.parse(await readFile(outputPath, "utf8"));
+
+    assert.equal(snapshot.schemaVersion, 1);
+    assert.equal(snapshot.repository, "zr9959/ai-saas-guard");
+    assert.equal(snapshot.packageName, "ai-saas-guard");
+    assert.equal(snapshot.privacy.usesHiddenCliTelemetry, false);
+    assert.equal(snapshot.privacy.includesIpAddresses, false);
+    assert.equal(snapshot.privacy.includesUserIdentities, false);
+    assert.equal(snapshot.privacy.includesCustomerData, false);
+    assert.equal(snapshot.github.stars, 1);
+    assert.equal(snapshot.github.openIssues, 3);
+    assert.equal(snapshot.github.views.total, 80);
+    assert.equal(snapshot.github.views.uniques, 7);
+    assert.equal(snapshot.github.clones.total, 1948);
+    assert.equal(snapshot.github.clones.uniques, 468);
+    assert.equal(snapshot.github.topPaths[0].path, "/zr9959/ai-saas-guard");
+    assert.equal(snapshot.github.topReferrers[0].referrer, "github.com");
+    assert.equal(snapshot.npm.latestVersion, "0.43.1");
+    assert.equal(snapshot.npm.downloads.lastWeek, 5979);
+    assert.equal(snapshot.npm.downloads.lastMonth, 5979);
+    assert.match(snapshot.limitations.join("\n"), /14-day GitHub traffic window/i);
+    assert.match(snapshot.limitations.join("\n"), /downloads, not unique human users/i);
+    assert.match(snapshot.limitations.join("\n"), /not design-partner feedback/i);
+
+    const jsonl = (await readFile(jsonlPath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    assert.equal(jsonl.length, 1);
+    assert.equal(jsonl[0].github.clones.uniques, 468);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("repository defines a least-privilege metrics snapshot workflow", async () => {
+  const workflow = await readFile(resolve(packageRoot, ".github/workflows/metrics-snapshot.yml"), "utf8");
+
+  assert.match(workflow, /name:\s*Metrics Snapshot/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /schedule:\s*\n\s+-\s+cron:\s*"0 0 \* \* \*"/);
+  assert.match(workflow, /contents:\s*read/);
+  assert.match(workflow, /concurrency:/);
+  assert.match(workflow, /persist-credentials:\s*false/);
+  assert.match(workflow, /package-manager-cache:\s*false/);
+  assert.match(workflow, /GH_TOKEN:\s*\$\{\{\s*secrets\.METRICS_GITHUB_TOKEN\s*\|\|\s*github\.token\s*\}\}/);
+  assert.match(workflow, /test -n "\$\{GH_TOKEN:-\}"/);
+  assert.match(workflow, /node scripts\/metrics-snapshot\.mjs/);
+  assert.match(workflow, /\.local\/metrics\/latest\.json/);
+  assert.match(workflow, /\.local\/metrics\/snapshots\.jsonl/);
+  assert.match(workflow, /actions\/upload-artifact@[a-f0-9]{40}/);
+  assert.match(workflow, /retention-days:\s*30/);
+  assert.doesNotMatch(workflow, /contents:\s*write|id-token:\s*write|NPM_TOKEN|npm publish|git push/i);
+});
+
+test("public docs describe metrics snapshots as platform analytics, not user feedback", async () => {
+  const docs = await readFile(resolve(packageRoot, "docs", "metrics-snapshot.md"), "utf8");
+  const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+
+  assert.equal(packageJson.scripts["metrics:snapshot"], "node scripts/metrics-snapshot.mjs");
+  assert.match(docs, /GitHub traffic/i);
+  assert.match(docs, /14-day/i);
+  assert.match(docs, /08:00 Asia\/Shanghai/i);
+  assert.match(docs, /npm downloads are downloads, not unique human users/i);
+  assert.match(docs, /no hidden CLI telemetry/i);
+  assert.match(docs, /does not collect IP addresses/i);
+  assert.match(docs, /does not collect user identities/i);
+  assert.match(docs, /does not collect customer data/i);
+  assert.match(docs, /design-partner feedback/i);
+  assert.match(docs, /\.local\/metrics/);
+  assert.match(docs, /METRICS_GITHUB_TOKEN/);
+});
+
 test("repository exposes Scorecard-detectable fuzzing", async () => {
   const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
   const workflow = await readFile(resolve(packageRoot, ".github", "workflows", "ci.yml"), "utf8");
