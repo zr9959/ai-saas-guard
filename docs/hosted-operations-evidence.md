@@ -384,6 +384,24 @@ This was a read-only evidence review for hosted state. It did not create tempora
 
 Decision: public beta, team rollout, and commercialization remain blocked. Continue with real design-partner feedback and deployed provider proof rather than speculative feature work.
 
+## 2026-05-27 Ordered Evidence Execution
+
+Recorded on 2026-05-27 after the user asked to execute the 1-7 next-step plan in order.
+
+This was a docs/evidence pass. It did not deploy Cloudflare changes, create or delete repositories, delete KV records, mutate the GitHub App installation, print secrets, or publish npm.
+
+| Step | Evidence | Result |
+| --- | --- | --- |
+| 1. Status snapshot | `main` was clean and in sync; current `main` HEAD was `d3535a4`; latest observed `main` CI, CodeQL, Metrics Snapshot, and Cross-Project Discovery were successful; GitHub release and npm latest were `0.43.1`; hosted health was healthy ingress with `scannerVersion: "0.43.0"`. | Snapshot recorded |
+| 2. Design-partner feedback path | Issue `#93` was rechecked. It still has no real DP-1, DP-2, or DP-3 feedback record. The valid intake path remains local CLI first with sanitized metadata only. | Still blocked on real participants |
+| 3. Source-checkout worker proof path | `docs/hosted-deployed-worker-staging.md` and `docs/hosted-next-proof-plan.md` were used to map required proof. Live hosted still reports `mode: "webhook-ingress"`, not `platform: "node_container"` with `scan-worker` role. | Still blocked until a deployed source-checkout candidate exists |
+| 4. GitHub App deletion proof path | `gh api /user/installations --jq '{total_count}'` returned HTTP `403`, confirming the current session cannot list/manage App installations for the proof. | Still blocked on App-management permission or a safe test installation |
+| 5. Provider monitoring evidence | Source-checkout monitoring evidence requirements were listed for ingress rejection/5xx, queue backlog, worker failure/timeout, Check Run write failure, cleanup failure, retention failure, pause, and rollback. | Checklist ready; evidence missing until source-checkout candidate exists |
+| 6. Release/evidence verification | `git diff --check` passed; `npm test` passed with 208 tests; npm latest remained `0.43.1`; `npx --yes ai-saas-guard@latest demo --summary` returned risky fixture 19 findings and safe fixture 0; local self-scan returned 0 findings; focused Supabase/Actions/MCP/Stripe checks returned 0 findings; `pr-risk` returned one info `pr-risk.no-diff`. | Passed for docs/evidence pass |
+| 7. Cleanup/sync | Temporary self-scan JSON outputs were scoped to `/tmp` for deletion after sync. | Pending final cleanup |
+
+Decision: public beta, team rollout, and commercialization remain blocked by real design-partner feedback, deployed source-checkout proof, full GitHub App deletion proof, and source-checkout provider monitoring evidence.
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.

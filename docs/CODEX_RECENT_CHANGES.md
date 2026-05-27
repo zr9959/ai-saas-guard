@@ -41,6 +41,40 @@ Decision:
 - commercialization remains blocked
 - continue with real design-partner feedback and deployed provider proof, not speculative feature work
 
+## 2026-05-27 Ordered 1-7 Evidence Pass
+
+Why:
+
+- The user asked to execute the next seven-step plan in order.
+- The pass needed to keep the project focused on evidence and real feedback without expanding scope or changing business logic.
+
+Changed:
+
+- added `docs/beta-evidence-execution-2026-05-27.md`
+- updated `docs/hosted-operations-evidence.md` with the ordered execution summary
+
+Verified and recorded:
+
+- current `main` state, latest CI/CodeQL/Metrics/Cross-Project Discovery, GitHub release, npm latest, hosted health, and issues `#93`/`#94`
+- real design-partner feedback remains missing in `#93`
+- live hosted remains `webhook-ingress`, not deployed source-checkout
+- current GitHub session still cannot list/manage App installations for deletion proof, returning HTTP 403 for `/user/installations`
+- source-checkout provider monitoring evidence requirements were listed but not marked as satisfied
+- `git diff --check`: passed
+- `npm test`: 208 pass
+- local self-scan: 0 findings
+- focused Supabase/Actions/MCP/Stripe checks: 0 findings
+- npm latest: `0.43.1`
+- hosted health: healthy ingress, `processingPaused:false`, safe privacy flags, `scannerVersion:"0.43.0"`
+
+Decision:
+
+- no npm publish
+- no Cloudflare deployment
+- no GitHub App installation mutation
+- no KV deletion
+- public beta/team/commercialization remain blocked by real evidence gaps
+
 ## Private Pilot Rule-Quality Feedback Update
 
 Why:
