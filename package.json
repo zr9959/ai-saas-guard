@@ -94,6 +94,7 @@
     "test": "npm run build && node --test tests/*.test.mjs tests/*.test.js",
     "test:fuzz": "npm run build && node --test tests/fuzz.test.js",
     "metrics:snapshot": "node scripts/metrics-snapshot.mjs",
+    "cross-project:check": "node scripts/cross-project-discovery-check.mjs",
     "check": "npm run test"
   },
   "engines": {
