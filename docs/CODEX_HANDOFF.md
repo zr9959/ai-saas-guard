@@ -104,6 +104,7 @@ Hosted path:
 Public docs:
 
 - English README and Chinese README updated through `0.43.1`
+- Codex/agent working rules in `docs/CODEX_AGENT_WORKING_RULES.md`
 - rules docs
 - hosted deployment/runtime/gate docs
 - hosted operations evidence
@@ -157,6 +158,7 @@ Hosted public beta is blocked by evidence, not by the readiness-gate code:
 - Keep the product as one repo and one product: local-first launch gate for AI-built SaaS apps.
 - Keep local scans deterministic: avoids privacy risk and keeps output explainable.
 - Use gates rather than endless planning: Phase 3/4/5 are machine-checkable readiness gates.
+- Use `docs/CODEX_AGENT_WORKING_RULES.md` for agent behavior: think before editing, keep changes narrow, verify before claiming, protect secrets, use risk-gated autonomy, and clean up every task.
 - Keep billing disabled: user explicitly wants to stop before commercialization.
 - Keep hosted Check Runs compact: do not store source, diffs, PR text, checkout paths, or installation tokens.
 - Keep README and Chinese README in sync for public-facing changes.
@@ -212,7 +214,7 @@ This handoff package explicitly covers:
 
 ## Where The Next Codex Should Start
 
-1. Read `docs/CODEX_HANDOFF.md`, `docs/CODEX_STATE.md`, `docs/CODEX_TODO.md`, `docs/CODEX_RECENT_CHANGES.md`, `docs/release-quality-knowledge-base.md`, and `docs/public-beta-evidence-feedback.md`.
+1. Read `docs/CODEX_HANDOFF.md`, `docs/CODEX_AGENT_WORKING_RULES.md`, `docs/CODEX_STATE.md`, `docs/CODEX_TODO.md`, `docs/CODEX_RECENT_CHANGES.md`, `docs/release-quality-knowledge-base.md`, and `docs/public-beta-evidence-feedback.md`.
 2. Run `git status --short --branch`.
 3. Summarize understanding to the user before modifying code.
 4. Do not start new development unless the user explicitly asks.

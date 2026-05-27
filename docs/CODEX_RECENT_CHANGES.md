@@ -2,6 +2,35 @@
 
 Last updated: 2026-05-27, Asia/Shanghai.
 
+## 2026-05-27 Agent Working Rules
+
+Why:
+
+- The user asked to apply the lightweight agent-discipline approach after reviewing a public Karpathy-inspired coding-agent guidelines repo.
+- The project needed its own rules, adapted to this repository's evidence-first, pre-commercial, secret-safe workflow, instead of importing an external plugin or generic CLAUDE.md.
+
+Changed:
+
+- added `docs/CODEX_AGENT_WORKING_RULES.md`
+- linked the rules from `docs/CODEX_HANDOFF.md`, `docs/CODEX_TODO.md`, and `docs/project-handoff.md`
+
+Rules captured:
+
+- think before editing and surface risky assumptions
+- keep changes narrow and traceable to the user's request
+- prefer simpler proof over speculative features
+- verify before claiming success
+- protect secrets, hosted evidence, and local-only context
+- use risk-gated autonomy: proceed automatically for safe work, pause for destructive, secret-bearing, deployment, npm, GitHub App, KV, or commercialization steps
+- clean temporary files and processes after every task
+
+Not done:
+
+- no external plugin installed
+- no external instructions copied wholesale
+- no business code changed
+- no billing, pricing, paid packaging, marketplace conversion, sales funnel, analytics, or customer account work added
+
 ## 2026-05-27 Beta Readiness Review
 
 Why:
