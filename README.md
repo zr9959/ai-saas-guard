@@ -251,10 +251,12 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 
 ## Related TIYBAI Tools
 
-Built by TIYBAI, `ai-saas-guard` stays focused on launch-risk review for AI-built SaaS apps. These adjacent TIYBAI tools are useful for developer workflows without turning this project into a broad cross-promotion surface:
+Built by [TIYBAI](https://www.tiybai.com/), `ai-saas-guard` stays focused on launch-risk review for AI-built SaaS apps. These adjacent TIYBAI pages are useful for developer workflows without turning this project into a broad cross-promotion surface:
 
+- [TIYBAI Toolbox](https://www.tiybai.com/en/tools) for browser-based utilities that do not require installing a separate desktop app.
 - [JSON Formatter](https://www.tiybai.com/en/tools/developer/json-formatter) for checking structured API responses and config snippets.
 - [JWT Decoder](https://www.tiybai.com/en/tools/developer/jwt-decoder) for inspecting token claims during auth review.
+- [URL Encoder / Decoder](https://www.tiybai.com/en/tools/developer/url-encoder) for checking callback URLs, webhook URLs, and encoded query strings.
 - [AI Metadata Generator](https://www.tiybai.com/en/tools/ai/metadata-generator) for preparing public page metadata before launch.
 - [PageStow](https://plugin.tiybai.com/) for saving browser context, sessions, notes, and tasks locally in Chrome.
 
