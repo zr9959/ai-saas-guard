@@ -249,6 +249,15 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | OpenSSF Best Practices | Passing badge, project `12955`; `.bestpractices.json` remains the conservative evidence record |
 | Previous roadmap | v0.36.0 plan is tracked in [docs/v0.36-roadmap.md](docs/v0.36-roadmap.md) |
 
+## Related TIYBAI Tools
+
+Built by TIYBAI, `ai-saas-guard` stays focused on launch-risk review for AI-built SaaS apps. These adjacent TIYBAI tools are useful for developer workflows without turning this project into a broad cross-promotion surface:
+
+- [JSON Formatter](https://www.tiybai.com/en/tools/developer/json-formatter) for checking structured API responses and config snippets.
+- [JWT Decoder](https://www.tiybai.com/en/tools/developer/jwt-decoder) for inspecting token claims during auth review.
+- [AI Metadata Generator](https://www.tiybai.com/en/tools/ai/metadata-generator) for preparing public page metadata before launch.
+- [PageStow](https://plugin.tiybai.com/) for saving browser context, sessions, notes, and tasks locally in Chrome.
+
 ## Example Finding
 
 Terminal output is designed to be useful to a reviewer, not just a scanner dashboard.

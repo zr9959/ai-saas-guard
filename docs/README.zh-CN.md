@@ -232,6 +232,15 @@ CLI 已发布到 npm：`ai-saas-guard@0.43.1`。GitHub Action 支持 `v0` 浮动
 | OpenSSF Best Practices | 已获得 passing badge，项目 `12955`；`.bestpractices.json` 继续作为保守证据记录 |
 | 上一版路线 | v0.36.0 计划见 [v0.36-roadmap.md](v0.36-roadmap.md) |
 
+## 相关 TIYBAI 工具
+
+`ai-saas-guard` 由 TIYBAI 构建，但它仍然只专注 AI-built SaaS 的上线风险 review。下面这些相邻工具适合开发和上线前工作流，不把本项目扩展成泛流量互推入口：
+
+- [JSON Formatter](https://www.tiybai.com/en/tools/developer/json-formatter)：检查结构化 API 响应和配置片段。
+- [JWT Decoder](https://www.tiybai.com/en/tools/developer/jwt-decoder)：在 auth review 时查看 token claims。
+- [AI Metadata Generator](https://www.tiybai.com/en/tools/ai/metadata-generator)：上线前准备公开页面 metadata。
+- [PageStow](https://plugin.tiybai.com/)：在 Chrome 本地保存浏览器上下文、session、notes 和 tasks。
+
 ## 主要命令
 
 | 命令 | 用途 |
