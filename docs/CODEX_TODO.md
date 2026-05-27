@@ -31,7 +31,7 @@ Acceptance:
 
 - no real secrets, tokens, private keys, database URLs, cookies, or customer data are committed
 - Cloudflare `WEBHOOK_SECRET` and `GITHUB_APP_PRIVATE_KEY` stay secret
-- Cloudflare KV `HOSTED_EVENTS` records are not bulk-deleted except during an explicit smoke cleanup task
+- Cloudflare KV `HOSTED_EVENTS` records are not bulk-deleted; smoke cleanup must target only records matching the temporary smoke PR
 - historical rows in `docs/hosted-operations-evidence.md` remain intact
 
 Files/modules:

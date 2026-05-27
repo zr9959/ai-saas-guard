@@ -55,6 +55,7 @@ export interface BaseReport {
   findings: Finding[];
   summary: Summary;
   stackInventory?: import("./stackInventory.js").StackInventory;
+  fileCollection?: import("./utils/files.js").FileCollectionDiagnostics;
 }
 
 export interface ShowcaseReport extends BaseReport {

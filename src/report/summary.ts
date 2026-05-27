@@ -10,6 +10,8 @@ export function formatSummaryReport(report: BaseReport): string {
   lines.push(`Findings: ${summaryText(report)}`);
   lines.push(`Launch gate: ${launchGateVerdict(report)}`);
   lines.push(`Decision queue: ${launchDecisionQuestions(report.findings)[0]}`);
+  const scanCoverage = scanCoverageText(report);
+  if (scanCoverage) lines.push(`Scan coverage: ${scanCoverage}`);
   if (report.findings.length > 0) {
     lines.push("Review trust-boundary findings before deploy/cost hygiene.");
   }
@@ -78,4 +80,46 @@ function appendList(lines: string[], items: string[]): void {
 function summaryText(report: BaseReport): string {
   if (report.summary.total === 0) return "0 findings";
   return `${report.summary.total} findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low, ${report.summary.info} info`;
+}
+
+function scanCoverageText(report: BaseReport): string | undefined {
+  const parts: string[] = [];
+  const collection = report.fileCollection;
+  if (collection) {
+    const unreadableFileCount = collection.unreadableFiles.length;
+    const unreadableDirectoryCount = collection.unreadableDirectories.length;
+    const skippedLargeCount = collection.skippedLargeFiles.length;
+    const skippedBudgetCount = collection.skippedBudgetFiles.length;
+    const hasCollectionWarning =
+      unreadableFileCount > 0 ||
+      unreadableDirectoryCount > 0 ||
+      skippedLargeCount > 0 ||
+      skippedBudgetCount > 0 ||
+      collection.maxFilesReached ||
+      collection.maxTotalBytesReached;
+
+    if (hasCollectionWarning) {
+      parts.push(`${collection.filesScanned} ${plural(collection.filesScanned, "file")} scanned`);
+      if (unreadableFileCount > 0) parts.push(`${unreadableFileCount} unreadable ${plural(unreadableFileCount, "file")}`);
+      if (unreadableDirectoryCount > 0) {
+        parts.push(`${unreadableDirectoryCount} unreadable ${plural(unreadableDirectoryCount, "directory", "directories")}`);
+      }
+      if (skippedLargeCount > 0) parts.push(`${skippedLargeCount} large ${plural(skippedLargeCount, "file")} skipped`);
+      if (skippedBudgetCount > 0) parts.push(`${skippedBudgetCount} budget-skipped ${plural(skippedBudgetCount, "file")}`);
+      if (collection.maxFilesReached) parts.push("file count budget reached");
+      if (collection.maxTotalBytesReached) parts.push("total byte budget reached");
+    }
+  }
+
+  const malformedPackageCount =
+    report.stackInventory?.warnings.filter((warning) => warning.reason === "invalid_package_json").length ?? 0;
+  if (malformedPackageCount > 0) {
+    parts.push(`${malformedPackageCount} malformed package ${plural(malformedPackageCount, "manifest")}`);
+  }
+
+  return parts.length > 0 ? parts.join("; ") : undefined;
+}
+
+function plural(count: number, singular: string, pluralValue = `${singular}s`): string {
+  return count === 1 ? singular : pluralValue;
 }

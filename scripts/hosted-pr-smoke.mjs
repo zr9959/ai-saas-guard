@@ -92,7 +92,7 @@ function createPlan(input) {
       "Wait for the hosted GitHub App Check Run on the trusted head SHA.",
       "Record only Check Run conclusion, URL, and safe summary fields.",
       "Close the temporary pull request, delete the remote branch, restore the local branch.",
-      "Bulk-delete staging KV delivery and scan records."
+      "Delete only smoke-scoped staging KV delivery and scan records."
     ]
   };
 }
@@ -242,17 +242,71 @@ async function cleanupSmoke({ plan, prNumber, originalBranch }) {
     cleanup.restoredBranch = await ignoreFailure(git(["switch", originalBranch]));
   }
   cleanup.deletedLocalBranch = await ignoreFailure(git(["branch", "-D", plan.branch]));
-  cleanup.kv = await clearHostedKv(plan);
+  cleanup.kv = await clearHostedKv(plan, prNumber);
   return cleanup;
 }
 
-async function clearHostedKv(plan) {
-  const listJson = await wrangler(["kv", "key", "list", "--namespace-id", plan.kvNamespaceId, "--remote"]);
-  const keys = JSON.parse(listJson)
-    .map((item) => item.name)
-    .filter((name) => /^(delivery|scan):/.test(name));
-  if (keys.length === 0) return { deletedKeys: 0, remainingSmokeKeys: 0 };
+async function clearHostedKv(plan, prNumber) {
+  if (!prNumber) return { deletedKeys: 0, remainingSmokeKeys: 0 };
+  const keys = await listHostedKvKeys(plan);
+  const scanKeys = await scanKeysForPullRequest(plan, keys, prNumber);
+  const deliveryKeys = await deliveryKeysForPullRequest(plan, keys, prNumber, new Set(scanKeys));
+  const keysToDelete = [...new Set([...scanKeys, ...deliveryKeys])];
+  if (keysToDelete.length === 0) return { deletedKeys: 0, remainingSmokeKeys: 0 };
 
+  await bulkDeleteHostedKvKeys(plan, keysToDelete);
+  const remainingKeys = await listHostedKvKeys(plan);
+  const remainingScanKeys = await scanKeysForPullRequest(plan, remainingKeys, prNumber);
+  const remainingDeliveryKeys = await deliveryKeysForPullRequest(plan, remainingKeys, prNumber, new Set(remainingScanKeys));
+  return {
+    deletedKeys: keysToDelete.length,
+    remainingSmokeKeys: new Set([...remainingScanKeys, ...remainingDeliveryKeys]).size
+  };
+}
+
+async function listHostedKvKeys(plan) {
+  const listJson = await wrangler(["kv", "key", "list", "--namespace-id", plan.kvNamespaceId, "--remote"]);
+  return JSON.parse(listJson).map((item) => item.name).filter((name) => typeof name === "string");
+}
+
+async function scanKeysForPullRequest(plan, keys, prNumber) {
+  const result = [];
+  for (const key of keys) {
+    if (!key.startsWith("scan:") || key.split(":")[3] !== String(prNumber)) continue;
+    const record = await readHostedKvRecord(plan, key);
+    if (isSmokeKvRecord(record, plan, prNumber)) result.push(key);
+  }
+  return result;
+}
+
+async function deliveryKeysForPullRequest(plan, keys, prNumber, scanKeys) {
+  const result = [];
+  for (const key of keys) {
+    if (!key.startsWith("delivery:")) continue;
+    const record = await readHostedKvRecord(plan, key);
+    if (isSmokeKvRecord(record, plan, prNumber) || scanKeys.has(record?.scanKey)) result.push(key);
+  }
+  return result;
+}
+
+async function readHostedKvRecord(plan, key) {
+  try {
+    const value = await wrangler(["kv", "key", "get", key, "--namespace-id", plan.kvNamespaceId, "--remote"]);
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function isSmokeKvRecord(record, plan, prNumber) {
+  const identity = record?.identity;
+  return (
+    identity?.repositoryFullName === plan.repo &&
+    Number(identity?.pullRequestNumber) === Number(prNumber)
+  );
+}
+
+async function bulkDeleteHostedKvKeys(plan, keys) {
   const file = join(tmpdir(), `ai-saas-guard-hosted-kv-delete-${Date.now()}.json`);
   await writeFile(file, JSON.stringify(keys, null, 2));
   try {
@@ -260,9 +314,6 @@ async function clearHostedKv(plan) {
   } finally {
     await rm(file, { force: true });
   }
-  const remainingJson = await wrangler(["kv", "key", "list", "--namespace-id", plan.kvNamespaceId, "--remote"]);
-  const remainingSmokeKeys = JSON.parse(remainingJson).filter((item) => /^(delivery|scan):/.test(item.name)).length;
-  return { deletedKeys: keys.length, remainingSmokeKeys };
 }
 
 async function writeEvidence(plan, result) {
@@ -310,5 +361,5 @@ function sleep(ms) {
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/hosted-pr-smoke.mjs [--plan] [--evidence-file <path>]\n\nRuns a real hosted GitHub App staging smoke against ${DEFAULTS.repo}.\nThe real run creates a temporary PR, waits for the hosted Check Run, closes the PR, deletes the branch, and clears staging KV smoke records.`);
+  console.log(`Usage: node scripts/hosted-pr-smoke.mjs [--plan] [--evidence-file <path>]\n\nRuns a real hosted GitHub App staging smoke against ${DEFAULTS.repo}.\nThe real run creates a temporary PR, waits for the hosted Check Run, closes the PR, deletes the branch, and clears matching staging KV smoke records.`);
 }

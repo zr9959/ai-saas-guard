@@ -213,7 +213,7 @@ Latest release:
 - 2026-05-26 deletion drill: dedicated test compact KV key under `scan:135085075:900000526:` was created and deleted by exact key; existing project scan evidence was not deleted; full GitHub App uninstall/repository-removal proof still needs a safe test installation
 - 2026-05-26 human support routing: `@zr9959` is primary hosted staging incident/support owner, public-safe hosted support has a GitHub issue template, sensitive reports route to private vulnerability reporting, and missing independent backup coverage falls back to pausing hosted beta
 - 2026-05-26 GitHub App management proof attempt: temporary private repo `zr9959/ai-saas-guard-app-proof-20260526` was created, add-to-installation returned HTTP 403 because the session cannot modify the `ai-saas-guard-hosted` installation, and the temporary repo was deleted
-- 2026-05-27 beta readiness review: local `main` was clean and in sync before the review branch, current `main` HEAD was `60ea686`, latest observed CI/CodeQL/Metrics/Cross-Project Discovery runs succeeded, issue `#93` still had no real DP feedback, and issue `#94` still had deployed source-checkout/full deletion/provider monitoring blockers
+- 2026-05-27 beta readiness review: local `main` was clean and in sync before the review branch, later handoff-drift recheck found current `main` HEAD `48587b0`, latest observed CI/CodeQL/Metrics/Cross-Project Discovery runs succeeded, issue `#93` still had no real DP feedback, and issue `#94` still had deployed source-checkout/full deletion/provider monitoring blockers
 
 Latest release verification passed:
 

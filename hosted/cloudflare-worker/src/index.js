@@ -21,6 +21,8 @@ const DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60;
 const DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com";
 const CORRUPT_RATE_LIMIT_COUNTER = Symbol("corrupt_rate_limit_counter");
 const HOSTED_PROCESSING_PAUSED_KEY = "control:hosted_processing_paused";
+const RATE_LIMIT_COUNTER_CONSISTENCY = "best_effort_cloudflare_kv";
+const PUBLIC_BETA_GUARD = "requires_provider_rate_limit_and_rollback_evidence";
 const HOSTED_APP_PERMISSIONS = {
   checks: "write",
   contents: "read",
@@ -356,9 +358,11 @@ export function createHostedWorkerHealth(env = {}, state = {}) {
     storage: "cloudflare_kv",
     checkRunPublisher: hasGitHubCheckRunConfig(env) ? "configured" : "not_configured",
     rateLimit: getRepositoryRateLimitConfig(env) ? "configured" : "not_configured",
+    rateLimitCounterConsistency: RATE_LIMIT_COUNTER_CONSISTENCY,
     abuseKillSwitch: "configured",
     processingPaused: state.processingPaused ?? booleanFlag(env.HOSTED_PROCESSING_PAUSED),
     scannerVersion: env.SCANNER_VERSION || "unknown",
+    publicBetaGuard: PUBLIC_BETA_GUARD,
     privacy: HOSTED_WORKER_PRIVACY
   };
 }
@@ -374,6 +378,8 @@ export function createHostedInstallInfo(env = {}) {
     events: HOSTED_APP_EVENTS,
     boundary:
       "Install on selected repositories only. The hosted check turns PR trust-boundary changes into a review queue; it is not an AI reviewer, pentest, full audit, or certification.",
+    runtimeBoundary:
+      "Hosted ingress uses best-effort Cloudflare KV counters plus an abuse pause switch; public beta remains gated on provider monitoring, rollback, and incident evidence.",
     uninstall:
       "Uninstall or repository removal deletes compact records for that installation or repository when GitHub sends the signed event. Local CLI use does not depend on hosted installation.",
     scannerVersion: env.SCANNER_VERSION || "unknown",
@@ -969,22 +975,28 @@ function summarizeFindings(findings) {
 
 function renderCheckRunSummary({ identity, report, scannerVersion }) {
   const riskAreas = summarizeHostedRiskAreas(report.topRiskyFiles);
+  const repositoryLabel = safeMarkdownInline(identity.repositoryFullName);
+  const scannerVersionLabel = safeMarkdownInline(scannerVersion);
   const lines = [
-    `Launch-risk gate: ${report.summary.total} PR risk signal(s) for ${identity.repositoryFullName}#${identity.pullRequestNumber}.`,
+    `Launch-risk gate: ${report.summary.total} PR risk signal(s) for ${repositoryLabel}#${identity.pullRequestNumber}.`,
     "Review task: inspect risk areas and files before merge.",
     "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
     "",
     "Risk areas:",
     ...(riskAreas.length === 0
       ? ["- None"]
-      : riskAreas.slice(0, 5).map((area) => `- ${area.name}: ${area.count} file(s). Proof: ${area.proof}`)),
+      : riskAreas
+          .slice(0, 5)
+          .map((area) => `- ${safeMarkdownInline(area.name)}: ${area.count} file(s). Proof: ${safeMarkdownInline(area.proof)}`)),
     "",
     "Review queue:"
   ];
 
   if (report.topRiskyFiles.length > 0) {
     for (const file of report.topRiskyFiles.slice(0, 5)) {
-      lines.push(`- ${file.path}: ${file.categories.join(", ")} (${file.added}+/${file.removed}-)`);
+      lines.push(
+        `- ${safeMarkdownInline(file.path)}: ${file.categories.map(safeMarkdownInline).join(", ")} (${file.added}+/${file.removed}-)`
+      );
     }
     lines.push(
       "",
@@ -999,7 +1011,7 @@ function renderCheckRunSummary({ identity, report, scannerVersion }) {
 
   lines.push(
     "",
-    `Boundary: selected repository only; scanner ${scannerVersion}; not an AI reviewer, pentest, full audit, or certification.`,
+    `Boundary: selected repository only; scanner ${scannerVersionLabel}; not an AI reviewer, pentest, full audit, or certification.`,
     "Privacy: compact file/category signals only; no webhook bodies, PR text, source, diffs, secrets, checkout paths, or installation tokens."
   );
 
@@ -1008,6 +1020,12 @@ function renderCheckRunSummary({ identity, report, scannerVersion }) {
   }
 
   return lines.join("\n").slice(0, 6_000);
+}
+
+function safeMarkdownInline(value) {
+  return String(value ?? "")
+    .replace(/\r?\n/g, " ")
+    .replace(/[\\`*_{}[\]()#+!|<>]/g, "\\$&");
 }
 
 function summarizeHostedRiskAreas(files) {

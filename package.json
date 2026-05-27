@@ -1,6 +1,6 @@
 {
   "name": "ai-saas-guard",
-  "version": "0.43.1",
+  "version": "0.43.2",
   "description": "Local-first TIYBAI CLI that catches launch blockers in AI-built Next.js/Supabase/Stripe SaaS apps.",
   "readmeFilename": "README.md",
   "type": "module",

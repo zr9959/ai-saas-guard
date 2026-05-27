@@ -2,6 +2,42 @@
 
 Last updated: 2026-05-27, Asia/Shanghai.
 
+## 2026-05-27 1-7 Review Fixes And v0.43.2 Release Prep
+
+Why:
+
+- The user asked to fix the seven issues from the detailed code review instead of continuing feature work.
+- The fixes needed to stay inside the pre-commercial boundary and avoid Cloudflare/GitHub/npm secret or deployment changes.
+
+Changed:
+
+- surfaced hosted checkout cleanup failure even when the scan command already failed
+- scoped `scripts/hosted-pr-smoke.mjs` KV cleanup to records matching the temporary smoke PR instead of every `delivery:` / `scan:` key
+- added a `pr-risk` fallback from `base...HEAD` to `base..HEAD` when Git history lacks a merge base, while still reporting missing-base refs normally
+- escaped Cloudflare Check Run summary file/repo text so PR filenames cannot inject Markdown headings or links
+- exposed Cloudflare KV rate-limit consistency as best-effort and kept public beta guarded on provider rate-limit, rollback, monitoring, and incident evidence
+- added local scan file-collection diagnostics for unreadable files/directories, large skipped files, budget-skipped files, and malformed `package.json`
+- refreshed handoff state for current `main` HEAD `48587b0`
+- bumped package metadata and public README status to `0.43.2` for the GitHub/npm release path
+
+Verification:
+
+- `npm test`: 213 pass
+- `git diff --check`: passed
+- `node dist/cli.js scan --root . --summary`: 0 findings
+- `node dist/cli.js check-actions --root . --summary`: 0 findings
+- `node dist/cli.js check-supabase --root . --summary`: 0 findings
+- `node dist/cli.js check-mcp --root . --summary`: 0 findings
+- `node dist/cli.js pr-risk --root . --summary`: expected one medium self-diff finding for changed tests
+- `NPM_CONFIG_REGISTRY=https://registry.npmjs.org npm audit --audit-level=moderate`: 0 vulnerabilities
+
+Not done:
+
+- no Cloudflare deploy
+- no GitHub App installation mutation
+- no local npm token publishing; npm publication is handled by the existing GitHub Actions Trusted Publisher release workflow
+- no billing, pricing, paid packaging, marketplace conversion, sales funnel, analytics, or customer account work
+
 ## 2026-05-27 Agent Working Rules
 
 Why:
