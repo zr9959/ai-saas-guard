@@ -12,15 +12,20 @@ Use this document together with:
 
 ## Current Status
 
-Status: not collected.
+Status: blocked on real external feedback and deployed provider proof.
 
-The current release has source-level gates and staging Cloudflare hosted ingress evidence. It still does not have:
+As of 2026-05-27, the current npm and GitHub release line is `0.43.1`. The live Cloudflare hosted ingress is healthy and still reports `scannerVersion: "0.43.0"`, `mode: webhook-ingress`, and `processingPaused: false`.
 
+The project has source-level readiness gates plus staging Cloudflare ingress evidence for selected-repository install wording, safe privacy flags, rate limiting, abuse kill switch, runtime pause, ingress rollback, invalid-signature rejection, exact compact-record deletion for a dedicated test prefix, and public-safe support routing.
+
+It still does not have:
+
+- real DP-1, DP-2, or DP-3 design-partner feedback
 - deployed full source-checkout worker evidence
-- provider monitoring evidence
-- rollback and incident-response drill evidence
-- external user or design-partner feedback
-- public beta support process evidence
+- provider monitoring evidence for the source-checkout path
+- source-checkout rollback and incident-response drill evidence
+- full GitHub App uninstall or repository-removal deletion proof
+- public beta support and privacy wording validated by a real participant
 
 Do not use this document to claim production hosted readiness, pentest coverage, certification, full audit coverage, or commercial readiness.
 

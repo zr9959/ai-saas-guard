@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-05-25, Asia/Shanghai.
+Last updated: 2026-05-27, Asia/Shanghai.
 
 This handoff is the source of truth for a new Codex conversation. Do not rely on the old long chat history.
 
@@ -23,16 +23,17 @@ Current branch: `main`.
 
 Latest release state:
 
-- latest release commit on main: `7318c04 Add v0.43 pre-commercial beta and team gates`
-- package version: `0.43.0`
-- npm latest: `ai-saas-guard@0.43.0`
-- GitHub Release: `v0.43.0`
-- floating Action tag: `v0` points to `7318c04f2ade79861c198e00e42ec6c32b90f9b9`
+- latest release commit: `1659cb5 Fix hosted hardening and action summary support (#107)`
+- current `main` HEAD at the 2026-05-27 recheck: `60ea686 docs: add cross-project discovery check (#115)`
+- package version: `0.43.1`
+- npm latest: `ai-saas-guard@0.43.1`
+- GitHub Release: `v0.43.1`
+- floating Action tag: `v0` points to `1659cb513e7b8ad8948263d440893630be49fc05`
 - Cloudflare Worker health reports `scannerVersion: "0.43.0"`
-- deployed Worker version: `8744d3db-0114-4653-85e2-f1554ff1b26b`
+- the live hosted endpoint is still the Cloudflare `webhook-ingress`, not a deployed full source-checkout worker
 - real hosted smoke passed on PR `#91`, Check Run `77724168740`, with KV cleanup returning `[]`
 
-Post-release docs-only work after `v0.43.0`:
+Post-release docs and evidence work after `v0.43.0`:
 
 - committed Codex handoff package and public beta evidence intake: `3177e99 docs: add codex handoff and beta evidence intake`
 - committed public beta evidence intake status: `58cb8dc docs: record public beta evidence intake status`
@@ -43,12 +44,15 @@ Post-release docs-only work after `v0.43.0`:
 - opened GitHub issue `#93` for design-partner feedback intake
 - opened GitHub issue `#94` for provider evidence before hosted public beta
 - rechecked Phase 4/5 gates from current evidence; both remain blocked
+- released `v0.43.1` from PR `#107`
+- merged documentation/discovery follow-up PRs `#113`, `#114`, and `#115`
+- 2026-05-27 recheck confirmed npm latest `0.43.1`, GitHub release `v0.43.1`, latest CI/CodeQL/Metrics/Cross-Project Discovery success, hosted health safe but still reporting hosted scanner `0.43.0`, issue `#93` missing real DP feedback, and issue `#94` still blocked on source-checkout/provider deletion/monitoring evidence
 
 Current working tree note: `.local/project-handoff.md` is local-only and ignored by git. Do not force-add it.
 
 ## User Latest Requirement
 
-The user's latest explicit request is to stop development and generate a new Codex handoff package. Do not modify business code now.
+The user's latest explicit request is to focus back on this project and execute the evidence/docs review plan in order. Business code should not change unless explicitly requested.
 
 The user also previously established this strategic boundary:
 
@@ -99,7 +103,7 @@ Hosted path:
 
 Public docs:
 
-- English README and Chinese README updated through `0.43.0`
+- English README and Chinese README updated through `0.43.1`
 - rules docs
 - hosted deployment/runtime/gate docs
 - hosted operations evidence
@@ -116,11 +120,11 @@ Remaining pre-public-beta proof work:
 
 - use `docs/public-beta-evidence-feedback.md` as the privacy-safe intake checklist for real feedback and provider evidence
 - deployed full source-checkout scan worker with real sandbox evidence
-- provider monitoring evidence for queue depth, worker failures, Check Run failures, cleanup failures, and rollback
-- incident-response evidence from deployed artifacts
-- privacy-safe operator/admin workflow for pause, rollback, queue/failure checks, compact record deletion, and support
+- provider monitoring evidence for source-checkout queue depth, worker failures, Check Run failures, cleanup failures, and retention failures
+- source-checkout rollback and incident-response evidence from deployed artifacts
+- full GitHub App uninstall or repository-removal deletion proof from a safe test installation
+- public beta support and privacy wording validated by a real participant
 - external design-partner/user feedback
-- public beta install/support process review
 - GitHub issue `#93` is open to track design-partner feedback intake
 - GitHub issue `#94` is open to track provider monitoring, rollback, incident, deletion, and support evidence
 
@@ -141,13 +145,12 @@ Hosted public beta is blocked by evidence, not by the readiness-gate code:
 
 - source-checkout worker is not yet deployed as the live hosted scan worker
 - live hosted Worker still performs compact PR-file metadata classification, not full deployed source checkout scanning
-- provider monitoring/rollback/incident evidence is not collected
+- provider monitoring and rollback evidence is partial for the current ingress path but still missing for deployed source-checkout
+- full GitHub App uninstall/repository-removal proof is still blocked on App-management permission or a safe test installation
 - no design-partner feedback has been collected
-- `docs/public-beta-evidence-feedback.md` defines the intake process, but no real feedback or provider evidence has been recorded yet
-- post-merge read-only provider check did not include rollback, incident, uninstall/deletion, support, or provider alert evidence
-- Phase 4 hosted beta readiness recheck returned `readyForPublicBeta: false`
-- Phase 5 team launch gate recheck returned `readyForTeamUse: false`
-- `docs/hosted-operator-runbook.md` documents operator workflow, but it is not evidence until exercised against deployed artifacts
+- `docs/public-beta-evidence-feedback.md` defines the intake process, but no real external DP-1/DP-2/DP-3 feedback has been recorded yet
+- Phase 4 hosted beta readiness and Phase 5 team launch remain blocked until the remaining evidence exists
+- `docs/hosted-operator-runbook.md` documents operator workflow, but source-checkout runbook evidence still requires a deployed source-checkout artifact
 
 ## Key Decisions And Reasons
 
@@ -214,5 +217,5 @@ This handoff package explicitly covers:
 3. Summarize understanding to the user before modifying code.
 4. Do not start new development unless the user explicitly asks.
 5. Check GitHub issue `#93` for design-partner feedback intake and issue `#94` for provider evidence.
-6. Check draft PR `#95` for the docs-only handoff/evidence/runbook branch.
+6. Check `docs/beta-readiness-review-2026-05-27.md` for the latest public-safe blocker summary.
 7. If asked for next work, focus on feedback/evidence collection for public beta readiness, not more speculative features.

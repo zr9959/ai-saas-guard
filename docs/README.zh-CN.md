@@ -75,7 +75,7 @@ npx ai-saas-guard@latest scan --root /path/to/your-saas --summary
 npx ai-saas-guard@latest demo --summary
 ```
 
-这个 demo 会扫描两个包内 fixture：一个故意有上线风险的 AI-built SaaS，和一个同类场景下更安全的版本。可以先看[终端截图](docs/demo-terminal-screenshot.svg)和保存好的终端样例：[docs/demo-terminal-output.txt](demo-terminal-output.txt)，再看它[和替代方案的区别](launch-gate-positioning.md)。
+这个 demo 会扫描两个包内 fixture：一个故意有上线风险的 AI-built SaaS，和一个同类场景下更安全的版本。可以先看[docs/demo-terminal-screenshot.svg](demo-terminal-screenshot.svg)和保存好的终端样例：[docs/demo-terminal-output.txt](demo-terminal-output.txt)，再看它[和替代方案的区别](launch-gate-positioning.md)。
 
 ## 60 秒本地检查
 
@@ -169,6 +169,19 @@ Next steps
 
 按信任边界选择：代码必须留在本机时用 **Local CLI**；需要 CI 里的可重复证据时用 **GitHub Action**；reviewer 需要自动 Check Run 时用 **Hosted GitHub App**，它会把 auth、billing、tenant data、deploy 和 test-risk areas 分组后放到 PR 里。
 
+## 商业化前反馈
+
+`ai-saas-guard` 在做公开 hosted beta 决策前，需要隐私安全的真实设计伙伴反馈。最安全的路径是本地运行：
+
+```bash
+npx --yes ai-saas-guard@latest demo --summary
+npx --yes ai-saas-guard@latest scan --root /path/to/your-low-risk-demo-repo --summary
+```
+
+公开安全的反馈可以发到 [issue #93](https://github.com/zr9959/ai-saas-guard/issues/93)：package version、使用路径、技术栈类别、severity 数量、rule ID、哪里困惑/噪音/缺失，以及报告是否会改变上线或 merge 决策。不要分享源码、raw diff、PR 文本、日志、secret、客户数据、私有 URL、checkout path 或凭据。
+
+下载量、star、页面浏览、匿名评论、模拟扫描和内部假设都不算真实设计伙伴证据。
+
 ## 快速开始
 
 无需全局安装，直接运行：
@@ -229,6 +242,7 @@ CLI 已发布到 npm：`ai-saas-guard@0.43.1`。GitHub Action 支持 `v0` 浮动
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；安装和隐私说明见 [hosted-install-privacy.md](hosted-install-privacy.md)；提供 `/github/app/install-info`，签名 GitHub App webhook delivery、compact Check Run 和 installation cleanup staging smoke 已通过 |
 | Hosted GitHub App staging | 私有 App `ai-saas-guard-hosted`（`3834787`）已安装到 `zr9959/ai-saas-guard`；hosted operations evidence 见 [docs/hosted-operations-evidence.md](hosted-operations-evidence.md) |
+| Public beta readiness | 仍被真实设计伙伴反馈、deployed source-checkout proof、完整 GitHub App 删除证明，以及 source-checkout provider monitoring evidence 阻塞 |
 | OpenSSF Best Practices | 已获得 passing badge，项目 `12955`；`.bestpractices.json` 继续作为保守证据记录 |
 | 上一版路线 | v0.36.0 计划见 [v0.36-roadmap.md](v0.36-roadmap.md) |
 
