@@ -24,7 +24,7 @@ Current branch: `main`.
 Latest release state:
 
 - latest release commit: `1659cb5 Fix hosted hardening and action summary support (#107)`
-- current `main` HEAD at the 2026-05-27 recheck: `60ea686 docs: add cross-project discovery check (#115)`
+- current `main` HEAD at the 2026-05-27 handoff-drift recheck: `48587b0 docs: add codex agent working rules`
 - package version: `0.43.1`
 - npm latest: `ai-saas-guard@0.43.1`
 - GitHub Release: `v0.43.1`

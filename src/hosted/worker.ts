@@ -57,6 +57,8 @@ export type HostedReadOnlyCheckoutCommandRunner = (
   command: HostedReadOnlyCheckoutCommand
 ) => Promise<HostedReadOnlyCheckoutCommandResult> | HostedReadOnlyCheckoutCommandResult;
 
+export type HostedCheckoutCleanup = (checkoutDir: string) => Promise<void> | void;
+
 export type HostedInstallationTokenProvider = (
   input: HostedServiceScanRunnerInput
 ) => Promise<string> | string;
@@ -71,6 +73,7 @@ export interface HostedReadOnlyCheckoutScanRunnerOptions {
   maxOutputBytes?: number;
   installationTokenProvider: HostedInstallationTokenProvider;
   commandRunner?: HostedReadOnlyCheckoutCommandRunner;
+  cleanupCheckout?: HostedCheckoutCleanup;
 }
 
 export interface HostedSourceCheckoutTrialPlanInput {
@@ -537,6 +540,7 @@ export async function runHostedReadOnlyCheckoutScan(
   );
   const fetchDepth = clampPositiveInteger(options.fetchDepth, DEFAULT_FETCH_DEPTH, MAX_FETCH_DEPTH);
   const checkoutRoot = options.checkoutRoot ?? join(tmpdir(), "ai-saas-guard-hosted-checkouts");
+  const cleanupCheckout = options.cleanupCheckout ?? defaultCleanupCheckout;
   const token = await options.installationTokenProvider(input);
   if (typeof token !== "string" || token.trim().length === 0) {
     throw new HostedReadOnlyCheckoutScanError("missing_installation_token");
@@ -544,7 +548,6 @@ export async function runHostedReadOnlyCheckoutScan(
 
   await mkdir(checkoutRoot, { recursive: true, mode: 0o700 });
   const checkoutDir = await mkdtemp(join(checkoutRoot, "job-"));
-  let terminalError: HostedReadOnlyCheckoutScanError | undefined;
 
   try {
     await chmod(checkoutDir, 0o700);
@@ -651,20 +654,22 @@ export async function runHostedReadOnlyCheckoutScan(
 
     return compactScanRunnerResult(cliResult.stdout);
   } catch (error) {
-    terminalError =
+    const terminalError =
       error instanceof HostedReadOnlyCheckoutScanError
         ? error
         : new HostedReadOnlyCheckoutScanError("cli_scan_failed");
     throw terminalError;
   } finally {
     try {
-      await rm(checkoutDir, { recursive: true, force: true });
+      await cleanupCheckout(checkoutDir);
     } catch {
-      if (!terminalError) {
-        throw new HostedReadOnlyCheckoutScanError("cleanup_failed");
-      }
+      throw new HostedReadOnlyCheckoutScanError("cleanup_failed");
     }
   }
+}
+
+async function defaultCleanupCheckout(checkoutDir: string): Promise<void> {
+  await rm(checkoutDir, { recursive: true, force: true });
 }
 
 function commandSpec(

@@ -178,7 +178,7 @@ Safe prefixes:
 - `delivery:`
 - `scan:`
 
-Do not bulk-delete all keys unless the task is an explicit staging smoke cleanup and the cleanup target is known.
+Do not bulk-delete all keys. Staging smoke cleanup must target only records matching the temporary smoke PR.
 
 Evidence to record:
 

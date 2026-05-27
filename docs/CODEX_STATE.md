@@ -6,9 +6,9 @@ Last updated: 2026-05-27, Asia/Shanghai.
 
 - Project path: `/Volumes/MyPSSD/app/ai-saas-guard`
 - Shell: `zsh`
-- Branch: `main` for the public source of truth; current review work uses branch `codex/beta-readiness-review-20260527`
+- Branch: `main` for the public source of truth; current 1-7 fix work is in the local main worktree until committed
 - Latest release commit: `1659cb513e7b8ad8948263d440893630be49fc05`
-- Current `main` HEAD at the 2026-05-27 recheck: `60ea68633d4f4d8645835a4c90fc8fda60e91dba`
+- Current `main` HEAD at the 2026-05-27 handoff-drift recheck: `48587b068f7985ca851770a96386083221bd3ffb`
 - Package version: `0.43.1`
 - Observed Node: `v25.8.0`
 - Package engine: Node `>=20`

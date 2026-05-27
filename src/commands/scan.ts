@@ -52,7 +52,7 @@ export async function scanRepository(options: ScanOptions): Promise<BaseReport> 
       ...silentSuccessFindings,
       ...actionsReport.findings
     ]),
-    { stackInventory }
+    { stackInventory, fileCollection: context.fileCollection }
   );
 }
 

@@ -72,6 +72,8 @@ test("Cloudflare hosted worker health response is public-safe", () => {
   assert.equal(health.service, "ai-saas-guard-hosted");
   assert.equal(health.mode, "webhook-ingress");
   assert.equal(health.checkRunPublisher, "not_configured");
+  assert.equal(health.rateLimitCounterConsistency, "best_effort_cloudflare_kv");
+  assert.equal(health.publicBetaGuard, "requires_provider_rate_limit_and_rollback_evidence");
   assert.deepEqual(health.privacy, HOSTED_WORKER_PRIVACY);
   assert.doesNotMatch(JSON.stringify(health), /private key|webhook secret|installation token|raw source|raw diff/i);
 });
@@ -441,6 +443,12 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
             additions: 4,
             deletions: 0,
             patch: "+ create policy read_all on projects for select using (true);"
+          },
+          {
+            filename: "app/api/auth/[next](https://evil.example)\n### injected.md",
+            additions: 4,
+            deletions: 0,
+            patch: "+ export async function POST() { return Response.json({ ok: true }); }"
           }
         ]);
       }
@@ -462,6 +470,8 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
         assert.match(body.output.summary, /Boundary: selected repository only/i);
         assert.match(body.output.summary, /Privacy: compact file\/category signals only/i);
         assert.match(body.output.summary, /app\/api\/stripe\/webhook\/route\.ts/);
+        assert.doesNotMatch(body.output.summary, /^### injected\.md/m);
+        assert.doesNotMatch(body.output.summary, /\]\(https:\/\/evil\.example\)/);
         assert.doesNotMatch(JSON.stringify(body), /ghs_test_installation_token|STRIPE_SECRET_KEY|grantSubscription|raw diff/i);
         return Response.json({ id: 777, html_url: "https://github.example/checks/777" });
       }

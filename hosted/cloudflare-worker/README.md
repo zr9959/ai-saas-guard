@@ -14,7 +14,7 @@ It is intentionally narrow:
 - The Check Run summary names the selected-repository hosted check, the Review queue, and a Manual proof prompt so reviewers know which trust-boundary files to inspect before merge.
 - Signed `installation` deletion events and `installation_repositories` `repositories_removed` events delete matching compact `scan:<installation>:...` records from KV when KV list/delete bindings are available.
 - Duplicate GitHub delivery IDs are accepted idempotently.
-- Configured pull request webhooks are rate limited per installation and repository with compact KV counters.
+- Configured pull request webhooks are rate limited per installation and repository with compact best-effort KV counters plus a runtime pause switch.
 - A hosted processing pause can stop eligible pull request webhook side effects before compact delivery/scan records or Check Runs are written.
 - Responses and KV records do not include raw webhook payloads, PR title/body text, source code, diffs, secrets, customer payloads, checkout paths, or installation tokens.
 
@@ -107,7 +107,7 @@ The real run is intentionally narrow:
 - opens a temporary PR against `zr9959/ai-saas-guard`
 - waits for the `ai-saas-guard PR risk` Check Run on the trusted head SHA
 - records only the Check Run conclusion, URL, safe output title, and cleanup status
-- closes the PR, deletes the branch, restores the local branch, and clears staging KV `delivery:` and `scan:` records with `wrangler kv bulk delete`
+- closes the PR, deletes the branch, restores the local branch, and clears only matching staging KV smoke `delivery:` and `scan:` records with `wrangler kv bulk delete`
 
 The script refuses to run against another repository, requires HTTPS Worker URLs, and keeps the local CLI path available even if hosted smoke fails.
 

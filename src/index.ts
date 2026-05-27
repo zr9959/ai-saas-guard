@@ -32,7 +32,14 @@ export type {
   SupabaseReport
 } from "./types.js";
 export type { ScanContext, ScanInput } from "./context.js";
-export type { StackCategory, StackEvidence, StackInventory, StackInventoryInput } from "./stackInventory.js";
+export type {
+  StackCategory,
+  StackEvidence,
+  StackInventory,
+  StackInventoryInput,
+  StackInventoryWarning
+} from "./stackInventory.js";
+export type { FileCollectionDiagnostics, TextFile, TextFileCollection } from "./utils/files.js";
 export type { FindingSuppression, GuardConfig, RuleConfigValue } from "./config.js";
 export type { RuleMetadata, RuleStability } from "./rules/catalog.js";
 export type { LocalScanResourceBudget, LocalScanResourceBudgetInput } from "./performance.js";

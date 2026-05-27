@@ -20,7 +20,7 @@ import {
   RULE_CATALOG,
   scanRepository
 } from "../dist/index.js";
-import { collectTextFiles } from "../dist/utils/files.js";
+import { collectTextFiles, collectTextFilesWithDiagnostics } from "../dist/utils/files.js";
 import { formatMarkdownReport } from "../dist/report/markdown.js";
 import { formatSummaryReport } from "../dist/report/summary.js";
 import { formatTerminalReport } from "../dist/report/terminal.js";
@@ -29,6 +29,10 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const fixtureRoot = resolve(testDir, "fixtures");
 const packageRoot = resolve(testDir, "..");
 const execFileAsync = promisify(execFile);
+
+async function gitIn(rootDir, args) {
+  await execFileAsync("git", args, { cwd: rootDir, maxBuffer: 1024 * 1024 });
+}
 
 function findingTitles(report) {
   return report.findings.map((finding) => finding.title);
@@ -147,6 +151,95 @@ test("text file collection can cap file count and total bytes", async () => {
   assert.equal(oneFile.length, 1);
   assert.ok(byteCapped.reduce((total, file) => total + Buffer.byteLength(file.content), 0) <= 6);
   assert.ok(byteCapped.length < 3);
+});
+
+test("text file collection reports skipped-file diagnostics", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-resource-diagnostics-"));
+  await writeFile(resolve(rootDir, "a.txt"), "abcd\n");
+  await writeFile(resolve(rootDir, "b.txt"), "efgh\n");
+  await writeFile(resolve(rootDir, "large.txt"), "x".repeat(32));
+
+  try {
+    const collection = await collectTextFilesWithDiagnostics(rootDir, {
+      maxFileBytes: 8,
+      maxFiles: 10,
+      maxTotalBytes: 6
+    });
+
+    assert.ok(collection.files.length >= 1);
+    assert.equal(collection.diagnostics.filesScanned, collection.files.length);
+    assert.ok(collection.diagnostics.bytesScanned <= 6);
+    assert.deepEqual(collection.diagnostics.skippedLargeFiles, ["large.txt"]);
+    assert.equal(collection.diagnostics.maxTotalBytesReached, true);
+    assert.ok(collection.diagnostics.skippedBudgetFiles.length >= 1);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("scan summaries expose local file collection coverage when files are skipped", () => {
+  const report = {
+    command: "scan",
+    rootDir: ".",
+    generatedAt: "2026-05-27T00:00:00.000Z",
+    findings: [],
+    summary: {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      info: 0,
+      total: 0
+    },
+    fileCollection: {
+      filesScanned: 7,
+      bytesScanned: 1234,
+      unreadableFiles: ["private.env"],
+      unreadableDirectories: ["private"],
+      skippedLargeFiles: ["large.sql"],
+      skippedBudgetFiles: ["huge.md"],
+      maxFilesReached: false,
+      maxTotalBytesReached: true
+    },
+    stackInventory: {
+      frameworks: [],
+      databases: [],
+      orms: [],
+      auth: [],
+      payments: [],
+      storage: [],
+      deploy: [],
+      evidence: [],
+      warnings: [{ file: "package.json", reason: "invalid_package_json" }]
+    }
+  };
+
+  const summary = formatSummaryReport(report);
+
+  assert.match(summary, /Scan coverage:/);
+  assert.match(summary, /7 files scanned/);
+  assert.match(summary, /1 unreadable file/);
+  assert.match(summary, /1 unreadable directory/);
+  assert.match(summary, /1 large file skipped/);
+  assert.match(summary, /1 budget-skipped file/);
+  assert.match(summary, /total byte budget reached/);
+  assert.match(summary, /1 malformed package manifest/);
+});
+
+test("scan reports malformed package inventory instead of silently skipping stack detection", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-malformed-package-"));
+  await writeFile(resolve(rootDir, "package.json"), "{not-json");
+
+  try {
+    const report = await scanRepository({ rootDir });
+
+    assert.deepEqual(report.stackInventory?.warnings, [
+      { file: "package.json", reason: "invalid_package_json" }
+    ]);
+    assert.match(formatSummaryReport(report), /1 malformed package manifest/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
 });
 
 test("local scan resource budget documents conservative large-repo limits", () => {
@@ -923,6 +1016,39 @@ test("pr-risk explains missing base refs instead of silently reporting no diff",
   assert.ok(!findingRuleIds(report).includes("pr-risk.no-diff"));
 });
 
+test("pr-risk falls back to a direct base diff when histories have no merge base", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-no-merge-base-"));
+
+  try {
+    await gitIn(rootDir, ["init"]);
+    await gitIn(rootDir, ["config", "user.email", "tests@example.com"]);
+    await gitIn(rootDir, ["config", "user.name", "ai-saas-guard tests"]);
+    await writeFile(resolve(rootDir, "README.md"), "base\n");
+    await gitIn(rootDir, ["add", "."]);
+    await gitIn(rootDir, ["commit", "-m", "base"]);
+    const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: rootDir });
+    const baseSha = stdout.trim();
+
+    await gitIn(rootDir, ["checkout", "--orphan", "feature"]);
+    await gitIn(rootDir, ["rm", "-rf", "."]);
+    await mkdir(resolve(rootDir, "app/api/auth"), { recursive: true });
+    await writeFile(
+      resolve(rootDir, "app/api/auth/route.ts"),
+      "export async function POST() { return Response.json({ ok: true }); }\n"
+    );
+    await gitIn(rootDir, ["add", "."]);
+    await gitIn(rootDir, ["commit", "-m", "feature"]);
+
+    const report = await classifyPrRisk({ rootDir, base: baseSha });
+
+    assert.ok(!findingRuleIds(report).includes("pr-risk.diff-unavailable"));
+    assert.ok(report.topRiskyFiles.some((file) => file.path === "app/api/auth/route.ts"));
+    assert.ok(report.categories.includes("API contract"));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("npm package excludes macOS AppleDouble metadata files", async () => {
   const appleDoubleFile = resolve(packageRoot, "dist", "._ai-saas-guard-packaging-test");
   await writeFile(appleDoubleFile, "macOS metadata should never ship\n");
@@ -977,7 +1103,11 @@ test("hosted real PR smoke runner has a safe plan and cleanup boundary", async (
   assert.match(script, /closedPullRequest/);
   assert.match(script, /remainingSmokeKeys/);
   assert.match(script, /"kv",\s*"bulk",\s*"delete"/);
-  assert.match(script, /delivery\|scan/);
+  assert.match(script, /clearHostedKv\(plan,\s*prNumber\)/);
+  assert.match(script, /readHostedKvRecord/);
+  assert.match(script, /scanKeysForPullRequest/);
+  assert.match(script, /pullRequestNumber/);
+  assert.doesNotMatch(script, /filter\(\(name\) => \/\^\(delivery\|scan\):/);
   assert.doesNotMatch(script, /sk_(?:live|test)_|whsec_|ghs_[A-Za-z0-9]/);
 });
 

@@ -18,6 +18,11 @@ export interface StackEvidence {
   reason: string;
 }
 
+export interface StackInventoryWarning {
+  file: string;
+  reason: "invalid_package_json";
+}
+
 export interface StackInventory {
   frameworks: string[];
   databases: string[];
@@ -27,11 +32,15 @@ export interface StackInventory {
   storage: string[];
   deploy: string[];
   evidence: StackEvidence[];
+  warnings: StackInventoryWarning[];
 }
 
 export type StackInventoryInput = ScanInput | { rootDir: string };
 
-type MutableInventory = Record<StackCategory, Set<string>> & { evidence: StackEvidence[] };
+type MutableInventory = Record<StackCategory, Set<string>> & {
+  evidence: StackEvidence[];
+  warnings: StackInventoryWarning[];
+};
 
 export async function detectStackInventory(input: StackInventoryInput): Promise<StackInventory> {
   const context = await resolveStackInventoryContext(input);
@@ -59,7 +68,8 @@ function createMutableInventory(): MutableInventory {
     payments: new Set<string>(),
     storage: new Set<string>(),
     deploy: new Set<string>(),
-    evidence: []
+    evidence: [],
+    warnings: []
   };
 }
 
@@ -119,7 +129,11 @@ function detectFromContent(file: TextFile, inventory: MutableInventory): void {
 }
 
 function detectPackageJson(file: TextFile, inventory: MutableInventory): void {
-  const dependencies = readPackageDependencies(file.content);
+  const packageInventory = readPackageDependencies(file.content);
+  if (packageInventory.parseError) {
+    inventory.warnings.push({ file: file.path, reason: "invalid_package_json" });
+  }
+  const dependencies = packageInventory.dependencies;
   const has = (name: string) => dependencies.has(name);
   const hasAny = (names: string[]) => names.some((name) => has(name));
 
@@ -173,7 +187,7 @@ function detectPackageJson(file: TextFile, inventory: MutableInventory): void {
   if (hasAny(["@cloudflare/workers-types", "wrangler"])) addEvidence(inventory, "deploy", "cloudflare", file.path, "package dependency");
 }
 
-function readPackageDependencies(content: string): Set<string> {
+function readPackageDependencies(content: string): { dependencies: Set<string>; parseError: boolean } {
   try {
     const parsed = JSON.parse(content) as Record<string, unknown>;
     const result = new Set<string>();
@@ -182,9 +196,9 @@ function readPackageDependencies(content: string): Set<string> {
       if (!values || typeof values !== "object" || Array.isArray(values)) continue;
       for (const name of Object.keys(values)) result.add(name);
     }
-    return result;
+    return { dependencies: result, parseError: false };
   } catch {
-    return new Set<string>();
+    return { dependencies: new Set<string>(), parseError: true };
   }
 }
 
@@ -230,6 +244,7 @@ function finalizeInventory(inventory: MutableInventory): StackInventory {
     payments: [...inventory.payments].sort(),
     storage: [...inventory.storage].sort(),
     deploy: [...inventory.deploy].sort(),
-    evidence: [...inventory.evidence].sort((a, b) => `${a.category}:${a.tool}:${a.file}`.localeCompare(`${b.category}:${b.tool}:${b.file}`))
+    evidence: [...inventory.evidence].sort((a, b) => `${a.category}:${a.tool}:${a.file}`.localeCompare(`${b.category}:${b.tool}:${b.file}`)),
+    warnings: [...inventory.warnings].sort((a, b) => `${a.reason}:${a.file}`.localeCompare(`${b.reason}:${b.file}`))
   };
 }

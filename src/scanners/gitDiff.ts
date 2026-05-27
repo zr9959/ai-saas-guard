@@ -111,13 +111,26 @@ export async function classifyPrRisk(options: PrRiskOptions): Promise<PrRiskRepo
 
 async function readGitDiff(rootDir: string, base?: string): Promise<GitDiffReadResult> {
   if (base) {
+    const tripleDotArgs = ["diff", `${base}...HEAD`];
     try {
-      const { stdout } = await execFileAsync("git", ["diff", `${base}...HEAD`], { cwd: rootDir, maxBuffer: 20 * 1024 * 1024 });
+      const { stdout } = await execFileAsync("git", tripleDotArgs, { cwd: rootDir, maxBuffer: 20 * 1024 * 1024 });
       return { diffText: stdout, diagnostics: [] };
     } catch (error) {
+      if (isMergeBaseUnavailableError(error)) {
+        const directDiffArgs = ["diff", `${base}..HEAD`];
+        try {
+          const { stdout } = await execFileAsync("git", directDiffArgs, { cwd: rootDir, maxBuffer: 20 * 1024 * 1024 });
+          return { diffText: stdout, diagnostics: [] };
+        } catch (fallbackError) {
+          return {
+            diffText: "",
+            diagnostics: [buildGitDiffFailureFinding(rootDir, ["git", ...directDiffArgs], fallbackError, base)]
+          };
+        }
+      }
       return {
         diffText: "",
-        diagnostics: [buildGitDiffFailureFinding(rootDir, ["git", "diff", `${base}...HEAD`], error, base)]
+        diagnostics: [buildGitDiffFailureFinding(rootDir, ["git", ...tripleDotArgs], error, base)]
       };
     }
   }
@@ -177,6 +190,11 @@ function buildGitDiffFailureFinding(rootDir: string, command: string[], error: u
     suggestedVerification,
     suggestedFix
   });
+}
+
+function isMergeBaseUnavailableError(error: unknown): boolean {
+  const lowerError = getGitErrorText(error).toLowerCase();
+  return lowerError.includes("no merge base") || lowerError.includes("shallow");
 }
 
 function buildFetchCommand(base: string): string {

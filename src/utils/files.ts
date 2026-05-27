@@ -13,6 +13,22 @@ export interface CollectTextFilesOptions {
   maxTotalBytes?: number;
 }
 
+export interface FileCollectionDiagnostics {
+  filesScanned: number;
+  bytesScanned: number;
+  unreadableFiles: string[];
+  unreadableDirectories: string[];
+  skippedLargeFiles: string[];
+  skippedBudgetFiles: string[];
+  maxFilesReached: boolean;
+  maxTotalBytesReached: boolean;
+}
+
+export interface TextFileCollection {
+  files: TextFile[];
+  diagnostics: FileCollectionDiagnostics;
+}
+
 export const DEFAULT_MAX_TEXT_FILE_BYTES = 1024 * 1024;
 export const DEFAULT_MAX_TEXT_FILES = 10_000;
 export const DEFAULT_MAX_TOTAL_TEXT_BYTES = 50 * 1024 * 1024;
@@ -42,6 +58,13 @@ export async function collectTextFiles(
   rootDir: string,
   options: CollectTextFilesOptions = {}
 ): Promise<TextFile[]> {
+  return (await collectTextFilesWithDiagnostics(rootDir, options)).files;
+}
+
+export async function collectTextFilesWithDiagnostics(
+  rootDir: string,
+  options: CollectTextFilesOptions = {}
+): Promise<TextFileCollection> {
   const files: TextFile[] = [];
   const ignores = await loadIgnoreRules(rootDir);
   const budget: CollectionBudget = {
@@ -53,8 +76,11 @@ export async function collectTextFiles(
     ),
     collectedBytes: 0
   };
-  await walk(rootDir, rootDir, files, ignores, budget);
-  return files;
+  const diagnostics = createFileCollectionDiagnostics();
+  await walk(rootDir, rootDir, files, ignores, budget, diagnostics);
+  diagnostics.filesScanned = files.length;
+  diagnostics.bytesScanned = budget.collectedBytes;
+  return { files, diagnostics };
 }
 
 async function walk(
@@ -62,19 +88,35 @@ async function walk(
   currentDir: string,
   files: TextFile[],
   ignores: IgnoreRule[],
-  budget: CollectionBudget
+  budget: CollectionBudget,
+  diagnostics: FileCollectionDiagnostics
 ): Promise<void> {
-  if (files.length >= budget.maxFiles || budget.collectedBytes >= budget.maxTotalBytes) return;
+  if (files.length >= budget.maxFiles) {
+    diagnostics.maxFilesReached = true;
+    return;
+  }
+  if (budget.collectedBytes >= budget.maxTotalBytes) {
+    diagnostics.maxTotalBytesReached = true;
+    return;
+  }
 
   let entries;
   try {
     entries = await readdir(currentDir, { withFileTypes: true });
   } catch {
+    pushUnique(diagnostics.unreadableDirectories, relativeCollectionPath(rootDir, currentDir));
     return;
   }
 
   for (const entry of entries) {
-    if (files.length >= budget.maxFiles || budget.collectedBytes >= budget.maxTotalBytes) break;
+    if (files.length >= budget.maxFiles) {
+      diagnostics.maxFilesReached = true;
+      break;
+    }
+    if (budget.collectedBytes >= budget.maxTotalBytes) {
+      diagnostics.maxTotalBytesReached = true;
+      break;
+    }
     if (entry.name === ".DS_Store" || entry.name.startsWith("._")) continue;
 
     const absolutePath = join(currentDir, entry.name);
@@ -83,15 +125,28 @@ async function walk(
 
     if (entry.isDirectory()) {
       if (ignoredDirectories.has(entry.name)) continue;
-      await walk(rootDir, absolutePath, files, ignores, budget);
+      await walk(rootDir, absolutePath, files, ignores, budget, diagnostics);
       continue;
     }
 
     if (!entry.isFile() || !textFilePattern.test(relativePath)) continue;
 
-    const fileStat = await stat(absolutePath);
-    if (fileStat.size > budget.maxFileBytes) continue;
-    if (budget.collectedBytes + fileStat.size > budget.maxTotalBytes) continue;
+    let fileStat;
+    try {
+      fileStat = await stat(absolutePath);
+    } catch {
+      pushUnique(diagnostics.unreadableFiles, relativePath);
+      continue;
+    }
+    if (fileStat.size > budget.maxFileBytes) {
+      pushUnique(diagnostics.skippedLargeFiles, relativePath);
+      continue;
+    }
+    if (budget.collectedBytes + fileStat.size > budget.maxTotalBytes) {
+      diagnostics.maxTotalBytesReached = true;
+      pushUnique(diagnostics.skippedBudgetFiles, relativePath);
+      continue;
+    }
 
     try {
       files.push({
@@ -101,9 +156,31 @@ async function walk(
       });
       budget.collectedBytes += fileStat.size;
     } catch {
+      pushUnique(diagnostics.unreadableFiles, relativePath);
       continue;
     }
   }
+}
+
+function createFileCollectionDiagnostics(): FileCollectionDiagnostics {
+  return {
+    filesScanned: 0,
+    bytesScanned: 0,
+    unreadableFiles: [],
+    unreadableDirectories: [],
+    skippedLargeFiles: [],
+    skippedBudgetFiles: [],
+    maxFilesReached: false,
+    maxTotalBytesReached: false
+  };
+}
+
+function relativeCollectionPath(rootDir: string, absolutePath: string): string {
+  return toPosix(relative(rootDir, absolutePath)) || ".";
+}
+
+function pushUnique(target: string[], value: string): void {
+  if (!target.includes(value)) target.push(value);
 }
 
 export function lineNumberForIndex(content: string, index: number): number {
