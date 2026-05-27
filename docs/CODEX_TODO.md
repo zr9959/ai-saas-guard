@@ -8,13 +8,14 @@ Do not start commercialization. The current work is pre-commercial evidence, fee
 
 Acceptance:
 
-- new Codex reads `docs/CODEX_HANDOFF.md`, `docs/CODEX_STATE.md`, `docs/CODEX_TODO.md`, `docs/CODEX_RECENT_CHANGES.md`, `docs/release-quality-knowledge-base.md`, and `docs/beta-readiness-review-2026-05-27.md` while it remains current
+- new Codex reads `docs/CODEX_HANDOFF.md`, `docs/CODEX_AGENT_WORKING_RULES.md`, `docs/CODEX_STATE.md`, `docs/CODEX_TODO.md`, `docs/CODEX_RECENT_CHANGES.md`, `docs/release-quality-knowledge-base.md`, and `docs/beta-readiness-review-2026-05-27.md` while it remains current
 - new Codex summarizes understanding before modifying code
 - no business-code changes happen unless the user explicitly asks
 
 Files/modules:
 
 - `docs/CODEX_HANDOFF.md`
+- `docs/CODEX_AGENT_WORKING_RULES.md`
 - `docs/CODEX_STATE.md`
 - `docs/CODEX_TODO.md`
 - `docs/CODEX_RECENT_CHANGES.md`

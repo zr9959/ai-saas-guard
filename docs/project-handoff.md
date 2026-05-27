@@ -64,6 +64,7 @@ Implemented surfaces:
 - hosted production adapter layer document and helpers for RS256 GitHub App JWT creation, selected-repository installation-token request planning, separate worker/check-run token scopes, fixed read-only worker execution, timeout/output budgets, and cleanup planning for success, failure, timeout, and cancellation
 - hosted read-only checkout worker runner exported from `ai-saas-guard/hosted/worker`, with trusted clone targets, git askpass token handling, bounded command execution, compact CLI JSON parsing, and checkout cleanup after success or failure
 - hosted Node/container app skeleton document and helpers for safe health and webhook HTTP ingress, one-job worker ticks, in-memory provider adapters, provider reference validation, and the chosen `node_container` roles `webhook-ingress` and `scan-worker`
+- Codex/agent working rules requiring narrow changes, fresh verification, secret protection, risk-gated autonomy, and cleanup after every task
 - hosted staging deployment planner document and helpers for provider binding, staging release-gate evidence, Node/container deployment composition, and production GitHub App promotion gating
 - hosted staging harness document and helpers for local signed webhook replay, file-backed queue/report/Check Run artifacts, worker sandbox cleanup verification, and release-gate evidence fixtures without cloud calls
 - public beta evidence and feedback intake document defining privacy-safe design-partner feedback targets, feedback templates, provider monitoring/rollback/incident/support evidence, beta block conditions, and cleanup requirements before public beta
@@ -373,6 +374,7 @@ Paste this into a new ChatGPT/Codex Project or conversation:
 Please take over this project. First read these files and follow their product direction, current status, repository boundaries, and release gate:
 
 docs/project-handoff.md
+docs/CODEX_AGENT_WORKING_RULES.md
 docs/release-quality-knowledge-base.md
 
 GitHub repo:
