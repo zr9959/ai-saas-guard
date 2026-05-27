@@ -1,6 +1,6 @@
 # Codex TODO
 
-Last updated: 2026-05-26, Asia/Shanghai.
+Last updated: 2026-05-27, Asia/Shanghai.
 
 Do not start commercialization. The current work is pre-commercial evidence, feedback, and operational readiness.
 
@@ -8,7 +8,7 @@ Do not start commercialization. The current work is pre-commercial evidence, fee
 
 Acceptance:
 
-- new Codex reads `docs/CODEX_HANDOFF.md`, `docs/CODEX_STATE.md`, `docs/CODEX_TODO.md`, `docs/CODEX_RECENT_CHANGES.md`, and `docs/release-quality-knowledge-base.md`
+- new Codex reads `docs/CODEX_HANDOFF.md`, `docs/CODEX_STATE.md`, `docs/CODEX_TODO.md`, `docs/CODEX_RECENT_CHANGES.md`, `docs/release-quality-knowledge-base.md`, and `docs/beta-readiness-review-2026-05-27.md` while it remains current
 - new Codex summarizes understanding before modifying code
 - no business-code changes happen unless the user explicitly asks
 
@@ -126,6 +126,7 @@ Risks:
 - the 2026-05-26 App-management attempt proved the current session cannot modify the `ai-saas-guard-hosted` installation; the temporary test repo was deleted after HTTP 403
 - provider alert exports and real design-partner feedback remain missing
 - primary incident owner and public-safe support path evidence now exist; backup coverage is a pause-hosted fallback, not a staffed second operator
+- the 2026-05-27 readiness review confirmed npm/GitHub latest is `0.43.1`, the hosted ingress is healthy but still reports `scannerVersion: "0.43.0"`, and public beta remains blocked by real feedback, deployed source-checkout proof, full GitHub App deletion proof, and source-checkout provider monitoring evidence
 
 ## P1: Deploy Full Source-Checkout Worker Only With Evidence
 
@@ -159,6 +160,7 @@ Acceptance:
 - Chinese README stays aligned with English README
 - docs avoid pentest/full-audit/certification claims
 - docs clarify CLI vs Action vs Hosted paths
+- design-partner onboarding points to issue `#93` and does not request source, diffs, logs, secrets, private URLs, checkout paths, or customer data
 
 Files/modules:
 

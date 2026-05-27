@@ -1,15 +1,15 @@
 # Codex State
 
-Last updated: 2026-05-26, Asia/Shanghai.
+Last updated: 2026-05-27, Asia/Shanghai.
 
 ## Current Running Environment
 
 - Project path: `/Volumes/MyPSSD/app/ai-saas-guard`
 - Shell: `zsh`
-- Branch: `main`
-- Latest release commit: `7318c04f2ade79861c198e00e42ec6c32b90f9b9`
-- Post-release local docs-only commits include `3177e99` and `58cb8dc`; run `git log -3 --oneline` for the current local HEAD.
-- Package version: `0.43.0`
+- Branch: `main` for the public source of truth; current review work uses branch `codex/beta-readiness-review-20260527`
+- Latest release commit: `1659cb513e7b8ad8948263d440893630be49fc05`
+- Current `main` HEAD at the 2026-05-27 recheck: `60ea68633d4f4d8645835a4c90fc8fda60e91dba`
+- Package version: `0.43.1`
 - Observed Node: `v25.8.0`
 - Package engine: Node `>=20`
 - Network: available in the last session
@@ -60,7 +60,7 @@ Hosted:
 - `src/hosted/worker.ts` - Phase 3 source-checkout trial planning/evidence/gate.
 - `src/hosted/beta.ts` - Phase 4 hosted beta and Phase 5 team launch readiness gates.
 - `hosted/cloudflare-worker/src/index.js` - live Cloudflare Worker ingress.
-- `hosted/cloudflare-worker/wrangler.jsonc` - Worker config, `SCANNER_VERSION: "0.43.0"`.
+- `hosted/cloudflare-worker/wrangler.jsonc` - Worker config, currently `SCANNER_VERSION: "0.43.0"` for the live ingress line.
 
 Docs:
 
@@ -110,7 +110,7 @@ GitHub:
 npm:
 
 - Package: `ai-saas-guard`
-- Latest published version: `0.43.0`
+- Latest published version: `0.43.1`
 - Publish uses GitHub Actions Trusted Publisher/OIDC.
 - Do not add long-lived npm publish tokens.
 
@@ -191,6 +191,15 @@ Use a notes file for release notes; do not inline shell text with backticks.
 
 ## Latest Verified Results
 
+For the latest published line:
+
+- `v0.43.1` release exists on GitHub and npm `latest` is `ai-saas-guard@0.43.1`
+- `v0` points to `1659cb513e7b8ad8948263d440893630be49fc05`
+- latest observed `main` CI, CodeQL, Metrics Snapshot, and Cross-Project Discovery runs completed successfully on 2026-05-27
+- hosted public health returned `ok: true`, `mode: webhook-ingress`, `processingPaused: false`, safe privacy flags, and `scannerVersion: "0.43.0"`
+- issue `#93` still has no real DP-1, DP-2, or DP-3 feedback
+- issue `#94` still has source-checkout, full GitHub App deletion, and provider-monitoring evidence blockers
+
 For `v0.43.0`:
 
 - `npm test`: 188 tests passed
@@ -223,21 +232,22 @@ For `v0.43.0`:
 - 2026-05-26 provider-store deletion drill: dedicated test compact key prefix `scan:135085075:900000526:` was created, listed, deleted by exact key, and verified empty; no existing project `scan:` evidence was deleted
 - 2026-05-26 human support routing: `docs/hosted-support-incident-ownership.md` records `@zr9959` as primary hosted staging incident/support owner, defines a pause-hosted fallback when no independent backup is staffed, adds a public-safe hosted support issue template, and routes sensitive reports to GitHub private vulnerability reporting
 - 2026-05-26 GitHub App management proof attempt: temporary repo `zr9959/ai-saas-guard-app-proof-20260526` was created, add-to-installation API returned HTTP 403 because the session cannot modify the `ai-saas-guard-hosted` installation, and the temporary repo was deleted
+- 2026-05-27 beta readiness review branch: `npm run build`, repository self-scan, `pr-risk`, and focused Supabase/Actions/MCP/Stripe checks were run locally; self-scan and focused checks returned 0 findings, and `demo --summary` still showed the expected risky fixture with 19 findings and safe fixture with 0 findings
 
 ## Known Failures Or Unverified Items
 
 - No current failing tests are known.
 - Full source-checkout scan worker is implemented as code/gates but not deployed as the live hosted scan worker.
-- Provider monitoring/rollback/incident evidence is not yet collected.
-- Public beta feedback/provider-evidence intake is documented in `docs/public-beta-evidence-feedback.md`, but no real design-partner feedback or provider evidence has been recorded.
+- Provider monitoring/rollback/incident evidence is partial for the current ingress path but still missing for the deployed source-checkout path.
+- Public beta feedback/provider-evidence intake is documented in `docs/public-beta-evidence-feedback.md`, but no real design-partner feedback has been recorded.
 - Hosted beta/team gates are implemented as readiness checks, but public beta has not started.
 - GitHub issue `#93` has no recorded real participant feedback yet.
-- GitHub issue `#94` has missing provider monitoring, rollback, incident, uninstall/deletion, and support evidence.
+- GitHub issue `#94` still lacks provider monitoring for source-checkout and full GitHub App uninstall/repository-removal proof.
 - Operator runbook evidence is missing until the runbook is exercised against deployed artifacts.
 - The post-merge provider check was read-only and did not satisfy rollback, incident, uninstall/deletion, support, or alert evidence.
 - The post-merge gate recheck still blocks public beta and team use.
 - Issue `#93` still has no real DP-1, DP-2, or DP-3 feedback.
-- Issue `#94` still lacks provider alert exports and full GitHub App uninstall/repository-removal proof. A GitHub App management proof attempt was blocked by installation-management permissions, and the temporary test repo was cleaned up. Staging Worker rollback evidence, exact compact-record deletion evidence, primary incident owner evidence, and public-safe support path evidence now exist.
+- Issue `#94` still lacks provider alert exports for the source-checkout path and full GitHub App uninstall/repository-removal proof. A GitHub App management proof attempt was blocked by installation-management permissions, and the temporary test repo was cleaned up. Staging Worker rollback evidence, exact compact-record deletion evidence, primary incident owner evidence, and public-safe support path evidence now exist.
 - The post-PR `#96` gate recheck still blocks public beta and team use.
 - The 2026-05-26 ordered evidence recheck was read-only; it did not satisfy provider monitoring or design-partner evidence. The later 2026-05-26 staging drills satisfied rollback evidence, exact compact-record deletion, and human support routing.
 - No admin dashboard exists.

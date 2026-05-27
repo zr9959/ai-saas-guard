@@ -15,6 +15,28 @@ Prioritize people who can run the local CLI on a low-risk repo:
 
 Do not count stars, likes, anonymous comments, page views, simulated scans, or internal assumptions as design-partner feedback.
 
+## One-Session Trial Pack
+
+Use this path for the first session. It keeps the participant's code local and avoids hosted installation unless they explicitly want to test that path.
+
+```bash
+npx --yes ai-saas-guard@latest demo --summary
+npx --yes ai-saas-guard@latest scan --root <your-low-risk-demo-repo> --summary
+```
+
+Ask the participant to share only:
+
+- package version used, or `ai-saas-guard@latest` plus the date
+- target label: DP-1, DP-2, or DP-3
+- path used: local CLI, GitHub Action, or hosted Check Run
+- stack category and public-safe repository category
+- severity counts and rule IDs only
+- confusing, noisy, missing, false-positive, or possible false-negative categories by rule ID
+- whether the output would change a launch or merge decision
+- privacy or support confusion
+
+Do not ask for source, diffs, PR text, raw logs, secrets, customer data, private URLs, checkout paths, names, emails, meeting links, or installation tokens in public feedback.
+
 ## Short Public Post
 
 ```text

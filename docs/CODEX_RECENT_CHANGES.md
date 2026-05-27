@@ -1,6 +1,45 @@
 # Codex Recent Changes
 
-Last updated: 2026-05-26, Asia/Shanghai.
+Last updated: 2026-05-27, Asia/Shanghai.
+
+## 2026-05-27 Beta Readiness Review
+
+Why:
+
+- The user asked to return focus to `ai-saas-guard` itself and execute the evidence/docs plan in order.
+- Current handoff files needed to reflect the published `0.43.1` line and the latest beta blocker status without relying on old conversation history.
+
+Changed:
+
+- added `docs/beta-readiness-review-2026-05-27.md`
+- updated `docs/public-beta-evidence-feedback.md` with the current `0.43.1` versus hosted ingress `0.43.0` boundary
+- added a one-session design-partner trial pack to `docs/design-partner-outreach-kit.md`
+- refreshed CODEX handoff/state/TODO docs for the current evidence boundary
+
+Checked:
+
+- GitHub release `v0.43.1` and npm latest `ai-saas-guard@0.43.1`
+- latest observed CI, CodeQL, Metrics Snapshot, and Cross-Project Discovery runs on `main`
+- hosted public health: healthy ingress, safe privacy flags, `processingPaused:false`, still `scannerVersion:"0.43.0"`
+- issue `#93`: no real DP-1, DP-2, or DP-3 feedback
+- issue `#94`: still blocked on deployed source-checkout proof, full GitHub App deletion proof, and provider monitoring evidence for source-checkout
+
+Local self-scan:
+
+- `npm run build`: passed
+- `node dist/cli.js scan --root . --summary`: 0 findings
+- `node dist/cli.js pr-risk --root . --json`: 0 findings
+- `check-supabase`, `check-actions`, `check-mcp`, and `check-stripe`: 0 findings
+- `demo --summary`: risky fixture 19 findings, safe fixture 0 findings
+- `git diff --check`: passed
+- `npm test`: 208 pass
+
+Decision:
+
+- public beta remains blocked
+- team rollout remains blocked
+- commercialization remains blocked
+- continue with real design-partner feedback and deployed provider proof, not speculative feature work
 
 ## Private Pilot Rule-Quality Feedback Update
 

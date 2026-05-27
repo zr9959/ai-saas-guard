@@ -174,6 +174,19 @@ For a concise comparison with Semgrep, zizmor, OpenSSF Scorecard, Snyk, and GitH
 
 Choose the path by trust boundary: use the **Local CLI** when code must stay on your machine, the **GitHub Action** when you want repeatable CI evidence, and the **Hosted GitHub App** when reviewers need an automatic Check Run that groups auth, billing, tenant-data, deploy, and test-risk areas before merge.
 
+## Pre-Commercial Feedback
+
+`ai-saas-guard` is looking for privacy-safe design-partner feedback before any public hosted beta decision. The safest path is local:
+
+```bash
+npx --yes ai-saas-guard@latest demo --summary
+npx --yes ai-saas-guard@latest scan --root /path/to/your-low-risk-demo-repo --summary
+```
+
+Public-safe feedback belongs in [issue #93](https://github.com/zr9959/ai-saas-guard/issues/93): package version, path used, stack category, severity counts, rule IDs, what felt confusing/noisy/missing, and whether the report would change a launch or merge decision. Do not share source, raw diffs, PR text, logs, secrets, customer data, private URLs, checkout paths, or credentials.
+
+Downloads, stars, page views, anonymous comments, simulated scans, and internal assumptions do not count as design-partner evidence.
+
 ## Quick Start
 
 Run the published CLI without installing it globally:
@@ -246,6 +259,7 @@ The CLI is published on npm as `ai-saas-guard`, and the GitHub Action is availab
 | Repository trust hardening | Strict branch protection, Dependabot, CodeQL, fast-check fuzzing, signed release provenance assets, private vulnerability reporting, secret scanning, and push protection |
 | Cloudflare hosted ingress | Deployed at `https://ai-saas-guard-hosted.zr9959.workers.dev`; public install/privacy notes are in [docs/hosted-install-privacy.md](docs/hosted-install-privacy.md); signed GitHub App webhook delivery and compact Check Run smoke now pass in staging |
 | Hosted GitHub App staging | Private App `ai-saas-guard-hosted` (`3834787`) installed on `zr9959/ai-saas-guard`; hosted operations evidence is in [docs/hosted-operations-evidence.md](docs/hosted-operations-evidence.md) |
+| Public beta readiness | Blocked on real design-partner feedback, deployed source-checkout proof, full GitHub App deletion proof, and provider monitoring evidence for the source-checkout path |
 | OpenSSF Best Practices | Passing badge, project `12955`; `.bestpractices.json` remains the conservative evidence record |
 | Previous roadmap | v0.36.0 plan is tracked in [docs/v0.36-roadmap.md](docs/v0.36-roadmap.md) |
 

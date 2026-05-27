@@ -1,6 +1,6 @@
 # Project Handoff
 
-Last updated: 2026-05-26
+Last updated: 2026-05-27
 
 Use this public-safe document when moving `ai-saas-guard` into a new GitHub-facing ChatGPT/Codex Project or a new conversation.
 
@@ -165,7 +165,7 @@ OpenSSF Best Practices:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current published release line: `v0.43.0` published to GitHub Release, npm, and the `v0` Action tag
+- Current published release line: `v0.43.1` published to GitHub Release, npm, and the `v0` Action tag
 - Next source candidate: none
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
@@ -192,17 +192,17 @@ Next work should therefore be feedback and evidence work, not more speculative f
 - collect provider monitoring, rollback, incident-response, uninstall/deletion, and support evidence before public beta
 - keep CLI/Action/docs current
 - only start commercialization after actual usage evidence exists
-- 2026-05-26 update: a read-only ordered evidence recheck confirmed hosted endpoints and npm/npx still work at `0.43.0`, but rollback, uninstall/deletion, provider alert, incident/support, and real design-partner evidence remain missing
+- 2026-05-27 update: npm/GitHub latest is `0.43.1`; the hosted ingress remains healthy and still reports `scannerVersion: "0.43.0"`; real design-partner feedback, deployed source-checkout proof, full GitHub App deletion proof, and source-checkout provider monitoring evidence remain missing
 
 ## Latest Deployment And Test Evidence
 
 Latest release:
 
-- Version: `0.43.0`
-- Commit/tag target: `7318c04f2ade79861c198e00e42ec6c32b90f9b9`
-- GitHub Release: `v0.43.0`
-- npm: `ai-saas-guard@0.43.0`, `latest`
-- GitHub Action floating tag: `v0` points to `7318c04f2ade79861c198e00e42ec6c32b90f9b9`
+- Version: `0.43.1`
+- Commit/tag target: `1659cb513e7b8ad8948263d440893630be49fc05`
+- GitHub Release: `v0.43.1`
+- npm: `ai-saas-guard@0.43.1`, `latest`
+- GitHub Action floating tag: `v0` points to `1659cb513e7b8ad8948263d440893630be49fc05`
 - Cloudflare Worker deployed version: `8744d3db-0114-4653-85e2-f1554ff1b26b`
 - Worker health: `https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returns `scannerVersion: "0.43.0"`
 - Real hosted PR smoke: PR `#91`, Check Run `77724168740`, conclusion `success`, temporary branch deleted, KV smoke records cleaned to `[]`
@@ -212,6 +212,7 @@ Latest release:
 - 2026-05-26 deletion drill: dedicated test compact KV key under `scan:135085075:900000526:` was created and deleted by exact key; existing project scan evidence was not deleted; full GitHub App uninstall/repository-removal proof still needs a safe test installation
 - 2026-05-26 human support routing: `@zr9959` is primary hosted staging incident/support owner, public-safe hosted support has a GitHub issue template, sensitive reports route to private vulnerability reporting, and missing independent backup coverage falls back to pausing hosted beta
 - 2026-05-26 GitHub App management proof attempt: temporary private repo `zr9959/ai-saas-guard-app-proof-20260526` was created, add-to-installation returned HTTP 403 because the session cannot modify the `ai-saas-guard-hosted` installation, and the temporary repo was deleted
+- 2026-05-27 beta readiness review: local `main` was clean and in sync before the review branch, current `main` HEAD was `60ea686`, latest observed CI/CodeQL/Metrics/Cross-Project Discovery runs succeeded, issue `#93` still had no real DP feedback, and issue `#94` still had deployed source-checkout/full deletion/provider monitoring blockers
 
 Latest release verification passed:
 

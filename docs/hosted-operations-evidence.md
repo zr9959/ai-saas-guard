@@ -368,6 +368,22 @@ Recorded on 2026-05-26 while preparing the design-partner outreach kit and remai
 
 No npm publish was attempted because the package version remains `0.43.0` and no reviewed release tag for a new version exists.
 
+## 2026-05-27 Beta Readiness Recheck
+
+Recorded on 2026-05-27 while refreshing the public-safe handoff and onboarding docs.
+
+This was a read-only evidence review for hosted state. It did not create temporary repositories, delete KV records, mutate the GitHub App installation, deploy Cloudflare changes, change npm tags, or mark any external-evidence blocker as passed without proof.
+
+| Check | Evidence | Result |
+| --- | --- | --- |
+| npm and GitHub release | GitHub release `v0.43.1` is published, npm latest is `ai-saas-guard@0.43.1`, and floating tag `v0` points to `1659cb513e7b8ad8948263d440893630be49fc05`. | Passed for CLI/Action release status |
+| hosted health | `GET https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returned healthy webhook-ingress status, safe privacy flags, `processingPaused:false`, and `scannerVersion: "0.43.0"`. | Passed for ingress health only |
+| design-partner feedback | Issue `#93` still contains recruitment copy and templates, but no real DP-1, DP-2, or DP-3 feedback record. | Still blocked on real participants |
+| provider evidence | Issue `#94` still records the live hosted service as `webhook-ingress`, not a deployed source-checkout worker. Full GitHub App uninstall/repository-removal proof and source-checkout provider monitoring evidence remain missing. | Still blocked |
+| local self-scan | `npm run build`, repository `scan`, `pr-risk`, and focused Supabase/Actions/MCP/Stripe checks ran locally; current repository self-scan returned 0 findings. | Passed for local heuristic cleanliness only |
+
+Decision: public beta, team rollout, and commercialization remain blocked. Continue with real design-partner feedback and deployed provider proof rather than speculative feature work.
+
 ## Remaining Release Gate Gaps
 
 The deployed Cloudflare Worker now receives signed GitHub App webhook delivery for pull request events and publishes bounded compact Check Runs. This is still staging evidence, not production hosted exposure.
