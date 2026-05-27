@@ -23,12 +23,12 @@ Current branch: `main`.
 
 Latest release state:
 
-- latest release commit: `1659cb5 Fix hosted hardening and action summary support (#107)`
-- current `main` HEAD at the 2026-05-27 handoff-drift recheck: `48587b0 docs: add codex agent working rules`
-- package version: `0.43.1`
-- npm latest: `ai-saas-guard@0.43.1`
-- GitHub Release: `v0.43.1`
-- floating Action tag: `v0` points to `1659cb513e7b8ad8948263d440893630be49fc05`
+- latest release commit: `9eff887 Fix hosted smoke cleanup and scan diagnostics (#119)`
+- current `main` HEAD at the 2026-05-27 post-release recheck: `9eff887 Fix hosted smoke cleanup and scan diagnostics (#119)`
+- package version: `0.43.2`
+- npm latest: `ai-saas-guard@0.43.2`
+- GitHub Release: `v0.43.2`
+- floating Action tag: `v0` points to `9eff887f83d7287c44c066c3484b871105fc5b4a`
 - Cloudflare Worker health reports `scannerVersion: "0.43.0"`
 - the live hosted endpoint is still the Cloudflare `webhook-ingress`, not a deployed full source-checkout worker
 - real hosted smoke passed on PR `#91`, Check Run `77724168740`, with KV cleanup returning `[]`
@@ -47,6 +47,7 @@ Post-release docs and evidence work after `v0.43.0`:
 - released `v0.43.1` from PR `#107`
 - merged documentation/discovery follow-up PRs `#113`, `#114`, and `#115`
 - 2026-05-27 recheck confirmed npm latest `0.43.1`, GitHub release `v0.43.1`, latest CI/CodeQL/Metrics/Cross-Project Discovery success, hosted health safe but still reporting hosted scanner `0.43.0`, issue `#93` missing real DP feedback, and issue `#94` still blocked on source-checkout/provider deletion/monitoring evidence
+- released `v0.43.2` from PR `#119`; npm `latest` and floating Action tag `v0` now point at `0.43.2` / `9eff887`
 
 Current working tree note: `.local/project-handoff.md` is local-only and ignored by git. Do not force-add it.
 
@@ -103,7 +104,7 @@ Hosted path:
 
 Public docs:
 
-- English README and Chinese README updated through `0.43.1`
+- English README and Chinese README updated through `0.43.2`
 - Codex/agent working rules in `docs/CODEX_AGENT_WORKING_RULES.md`
 - rules docs
 - hosted deployment/runtime/gate docs
