@@ -226,18 +226,18 @@ node dist/cli.js scan --root /path/to/your-saas
 
 这个仓库是公开 GitHub 仓库。
 
-CLI 已发布到 npm：`ai-saas-guard@0.43.2`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.43.2`。
+CLI 已发布到 npm：`ai-saas-guard@0.43.3`。GitHub Action 支持 `v0` 浮动标签，也支持固定版本标签，例如 `v0.43.3`。
 
 | 模块 | 状态 |
 | --- | --- |
 | 公开 GitHub 仓库 | 已可用 |
-| npm CLI | `ai-saas-guard@0.43.2` |
-| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.43.2` |
+| npm CLI | `ai-saas-guard@0.43.3` |
+| GitHub Action | `zr9959/ai-saas-guard@v0` 或固定标签 `v0.43.3` |
 | 输出格式 | 上线决策队列、短 summary、Terminal、JSON、SARIF 和 PR markdown |
 | 项目配置 | `.ai-saas-guard.json` 支持规则开关、severity 覆盖、suppressions 和 fail threshold |
 | 隐私模型 | 本地优先、只读扫描、不调用 LLM、不上传代码 |
-| 当前版本 | `0.43.2` 修复 hosted cleanup 可观测性、smoke KV 精准清理、浅历史 PR diff fallback、Check Run Markdown 转义和本地扫描覆盖诊断，同时继续保持 billing disabled |
-| Action 标签 | `v0.43.2`、`v0` |
+| 当前版本 | `0.43.3` 降低 silent-success 对 Cloudflare Durable Object stub、良性 `return null` 解析/缓存读取、配置 fallback 参数和真实断言测试的误报，同时继续保持 billing disabled |
+| Action 标签 | `v0.43.3`、`v0` |
 | npm 发布 | GitHub Actions Trusted Publisher/OIDC，无需长期 npm token |
 | 仓库可信度加固 | 严格 branch protection、Dependabot、CodeQL、fast-check fuzzing、signed release provenance assets、private vulnerability reporting、secret scanning 和 push protection |
 | Cloudflare hosted ingress | 已部署到 `https://ai-saas-guard-hosted.zr9959.workers.dev`；安装和隐私说明见 [hosted-install-privacy.md](hosted-install-privacy.md)；提供 `/github/app/install-info`，签名 GitHub App webhook delivery、compact Check Run 和 installation cleanup staging smoke 已通过 |

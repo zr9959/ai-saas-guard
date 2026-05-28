@@ -13,6 +13,7 @@ const mockDataPattern = /\b(mock|fixture|fixtures|demo|sample|stub|fake)\b/i;
 const bypassPattern = /\b(TODO\s*:?\s*(auth|verify|validation|rate|owner|webhook)|temporary\s+bypass|temp\s+bypass|skip\s+(auth|verification|validation|ownership|webhook)|disable\s+(auth|verification|validation)|SKIP_(AUTH|WEBHOOK|VERIFICATION|VALIDATION)|ALLOW_UNVERIFIED)\b/i;
 const assertionPattern = /\b(expect\s*\(|assert\.|assert\s*\(|t\.is\s*\(|t\.true\s*\(|should\.|toEqual\s*\(|toBe\s*\(|toMatch\s*\()/i;
 const truthyOnlyPattern = /\b(expect\s*\([^)]*\)\.(toBeTruthy|toBeDefined|toBeOk)\s*\(\s*\)|assert\.ok\s*\([^)]*\)|t\.truthy\s*\([^)]*\))/i;
+const strongAssertionPattern = /\b(expect\s*\([^)]*\)\.(?:toEqual|toStrictEqual|toBe|toMatch|toHave|toContain|toThrow|rejects|resolves)\b|assert\.(?:equal|strictEqual|deepEqual|deepStrictEqual|notEqual|notStrictEqual|notDeepEqual|notDeepStrictEqual|match|doesNotMatch|rejects|doesNotReject|throws|doesNotThrow|fail)\s*\(|t\.(?:is|deepEqual|regex|throws|throwsAsync|not)\s*\()/i;
 
 export async function scanSilentSuccess(input: ScanInput): Promise<Finding[]> {
   const context = await resolveScanContext(input);
@@ -42,6 +43,8 @@ function scanSwallowedErrors(filePath: string, content: string): Finding[] {
   const findings: Finding[] = [];
 
   for (const block of findCatchBlocks(content)) {
+    if (isBenignNullCatch(content, block)) continue;
+
     if (fakeSuccessPattern.test(block.text) && !safeFailurePattern.test(block.text)) {
       findings.push(
         finding({
@@ -121,12 +124,14 @@ function scanProductionMockData(filePath: string, content: string): Finding[] {
 
 function scanHardcodedFallbacks(filePath: string, content: string): Finding[] {
   const findings: Finding[] = [];
-  const fallbackPattern = /(fallback|mock|demo|sample|stub|fake)[\s\S]{0,180}(Response\.json|NextResponse\.json|success\s*:\s*true|ok\s*:\s*true|active|subscription|entitlement)/gi;
+  const fallbackPattern = /(fallback|mock|demo|sample|stub|fake)[\s\S]{0,220}(Response\.json|NextResponse\.json|success\s*:\s*true|ok\s*:\s*true|status\s*:\s*["']active["']|active\s*:\s*true|subscription\s*:\s*(?:mock|demo|sample|fallback|fake|\{|\[)|entitlement\s*:\s*(?:true|active|\{|\[))/gi;
 
   for (const match of content.matchAll(fallbackPattern)) {
     const index = match.index ?? 0;
     const window = content.slice(Math.max(0, index - 180), index + match[0].length + 180);
     if (/degraded\s*:\s*true|status\s*:\s*(4|5)\d\d|error\s*:/i.test(window)) continue;
+    if (isCloudflareDurableObjectStubWindow(window)) continue;
+    if (isConfigurationFallbackWindow(window)) continue;
     const line = lineNumberForIndex(content, index);
     findings.push(
       finding({
@@ -183,7 +188,7 @@ function scanTestIntegrity(filePath: string, content: string): Finding[] {
       body.length === 0 ||
       /^\/\/\s*TODO\b/i.test(body) ||
       !assertionPattern.test(body) ||
-      (truthyOnlyPattern.test(body) && !/\b(toEqual|toStrictEqual|toBe\(|toMatch|toHave|rejects|resolves)\b/i.test(body))
+      hasOnlyWeakTruthyAssertions(body)
     ) {
       findings.push(testFinding(filePath, content, testCase.line, "Weak or placeholder test may create fake confidence"));
     }
@@ -214,8 +219,8 @@ function isTestFile(path: string): boolean {
   return /(^|\/)(__tests__|tests?|specs?)\//i.test(path) || /\.(test|spec)\.[cm]?[jt]sx?$/i.test(path);
 }
 
-function findCatchBlocks(content: string): Array<{ text: string; line: number }> {
-  const blocks: Array<{ text: string; line: number }> = [];
+function findCatchBlocks(content: string): Array<{ text: string; line: number; start: number; end: number }> {
+  const blocks: Array<{ text: string; line: number; start: number; end: number }> = [];
   const catchPattern = /catch\s*(?:\([^)]*\))?\s*\{/gi;
 
   for (const match of content.matchAll(catchPattern)) {
@@ -224,11 +229,65 @@ function findCatchBlocks(content: string): Array<{ text: string; line: number }>
     if (end <= start) continue;
     blocks.push({
       text: content.slice(start, end + 1),
-      line: lineNumberForIndex(content, match.index ?? 0)
+      line: lineNumberForIndex(content, match.index ?? 0),
+      start: match.index ?? 0,
+      end
     });
   }
 
   return blocks;
+}
+
+function isBenignNullCatch(
+  content: string,
+  block: { text: string; start: number; end: number }
+): boolean {
+  if (!/\breturn\s+null\s*;?\s*\}/i.test(block.text)) return false;
+  if (/(?:Response|NextResponse)\.json|success\s*:\s*true|ok\s*:\s*true|return\s+true\b|subscription\s*:|entitlement\s*:|active\s*:/i.test(block.text)) {
+    return false;
+  }
+
+  const before = content.slice(Math.max(0, block.start - 520), block.start);
+  const after = content.slice(block.end + 1, block.end + 720);
+  const surrounding = `${before}\n${block.text}\n${after}`;
+
+  if (/(?:atob|btoa|base64|base64url|decodeURIComponent|TextDecoder|JSON\.parse|\bparse[A-Z]|\bdecode[A-Z]|early\s+data)/i.test(surrounding)) {
+    return true;
+  }
+
+  if (
+    /(?:STATESTORE|DurableObject|Durable Object|idFromName|stub\.fetch|env\.[A-Z0-9_]+\.get\s*\(|KV\.get|env\.KV|get\s*\([^)]*["']json["']|cache|cached|storage|state)/i.test(surrounding) &&
+    /(?:KV\.get|env\.KV|stub\.fetch|fetch\s*\(|get\s*\()/i.test(after)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function isCloudflareDurableObjectStubWindow(window: string): boolean {
+  return (
+    /\bidFromName\s*\(/i.test(window) &&
+    /\benv\.[A-Z0-9_]+\.get\s*\(/i.test(window) &&
+    /\bstub\b/i.test(window)
+  );
+}
+
+function isConfigurationFallbackWindow(window: string): boolean {
+  return (
+    /\bfunction\b[^{;=]*\([^)]*\bfallback\s*=\s*(?:\{\}|\[\]|null|undefined|[0-9]+|["'][^"']*["'])/i.test(window) &&
+    !/(?:Response|NextResponse)\.json|success\s*:\s*true|ok\s*:\s*true|active\s*:\s*true|status\s*:\s*["']active["']|subscription\s*:\s*(?:mock|demo|sample|fallback|fake|\{|\[)|entitlement\s*:\s*(?:true|active|\{|\[)/i.test(window)
+  );
+}
+
+function hasOnlyWeakTruthyAssertions(body: string): boolean {
+  if (!truthyOnlyPattern.test(body)) return false;
+  if (strongAssertionPattern.test(body)) return false;
+  if (/\bassert\.ok\s*\([^)]*(?:[=!]==?|[<>]=?|\.(?:length|size)\b|\.includes\s*\(|\.some\s*\(|\.every\s*\()/i.test(body)) {
+    return false;
+  }
+
+  return true;
 }
 
 function findTestBlocks(content: string): Array<{ body: string; line: number }> {
