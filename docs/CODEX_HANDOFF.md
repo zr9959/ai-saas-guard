@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-05-27, Asia/Shanghai.
+Last updated: 2026-05-28, Asia/Shanghai.
 
 This handoff is the source of truth for a new Codex conversation. Do not rely on the old long chat history.
 
@@ -23,12 +23,12 @@ Current branch: `main`.
 
 Latest release state:
 
-- latest release commit: `9eff887 Fix hosted smoke cleanup and scan diagnostics (#119)`
-- current `main` HEAD at the 2026-05-27 post-release recheck: `9eff887 Fix hosted smoke cleanup and scan diagnostics (#119)`
-- package version: `0.43.2`
-- npm latest: `ai-saas-guard@0.43.2`
-- GitHub Release: `v0.43.2`
-- floating Action tag: `v0` points to `9eff887f83d7287c44c066c3484b871105fc5b4a`
+- latest release commit: `1db0253 Reduce silent-success false positives (#121)`
+- current `main` HEAD at the 2026-05-28 post-release recheck: `1db0253 Reduce silent-success false positives (#121)`
+- package version: `0.43.3`
+- npm latest: `ai-saas-guard@0.43.3`
+- GitHub Release: `v0.43.3`
+- floating Action tag: `v0` points to `1db0253e0d57198060d5227a1f85668004242429`
 - Cloudflare Worker health reports `scannerVersion: "0.43.0"`
 - the live hosted endpoint is still the Cloudflare `webhook-ingress`, not a deployed full source-checkout worker
 - real hosted smoke passed on PR `#91`, Check Run `77724168740`, with KV cleanup returning `[]`
@@ -48,6 +48,7 @@ Post-release docs and evidence work after `v0.43.0`:
 - merged documentation/discovery follow-up PRs `#113`, `#114`, and `#115`
 - 2026-05-27 recheck confirmed npm latest `0.43.1`, GitHub release `v0.43.1`, latest CI/CodeQL/Metrics/Cross-Project Discovery success, hosted health safe but still reporting hosted scanner `0.43.0`, issue `#93` missing real DP feedback, and issue `#94` still blocked on source-checkout/provider deletion/monitoring evidence
 - released `v0.43.2` from PR `#119`; npm `latest` and floating Action tag `v0` now point at `0.43.2` / `9eff887`
+- released `v0.43.3` from PR `#121`; npm `latest` and floating Action tag `v0` now point at `0.43.3` / `1db0253`
 
 Current working tree note: `.local/project-handoff.md` is local-only and ignored by git. Do not force-add it.
 
@@ -104,7 +105,7 @@ Hosted path:
 
 Public docs:
 
-- English README and Chinese README updated through `0.43.2`
+- English README and Chinese README updated through `0.43.3`
 - Codex/agent working rules in `docs/CODEX_AGENT_WORKING_RULES.md`
 - rules docs
 - hosted deployment/runtime/gate docs

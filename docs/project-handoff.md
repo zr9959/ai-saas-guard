@@ -166,7 +166,7 @@ OpenSSF Best Practices:
 Publishing:
 
 - npm package: `ai-saas-guard`
-- Current published release line: `v0.43.2` published to GitHub Release, npm, and the `v0` Action tag
+- Current published release line: `v0.43.3` published to GitHub Release, npm, and the `v0` Action tag
 - Next source candidate: none
 - Publish workflow: `.github/workflows/npm-publish.yml`
 - Trusted Publisher: GitHub Actions for `zr9959/ai-saas-guard`, workflow `npm-publish.yml`
@@ -193,17 +193,17 @@ Next work should therefore be feedback and evidence work, not more speculative f
 - collect provider monitoring, rollback, incident-response, uninstall/deletion, and support evidence before public beta
 - keep CLI/Action/docs current
 - only start commercialization after actual usage evidence exists
-- 2026-05-27 update: npm/GitHub latest is `0.43.2`; the hosted ingress remains healthy and still reports `scannerVersion: "0.43.0"`; real design-partner feedback, deployed source-checkout proof, full GitHub App deletion proof, and source-checkout provider monitoring evidence remain missing
+- 2026-05-28 update: npm/GitHub latest is `0.43.3`; the hosted ingress remains healthy and still reports `scannerVersion: "0.43.0"`; real design-partner feedback, deployed source-checkout proof, full GitHub App deletion proof, and source-checkout provider monitoring evidence remain missing
 
 ## Latest Deployment And Test Evidence
 
 Latest release:
 
-- Version: `0.43.2`
-- Commit/tag target: `9eff887f83d7287c44c066c3484b871105fc5b4a`
-- GitHub Release: `v0.43.2`
-- npm: `ai-saas-guard@0.43.2`, `latest`
-- GitHub Action floating tag: `v0` points to `9eff887f83d7287c44c066c3484b871105fc5b4a`
+- Version: `0.43.3`
+- Commit/tag target: `1db0253e0d57198060d5227a1f85668004242429`
+- GitHub Release: `v0.43.3`
+- npm: `ai-saas-guard@0.43.3`, `latest`
+- GitHub Action floating tag: `v0` points to `1db0253e0d57198060d5227a1f85668004242429`
 - Cloudflare Worker deployed version: `8744d3db-0114-4653-85e2-f1554ff1b26b`
 - Worker health: `https://ai-saas-guard-hosted.zr9959.workers.dev/healthz` returns `scannerVersion: "0.43.0"`
 - Real hosted PR smoke: PR `#91`, Check Run `77724168740`, conclusion `success`, temporary branch deleted, KV smoke records cleaned to `[]`
