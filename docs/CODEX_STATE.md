@@ -1,15 +1,15 @@
 # Codex State
 
-Last updated: 2026-05-27, Asia/Shanghai.
+Last updated: 2026-05-28, Asia/Shanghai.
 
 ## Current Running Environment
 
 - Project path: `/Volumes/MyPSSD/app/ai-saas-guard`
 - Shell: `zsh`
-- Branch: `main` for the public source of truth; v0.43.2 release work is merged and published
-- Latest release commit: `9eff887f83d7287c44c066c3484b871105fc5b4a`
-- Current `main` HEAD at the 2026-05-27 post-release recheck: `9eff887f83d7287c44c066c3484b871105fc5b4a`
-- Package version: `0.43.2`
+- Branch: `main` for the public source of truth; v0.43.3 release work is merged and published
+- Latest release commit: `1db0253e0d57198060d5227a1f85668004242429`
+- Current `main` HEAD at the 2026-05-28 post-release recheck: `1db0253e0d57198060d5227a1f85668004242429`
+- Package version: `0.43.3`
 - Observed Node: `v25.8.0`
 - Package engine: Node `>=20`
 - Network: available in the last session
@@ -110,7 +110,7 @@ GitHub:
 npm:
 
 - Package: `ai-saas-guard`
-- Latest published version: `0.43.2`
+- Latest published version: `0.43.3`
 - Publish uses GitHub Actions Trusted Publisher/OIDC.
 - Do not add long-lived npm publish tokens.
 
@@ -193,8 +193,8 @@ Use a notes file for release notes; do not inline shell text with backticks.
 
 For the latest published line:
 
-- `v0.43.2` release exists on GitHub and npm `latest` is `ai-saas-guard@0.43.2`
-- `v0` points to `9eff887f83d7287c44c066c3484b871105fc5b4a`
+- `v0.43.3` release exists on GitHub and npm `latest` is `ai-saas-guard@0.43.3`
+- `v0` points to `1db0253e0d57198060d5227a1f85668004242429`
 - latest observed `main` CI, CodeQL, Metrics Snapshot, and Cross-Project Discovery runs completed successfully on 2026-05-27
 - hosted public health returned `ok: true`, `mode: webhook-ingress`, `processingPaused: false`, safe privacy flags, and `scannerVersion: "0.43.0"`
 - issue `#93` still has no real DP-1, DP-2, or DP-3 feedback

@@ -1,6 +1,46 @@
 # Codex Recent Changes
 
-Last updated: 2026-05-27, Asia/Shanghai.
+Last updated: 2026-05-28, Asia/Shanghai.
+
+## 2026-05-28 Silent-Success False Positive Patch And v0.43.3 Release
+
+Why:
+
+- Real scan feedback on an external Cloudflare Worker project showed `silent-success.*` false positives that were technically too broad.
+- The patch needed to reduce noise without weakening real fake-green, billing, auth, entitlement, or placeholder-test findings.
+
+Changed:
+
+- recognized Cloudflare Durable Object `env.X.idFromName(...)` plus `env.X.get(id)` stub usage so it is not treated as a hardcoded success fallback
+- allowed benign `catch { return null; }` in parse/decode and cache-read paths when it does not grant auth, billing, subscription, or entitlement success
+- tightened hardcoded fallback matching so configuration fallback parameters are not flagged just because the identifier is named `fallback`
+- treated `assert.equal`, `assert.match`, strict/deep assertions, and specific `assert.ok` comparisons as real test evidence
+- added safe fixtures for Durable Object stubs, KV fallback reads, early-data decoding, configuration fallback parameters, and assertion-rich security tests
+- bumped package/docs/workflow release metadata to `0.43.3`
+
+Verification:
+
+- `npm ci`: passed
+- `npm test`: 213 pass
+- `npm run build`: passed
+- `node dist/cli.js scan --root . --json`: 0 findings
+- `node dist/cli.js scan --root . --sarif`: SARIF 2.1.0 with 0 results
+- focused silent-success fixture scan: safe fixture has 0 `silent-success.*` findings; risky fixture still reports the expected `silent-success.*` rules
+- `npm audit --audit-level=high --registry=https://registry.npmjs.org`: 0 vulnerabilities
+- `npm pack --dry-run --json`: `ai-saas-guard-0.43.3.tgz`, 172 files
+- unpacked the release-candidate tarball and ran packaged `dist/cli.js --help` plus `dist/cli.js demo --summary`
+- PR `#121` CI passed: test, fuzz, actionlint, zizmor, and CodeQL
+- GitHub Release `v0.43.3` published from `1db0253e0d57198060d5227a1f85668004242429`
+- npm Trusted Publisher workflow `26571513442` succeeded; npm `latest` is `ai-saas-guard@0.43.3`
+- floating Action tag `v0` points to `1db0253e0d57198060d5227a1f85668004242429`
+- `npx --yes ai-saas-guard@latest demo --summary`: passed
+
+Not done:
+
+- no Cloudflare deploy
+- no GitHub App installation mutation
+- no KV deletion
+- no billing, pricing, paid packaging, marketplace conversion, sales funnel, analytics, or customer account work
 
 ## 2026-05-27 1-7 Review Fixes And v0.43.2 Release Prep
 
