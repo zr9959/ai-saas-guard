@@ -2701,7 +2701,7 @@ test("repository defines a least-privilege metrics snapshot workflow", async () 
   assert.match(workflow, /--summary-markdown \.local\/metrics\/summary\.md/);
   assert.match(workflow, /cat \.local\/metrics\/summary\.md >> "\$GITHUB_STEP_SUMMARY"/);
   assert.match(workflow, /\.local\/metrics\/summary\.md/);
-  assert.match(workflow, /actions\/upload-artifact@[a-f0-9]{40} # v5/);
+  assert.match(workflow, /actions\/upload-artifact@[a-f0-9]{40} # v7\.0\.1/);
   assert.match(workflow, /retention-days:\s*30/);
   assert.doesNotMatch(workflow, /contents:\s*write|id-token:\s*write|NPM_TOKEN|npm publish|git push/i);
 });
