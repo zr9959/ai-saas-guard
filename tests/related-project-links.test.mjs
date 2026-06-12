@@ -43,5 +43,9 @@ test("repository runs a remote read-only cross-project discovery check", () => {
   assert.match(script, /readsPublicEndpointsOnly: true/);
   assert.match(script, /usesReddit: false/);
   assert.match(script, /https:\/\/git\.tiybai\.com\//);
-  assert.match(script, /https:\/\/shop\.tiybai\.com\/sitemap\.xml/);
+  assert.match(script, /tiybai-llms-full/);
+  assert.match(script, /tiybai-ai/);
+  assert.match(script, /foundForbiddenPatterns/);
+  assert.match(script, /Retired references still present/);
+  assert.doesNotMatch(script, /https:\/\/shop\.tiybai\.com\/sitemap\.xml/);
 });
