@@ -1,6 +1,6 @@
 # Cross-Project Traffic Evidence - 2026-05-27
 
-This note records the public cross-project links created or verified across TIYBAI, PageStow, PawMiles, and ai-saas-guard. It is evidence for discovery and navigation only; it is not a billing, pricing, marketplace, paid packaging, or sales funnel change.
+This note records the public cross-project links created or verified across TIYBAI, PageStow, and ai-saas-guard. It is evidence for discovery and navigation only; it is not a billing, pricing, marketplace, paid packaging, or sales funnel change.
 
 ## Scope
 
@@ -10,7 +10,6 @@ This note records the public cross-project links created or verified across TIYB
 | PageStow | `https://plugin.tiybai.com/` | Homepage, privacy, and support related-project links deployed and verified | Local-first Chrome extension positioning stays unchanged |
 | ai-saas-guard | GitHub README | Related TIYBAI developer tools merged through PR #113 | README/docs metadata only, no CLI behavior change |
 | ai-saas-guard | npm package | Still `0.43.1`; npm metadata does not include the new keywords until a future package release | No empty npm release for documentation-only traffic work |
-| PawMiles | `https://shop.tiybai.com/` | Local footer change exists, live Shopify site not updated in this pass | Shopify push intentionally deferred to avoid overwriting a dirty theme |
 
 ## Verified Live Links
 
@@ -26,11 +25,11 @@ TIYBAI resource pages:
 PageStow public pages:
 
 - `https://plugin.tiybai.com/`
-  - Contains "More from TIYBAI", "Related TIYBAI projects", TIYBAI, ai-saas-guard, and PawMiles links.
+  - Contains "More from TIYBAI", "Related TIYBAI projects", TIYBAI, and ai-saas-guard links.
 - `https://plugin.tiybai.com/privacy`
-  - Contains TIYBAI, ai-saas-guard, and PawMiles footer links.
+  - Contains TIYBAI and ai-saas-guard footer links.
 - `https://plugin.tiybai.com/support`
-  - Contains TIYBAI, ai-saas-guard, and PawMiles footer links.
+  - Contains TIYBAI and ai-saas-guard footer links.
 
 ai-saas-guard public repository:
 
@@ -49,16 +48,14 @@ ai-saas-guard public repository:
 | TIYBAI `sitemap-blog.xml` | Includes both new cross-project blog posts |
 | TIYBAI `sitemap-content.xml` | Includes both new cross-project blog posts |
 | TIYBAI RSS feed | Includes both new cross-project blog posts |
-| TIYBAI `llms.txt` / `llms-full.txt` | Lists PageStow, ai-saas-guard via `git.tiybai.com`, and PawMiles |
+| TIYBAI `llms.txt` / `llms-full.txt` / `ai.txt` | Lists PageStow and ai-saas-guard via `git.tiybai.com`; retired storefront references must be absent |
 | PageStow `robots.txt` | Lists `https://plugin.tiybai.com/sitemap.xml` |
 | PageStow `sitemap.xml` | Lists homepage, privacy, and support |
-| PageStow `llms.txt` | Lists related TIYBAI projects |
-| PageStow `ai.txt` | Updated to list related TIYBAI projects |
-| PawMiles Shopify sitemap | Auto-managed Shopify sitemap index is present |
+| PageStow `llms.txt` | Lists related TIYBAI projects; retired storefront references must be absent |
+| PageStow `ai.txt` | Updated to list related TIYBAI projects; retired storefront references must be absent |
 
 ## Current Gaps
 
-- `https://shop.tiybai.com/` does not yet show the local PawMiles footer link to TIYBAI. The local theme directory has many existing modified and deleted files, and no Shopify CLI was available, so this pass did not push Shopify theme changes.
 - `npm view ai-saas-guard@latest version keywords --json` still returns `0.43.1` without `tiybai` or `launch-risk` because no new npm version was published for this docs-only change.
 - PageStow has no configured Git remote in the local repository. The local PageStow commit is present and the Cloudflare Pages deployment is live, but there is no remote push target from this workspace.
 
@@ -72,11 +69,21 @@ curl -fsSL https://www.tiybai.com/blog/launch-checks-for-ai-built-saas-apps \
   | rg -n "ai-saas-guard npm package|github\\.com/zr9959/ai-saas-guard|TIYBAI JSON Formatter|TIYBAI JWT Decoder|TIYBAI CSV Adapter"
 
 curl -fsSL https://plugin.tiybai.com/ \
-  | rg -n "More from TIYBAI|Related TIYBAI projects|Visit TIYBAI|ai-saas-guard|PawMiles|shop\\.tiybai\\.com"
+  | rg -n "More from TIYBAI|Related TIYBAI projects|Visit TIYBAI|ai-saas-guard"
+
+for p in llms.txt llms-full.txt ai.txt; do
+  curl -fsSL "https://www.tiybai.com/$p" \
+    | rg -n "shop\\.tiybai\\.com|PawMiles" && exit 1 || true
+done
 
 for p in privacy support; do
   curl -fsSL "https://plugin.tiybai.com/$p" \
-    | rg -n "More from TIYBAI|ai-saas-guard|PawMiles|shop\\.tiybai\\.com|www\\.tiybai\\.com"
+    | rg -n "More from TIYBAI|ai-saas-guard|www\\.tiybai\\.com"
+done
+
+for p in llms.txt ai.txt; do
+  curl -fsSL "https://plugin.tiybai.com/$p" \
+    | rg -n "shop\\.tiybai\\.com|PawMiles" && exit 1 || true
 done
 
 curl -fsSL https://raw.githubusercontent.com/zr9959/ai-saas-guard/main/README.md \
@@ -90,21 +97,19 @@ curl -Ls -o /dev/null -w 'final_url=%{url_effective}\nstatus=%{http_code}\nredir
 
 ## Follow-Up Signal To Watch
 
-- PageStow referrals from `plugin.tiybai.com` to TIYBAI, npm, and PawMiles.
+- PageStow referrals from `plugin.tiybai.com` to TIYBAI and npm.
 - TIYBAI article visits and outbound clicks to PageStow and ai-saas-guard.
 - ai-saas-guard GitHub README referral impact before deciding whether a future npm patch release is justified.
-- PawMiles Shopify footer deployment status after a safe single-file theme push path is available.
 
 ## Observation Cadence
 
 Run a daily public-surface check at 08:00 Asia/Shanghai:
 
-- Verify TIYBAI article URLs, blog/content sitemaps, RSS, `llms.txt`, and `ai.txt`.
-- Verify PageStow homepage, privacy, support, sitemap, `llms.txt`, and `ai.txt`.
+- Verify TIYBAI article URLs, blog/content sitemaps, RSS, `llms.txt`, `llms-full.txt`, and `ai.txt`, including absence of retired storefront references.
+- Verify PageStow homepage, privacy, support, sitemap, `llms.txt`, and `ai.txt`, including absence of retired storefront references.
 - Verify `git.tiybai.com` still redirects to the ai-saas-guard GitHub repository.
 - Verify ai-saas-guard GitHub README still contains the related TIYBAI section.
 - Verify npm latest version and keywords; do not publish npm just for metadata unless there is a real release.
-- Verify PawMiles live footer state without pushing Shopify theme changes.
 - Report only public link/discovery status and notable deltas. Do not read secrets, private customer data, or platform tokens.
 
 Automation status:

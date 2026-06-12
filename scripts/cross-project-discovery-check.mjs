@@ -42,25 +42,43 @@ const REQUIRED_CHECKS = [
     id: "tiybai-llms",
     label: "TIYBAI llms.txt",
     url: "https://www.tiybai.com/llms.txt",
-    patterns: ["PageStow: https://plugin.tiybai.com/", "ai-saas-guard: https://git.tiybai.com/", "PawMiles: https://shop.tiybai.com/"]
+    patterns: ["PageStow: https://plugin.tiybai.com/", "ai-saas-guard: https://git.tiybai.com/"],
+    forbiddenPatterns: ["https://shop.tiybai.com/", "PawMiles"]
+  },
+  {
+    id: "tiybai-llms-full",
+    label: "TIYBAI llms-full.txt",
+    url: "https://www.tiybai.com/llms-full.txt",
+    patterns: ["PageStow: https://plugin.tiybai.com/", "ai-saas-guard: https://git.tiybai.com/"],
+    forbiddenPatterns: ["https://shop.tiybai.com/", "PawMiles"]
+  },
+  {
+    id: "tiybai-ai",
+    label: "TIYBAI ai.txt",
+    url: "https://www.tiybai.com/ai.txt",
+    patterns: ["PageStow: https://plugin.tiybai.com/", "ai-saas-guard: https://git.tiybai.com/"],
+    forbiddenPatterns: ["https://shop.tiybai.com/", "PawMiles"]
   },
   {
     id: "pagestow-home",
     label: "PageStow homepage",
     url: "https://plugin.tiybai.com/",
-    patterns: ["Related TIYBAI projects", "ai-saas-guard", "PawMiles"]
+    patterns: ["Related TIYBAI projects", "ai-saas-guard"],
+    forbiddenPatterns: ["https://shop.tiybai.com/", "PawMiles"]
   },
   {
     id: "pagestow-privacy",
     label: "PageStow privacy footer",
     url: "https://plugin.tiybai.com/privacy",
-    patterns: ["More from TIYBAI", "ai-saas-guard", "PawMiles"]
+    patterns: ["More from TIYBAI", "ai-saas-guard"],
+    forbiddenPatterns: ["https://shop.tiybai.com/", "PawMiles"]
   },
   {
     id: "pagestow-support",
     label: "PageStow support footer",
     url: "https://plugin.tiybai.com/support",
-    patterns: ["More from TIYBAI", "ai-saas-guard", "PawMiles"]
+    patterns: ["More from TIYBAI", "ai-saas-guard"],
+    forbiddenPatterns: ["https://shop.tiybai.com/", "PawMiles"]
   },
   {
     id: "pagestow-sitemap",
@@ -72,42 +90,25 @@ const REQUIRED_CHECKS = [
     id: "pagestow-llms",
     label: "PageStow llms.txt",
     url: "https://plugin.tiybai.com/llms.txt",
-    patterns: ["Related TIYBAI Projects", "TIYBAI: https://www.tiybai.com/", "PawMiles: https://shop.tiybai.com/"]
+    patterns: ["Related TIYBAI Projects", "TIYBAI: https://www.tiybai.com/"],
+    forbiddenPatterns: ["https://shop.tiybai.com/", "PawMiles"]
   },
   {
     id: "pagestow-ai",
     label: "PageStow ai.txt",
     url: "https://plugin.tiybai.com/ai.txt",
-    patterns: ["Related TIYBAI projects", "ai-saas-guard: https://www.npmjs.com/package/ai-saas-guard"]
+    patterns: ["Related TIYBAI projects", "ai-saas-guard: https://www.npmjs.com/package/ai-saas-guard"],
+    forbiddenPatterns: ["https://shop.tiybai.com/", "PawMiles"]
   },
   {
     id: "ai-saas-guard-readme",
     label: "ai-saas-guard GitHub README",
     url: "https://raw.githubusercontent.com/zr9959/ai-saas-guard/main/README.md",
     patterns: ["Related TIYBAI Tools", "https://plugin.tiybai.com/", "AI Metadata Generator"]
-  },
-  {
-    id: "pawmiles-robots",
-    label: "PawMiles robots.txt",
-    url: "https://shop.tiybai.com/robots.txt",
-    patterns: ["Sitemap: https://shop.tiybai.com/sitemap.xml"]
-  },
-  {
-    id: "pawmiles-sitemap",
-    label: "PawMiles sitemap",
-    url: "https://shop.tiybai.com/sitemap.xml",
-    patterns: ["sitemap_products", "sitemap_collections", "sitemap_blogs"]
   }
 ];
 
-const OPTIONAL_CHECKS = [
-  {
-    id: "pawmiles-footer-link",
-    label: "PawMiles live TIYBAI footer link",
-    url: "https://shop.tiybai.com/",
-    patterns: ["A TIYBAI project", "https://www.tiybai.com/"]
-  }
-];
+const OPTIONAL_CHECKS = [];
 
 function parseArgs(argv) {
   const options = {
@@ -172,6 +173,7 @@ async function checkPage(check, required) {
   try {
     const response = await fetchText(check.url);
     const missingPatterns = check.patterns.filter((pattern) => !response.text.includes(pattern));
+    const foundForbiddenPatterns = (check.forbiddenPatterns ?? []).filter((pattern) => response.text.includes(pattern));
     return {
       id: check.id,
       label: check.label,
@@ -179,8 +181,9 @@ async function checkPage(check, required) {
       finalUrl: response.finalUrl,
       status: response.status,
       required,
-      ok: response.ok && missingPatterns.length === 0,
-      missingPatterns
+      ok: response.ok && missingPatterns.length === 0 && foundForbiddenPatterns.length === 0,
+      missingPatterns,
+      foundForbiddenPatterns
     };
   } catch (error) {
     return {
@@ -192,7 +195,8 @@ async function checkPage(check, required) {
       required,
       ok: false,
       error: error.message,
-      missingPatterns: check.patterns
+      missingPatterns: check.patterns,
+      foundForbiddenPatterns: []
     };
   }
 }
@@ -281,6 +285,9 @@ function renderSummary(snapshot) {
       if (check.missingPatterns?.length > 0) {
         lines.push(`  Missing: ${check.missingPatterns.join(", ")}`);
       }
+      if (check.foundForbiddenPatterns?.length > 0) {
+        lines.push(`  Retired references still present: ${check.foundForbiddenPatterns.join(", ")}`);
+      }
       if (check.error) {
         lines.push(`  Error: ${check.error}`);
       }
@@ -342,7 +349,6 @@ async function main() {
       readsSecrets: false,
       modifiesFiles: false,
       publishesPackages: false,
-      pushesShopify: false,
       usesReddit: false
     },
     requiredTotal: required.length,
