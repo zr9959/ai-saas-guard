@@ -2538,6 +2538,10 @@ test("repository enables low-noise Dependabot updates", async () => {
   assert.match(dependabot, /open-pull-requests-limit:\s*5/);
   assert.match(dependabot, /dependency-name:\s*"@types\/node"/);
   assert.match(dependabot, /version-update:semver-major/);
+  assert.match(
+    dependabot,
+    /codeql-action:\s*\n\s+applies-to:\s*"version-updates"\s*\n\s+patterns:\s*\n\s+-\s*"github\/codeql-action\/\*"/,
+  );
   assert.match(dependabot, /labels:\s*\n\s+-\s*"dependencies"/);
   assert.doesNotMatch(dependabot, /registries:|token:|password:|secrets\./i);
 });
@@ -2556,6 +2560,11 @@ test("repository runs CodeQL SAST with least privilege", async () => {
   assert.match(workflow, /build-mode:\s*none/);
   assert.match(workflow, /github\/codeql-action\/init@[a-f0-9]{40}/);
   assert.match(workflow, /github\/codeql-action\/analyze@[a-f0-9]{40}/);
+  const codeqlActionRefs = [
+    ...workflow.matchAll(/github\/codeql-action\/(?:init|analyze)@([a-f0-9]{40})/g),
+  ].map((match) => match[1]);
+  assert.equal(codeqlActionRefs.length, 2);
+  assert.equal(new Set(codeqlActionRefs).size, 1);
   assert.doesNotMatch(workflow, /github\/codeql-action\/(?:init|analyze)@v\d/i);
   assert.doesNotMatch(workflow, /secrets\.|id-token:\s*write|contents:\s*write/i);
 });

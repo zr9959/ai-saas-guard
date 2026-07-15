@@ -35,6 +35,11 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    groups:
+      codeql-action:
+        applies-to: "version-updates"
+        patterns:
+          - "github/codeql-action/*"
     labels:
       - "dependencies"
       - "github-actions"
