@@ -27,7 +27,7 @@ Status meanings:
 
 | # | Dimension | Status | Evidence or action |
 | ---: | --- | --- | --- |
-| 11 | Terminal control-sequence injection | Fixed | ANSI CSI/OSC, standalone carriage returns, and other control characters are removed from repository-controlled terminal text. |
+| 11 | Terminal control-sequence injection | Fixed | A linear scanner removes ANSI CSI/OSC sequences, standalone carriage returns, and other control characters without regex backtracking. |
 | 12 | Terminal newline and whitespace injection | Fixed | Dynamic terminal fields are normalized to one line. |
 | 13 | Markdown heading injection | Pass | Dynamic text is line-normalized and escaped; fuzz tests reject injected headings. |
 | 14 | Markdown table injection | Fixed | Reports use vertical lists and escape table separators outside code spans. |
@@ -149,7 +149,7 @@ Status meanings:
 | ---: | --- | --- | --- |
 | 91 | TypeScript strictness | Pass | Source builds under strict NodeNext TypeScript settings and emits declarations. |
 | 92 | Production dependency audit | Pass | `npm audit --audit-level=high --registry=https://registry.npmjs.org` returned 0 vulnerabilities. |
-| 93 | Full automated suite | Pass | All 220 tests passed, including hosted, CLI, docs, fuzz, and packaging behavior. |
+| 93 | Full automated suite | Pass | All 221 tests passed, including hosted, CLI, docs, fuzz, and packaging behavior. |
 | 94 | Property-based fuzzing | Pass | Markdown structure, SARIF JSON, and secret redaction fuzz properties pass. |
 | 95 | Workflow least privilege and pinning | Pass | Checkout/setup/upload/CodeQL actions are commit-pinned with narrow permissions and timeouts. |
 | 96 | Workflow static analysis | Pass | CI includes actionlint, zizmor, and CodeQL coverage. |

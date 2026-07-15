@@ -23,6 +23,7 @@ import {
 import { collectTextFiles, collectTextFilesWithDiagnostics } from "../dist/utils/files.js";
 import { formatMarkdownReport } from "../dist/report/markdown.js";
 import { sortFindings } from "../dist/report/findings.js";
+import { sanitizeTerminalInline } from "../dist/report/presentation.js";
 import { formatSummaryReport } from "../dist/report/summary.js";
 import { formatTerminalReport } from "../dist/report/terminal.js";
 
@@ -378,6 +379,12 @@ test("terminal reports remove control sequences from repository-controlled text"
   assert.match(terminal, /why line/);
   assert.match(terminal, /fix step/);
   assert.doesNotMatch(terminal, /\r/);
+});
+
+test("terminal sanitizer handles long unterminated OSC input without regex backtracking", () => {
+  const untrusted = `visible\u001b]${"\u001b".repeat(20_000)}unterminated`;
+
+  assert.equal(sanitizeTerminalInline(untrusted), "visible");
 });
 
 test("reports start with a launch gate and next manual proof", () => {
