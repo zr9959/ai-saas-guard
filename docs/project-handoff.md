@@ -16,6 +16,8 @@ Current review branch: `codex/ui-quality-audit`, based on current `main` commit 
 
 Current quality record: `docs/release-quality-audit-2026-07-15.md` documents 100 dimensions. Local verification passed 221 tests, found 0 npm vulnerabilities at the high threshold, produced a 0-finding complete repository self-scan, and built a 175-file dry-run package without macOS metadata.
 
+Draft PR `#134` contains this quality work. Its test, fuzz, actionlint, zizmor, workflow CodeQL, and Advanced Security CodeQL checks passed after an initial polynomial-regex finding was fixed with a linear terminal escape scanner.
+
 Recent setup commits at the time this handoff was created:
 
 - `1bd105d ci: update official actions`

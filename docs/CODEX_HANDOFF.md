@@ -23,6 +23,8 @@ Public source-of-truth branch: `main`.
 
 Current review branch: `codex/ui-quality-audit`, based on current `main` commit `96ea609` after the published `v0.43.3` release and later maintenance merges. It contains report/UI quality work and has not changed the package version or deployed hosted service.
 
+Draft PR: `#134` (`https://github.com/zr9959/ai-saas-guard/pull/134`). CI-validated code head is `3d30e5b`; a docs-only handoff-status commit follows it. GitHub test, fuzz, actionlint, zizmor, workflow CodeQL, and Advanced Security CodeQL checks all passed after the initial CodeQL polynomial-regex finding was replaced with a linear terminal escape scanner.
+
 Current review branch scope:
 
 - clearer terminal, summary, Markdown, and hosted Check Run layouts

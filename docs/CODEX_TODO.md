@@ -28,6 +28,8 @@ Files/modules:
 
 After this pull request, return to real design-partner feedback and current provider monitoring, rollback, deletion, and incident evidence. Do not add speculative product features to fill an evidence gap.
 
+Current status: draft PR `#134` is open with all required test, fuzz, actionlint, zizmor, and CodeQL checks passing. The remaining action is the normal human review/merge decision; do not publish npm or deploy the Worker from this task.
+
 ## P0: Preserve Handoff State And Stop Business Development
 
 Acceptance:

@@ -34,6 +34,7 @@ Verification:
 - `npm pack --dry-run --json`: 175 files; no AppleDouble or `.DS_Store` metadata
 - Wrangler 4.110.0 `deploy --dry-run`: passed without deploying
 - browser checks at 1440x900, 390x844, and 320x568 found no horizontal overflow; primary controls remained 44px high and the next section stayed visible on mobile
+- draft PR `#134` opened from `codex/ui-quality-audit`; test, fuzz, actionlint, zizmor, workflow CodeQL, and Advanced Security CodeQL checks passed after the linear escape-scanner fix
 
 Not done:
 
