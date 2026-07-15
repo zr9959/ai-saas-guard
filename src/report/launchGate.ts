@@ -1,17 +1,22 @@
 import type { BaseReport, Finding } from "../types.js";
+import { hasIncompleteScanCoverage } from "./presentation.js";
 
 export function launchGateVerdict(report: BaseReport): string {
+  const coverageNote = hasIncompleteScanCoverage(report) ? "; scan coverage is incomplete" : "";
   if (report.summary.critical > 0) {
-    return "blocked: critical launch-readiness findings need review before inviting users";
+    return `blocked: critical launch-readiness findings need review before inviting users${coverageNote}`;
   }
   if (report.summary.high > 0) {
-    return "review required: high-risk launch paths need manual verification before launch";
+    return `review required: high-risk launch paths need manual verification before launch${coverageNote}`;
   }
   if (report.summary.medium > 0) {
-    return "check before launch: medium-risk findings should be verified by an owner";
+    return `check before launch: medium-risk findings should be verified by an owner${coverageNote}`;
   }
   if (report.summary.low > 0 || report.summary.info > 0) {
-    return "low-noise review: confirm these hints against the launch checklist";
+    return `low-noise review: confirm these hints against the launch checklist${coverageNote}`;
+  }
+  if (hasIncompleteScanCoverage(report)) {
+    return "incomplete: scan coverage was limited; no clear launch verdict is available";
   }
   return "clear from current heuristics: no findings from this command, not a certification";
 }

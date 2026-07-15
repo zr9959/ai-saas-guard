@@ -52,7 +52,7 @@ const ignoredDirectories = new Set([
 ]);
 
 const textFilePattern =
-  /(^|\/)(\.env[^/]*|\.mcp\.json|mcp\.json|claude_desktop_config\.json|Dockerfile)$|\.(cjs|cts|js|jsx|json|mjs|mts|prisma|sql|toml|ts|tsx|yaml|yml|env|md|txt)$/i;
+  /(^|\/)(\.env[^/]*|\.mcp\.json|mcp\.json|claude_desktop_config\.json|Dockerfile)$|\.(cjs|cts|js|jsx|json|jsonc|mjs|mts|prisma|sql|toml|ts|tsx|yaml|yml|env|md|txt)$/i;
 
 export async function collectTextFiles(
   rootDir: string,
@@ -102,7 +102,9 @@ async function walk(
 
   let entries;
   try {
-    entries = await readdir(currentDir, { withFileTypes: true });
+    entries = (await readdir(currentDir, { withFileTypes: true })).sort((left, right) =>
+      compareText(left.name, right.name)
+    );
   } catch {
     pushUnique(diagnostics.unreadableDirectories, relativeCollectionPath(rootDir, currentDir));
     return;
@@ -264,4 +266,8 @@ function positiveIntegerOrDefault(value: number | undefined, fallback: number): 
 
   const normalized = Math.floor(value);
   return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }

@@ -1,20 +1,20 @@
 # Codex State
 
-Last updated: 2026-05-28, Asia/Shanghai.
+Last updated: 2026-07-15, Asia/Shanghai.
 
 ## Current Running Environment
 
 - Project path: `/Volumes/MyPSSD/app/ai-saas-guard`
 - Shell: `zsh`
-- Branch: `main` for the public source of truth; v0.43.3 release work is merged and published
+- Branch: `main` remains the public source of truth; active review branch is `codex/ui-quality-audit`, based on current `main` commit `96ea609` after the published `v0.43.3` release
 - Latest release commit: `1db0253e0d57198060d5227a1f85668004242429`
-- Current `main` HEAD at the 2026-05-28 post-release recheck: `1db0253e0d57198060d5227a1f85668004242429`
+- Current local and tracked `origin/main` HEAD at the 2026-07-15 branch check: `96ea609ba4f03db4f59470340df242ea0cbabf71`
 - Package version: `0.43.3`
 - Observed Node: `v25.8.0`
 - Package engine: Node `>=20`
 - Network: available in the last session
-- Current process check: no lingering `node --test`, `wrangler`, `vite`, `next dev`, `tsx`, `ts-node`, or `hosted-pr-smoke` process was found
-- Worktree note: `docs/project-handoff.md` was already modified before this handoff package was generated
+- Current review work does not require a persistent local server; final cleanup must leave no test, Worker, or browser-test server process running
+- Worktree note: `.local/project-handoff.md` is intentionally ignored and must not be force-added
 
 ## Main Directory Structure
 
@@ -29,6 +29,37 @@ Last updated: 2026-05-28, Asia/Shanghai.
 - `hosted/cloudflare-worker/` - deployed Cloudflare Worker source and Wrangler config.
 - `.github/` - CI, CodeQL, npm publish, Dependabot, templates, CODEOWNERS.
 - `.local/` - local-only handoff context, ignored by git.
+
+## Current Review Branch
+
+The `codex/ui-quality-audit` branch contains:
+
+- consistent terminal, summary, Markdown, and hosted Check Run report hierarchy
+- responsive Worker source for `GET/HEAD /github/app`; it is not deployed by this branch
+- hardened browser headers, terminal/Markdown normalization, safe Git refs, UUID delivery keys, and pinned GitHub API destinations
+- incomplete scan coverage gating and more precise stack applicability
+- deterministic file and finding ordering
+- synchronized English/Chinese examples and a 100-dimension quality audit
+
+Latest local verification on 2026-07-15:
+
+- `npm test`: 221 passed, 0 failed
+- npm audit at high threshold: 0 vulnerabilities
+- repository scan: 0 findings; 116 files scanned; no skipped or unreadable inputs; Cloudflare and GitHub Actions detected
+- focused Actions, Supabase, MCP, and Stripe scans: 0 findings
+- demo: risky fixture 19 findings; safe fixture 0 findings
+- package dry run: 175 files and no AppleDouble or `.DS_Store` metadata
+- Wrangler 4.110.0 deploy dry run: passed; no deployment performed
+- local browser QA: 1440x900, 390x844, and 320x568 without horizontal overflow; 44px primary controls; mobile continuation cue visible
+
+No Cloudflare deployment, GitHub App mutation, KV deletion, npm publication, release tag, or commercial feature is included.
+
+GitHub review state:
+
+- draft PR: `#134`, `https://github.com/zr9959/ai-saas-guard/pull/134`
+- current branch head before this handoff-status update: `3d30e5b`
+- passing checks: test, fuzz, actionlint, zizmor, workflow CodeQL, and Advanced Security CodeQL
+- the initial Advanced Security high finding for polynomial ANSI/OSC regex backtracking was fixed with a linear scanner and disappeared on the rerun
 
 ## Key Files
 
@@ -251,7 +282,7 @@ For `v0.43.0`:
 - The post-PR `#96` gate recheck still blocks public beta and team use.
 - The 2026-05-26 ordered evidence recheck was read-only; it did not satisfy provider monitoring or design-partner evidence. The later 2026-05-26 staging drills satisfied rollback evidence, exact compact-record deletion, and human support routing.
 - No admin dashboard exists.
-- No mobile UI exists.
+- No mobile app exists; this branch only adds a responsive hosted install/privacy information page.
 - No SEO/GEO website or analytics exists.
 - No payment, membership, customer login, or billing system exists.
 - No production database schema exists.

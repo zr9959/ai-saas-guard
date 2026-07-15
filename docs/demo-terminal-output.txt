@@ -1,25 +1,33 @@
-ai-saas-guard demo --summary
+$ npx ai-saas-guard@latest demo --summary
 
+ai-saas-guard | DEMO SUMMARY
+----------------------------------------
 AI-built SaaS can look ready while launch risks stay hidden.
+This is not a pentest, full audit, or certification.
 
-Risky demo: 19 findings
-Launch gate: blocked
+RESULT
+Risky demo  19 findings | 2 critical | 6 high | 7 medium | 3 low | 1 info
+Safe demo   0 findings
+Launch gate blocked: critical launch-readiness findings need review before inviting users
 
-What this proves:
-- The same SaaS surfaces can look finished while auth, billing, data, deploy, and CI risks still need review.
-- The safe demo keeps the same SaaS surfaces but removes the intentional launch-risk patterns.
+WHAT THIS PROVES
+1. The same SaaS surfaces can look finished while auth, billing, data, deploy, and CI risks still need review.
+2. The safe demo keeps the same SaaS surfaces but removes the intentional launch-risk patterns.
 
-Top risks:
-- CRITICAL stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:1
-- CRITICAL supabase.rls.broad-policy at supabase/migrations/001_accounts.sql:10
-- HIGH silent-success.swallowed-error at app/api/billing/checkout/route.ts:4
+TOP RISKS
+1. CRITICAL stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:1 - Stripe webhook does not verify the Stripe signature
+2. CRITICAL supabase.rls.broad-policy at supabase/migrations/001_accounts.sql:10 - Broad Supabase RLS policy on public.accounts
+3. HIGH silent-success.swallowed-error at app/api/billing/checkout/route.ts:4 - Catch block may turn upstream failure into success: app/api/billing/checkout/route.ts
 
-Manual proof to run next:
-- Send a request without a valid Stripe signature and confirm the handler rejects it.
-- Run a two-account tenant check and confirm User B cannot access User A data.
-- Force the billing provider call to fail and confirm the API route returns an error, not fake success.
+MANUAL PROOF
+1. Send a request without a valid Stripe signature and confirm the handler rejects it before changing entitlement state.
+2. Run the generated two-account IDOR test and confirm User B cannot read, update, or delete User A resources.
+3. Force the upstream API, auth provider, billing provider, or database call to fail and confirm the route returns an error or disclosed degraded mode, not a fake success.
 
-Safe demo: 0 findings
-Launch gate: ready for local review
+NEXT STEPS
+1. Fix critical and high trust-boundary findings first: auth/session, billing/webhook, tenant data, and silent-success paths.
+2. Run the manual proof steps above in staging and confirm each risky path fails closed.
+3. Treat low and info deploy/CI hygiene hints as cleanup after critical, high, and medium launch paths are understood.
 
-This is a deterministic local demo fixture. It does not upload code, call an LLM, or certify the app.
+FULL REPORT
+  Rerun `ai-saas-guard demo` without --summary or use --json/--markdown.

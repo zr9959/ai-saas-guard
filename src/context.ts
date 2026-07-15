@@ -16,6 +16,9 @@ export type ScanInput = string | ScanContext;
 
 export async function createScanContext(rootDir: string): Promise<ScanContext> {
   const collection = await collectTextFilesWithDiagnostics(rootDir);
+  if (collection.diagnostics.unreadableDirectories.includes(".")) {
+    throw new Error(`Could not read scan root: ${rootDir}`);
+  }
   const { files } = collection;
   const filesByPath = new Map(files.map((file) => [file.path, file]));
 

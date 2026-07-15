@@ -11,7 +11,22 @@ export const HOSTED_WORKER_PRIVACY = {
 
 const ALLOWED_PULL_REQUEST_ACTIONS = new Set(["opened", "reopened", "synchronize", "ready_for_review"]);
 const JSON_HEADERS = {
-  "content-type": "application/json; charset=utf-8"
+  "cache-control": "no-store",
+  "content-type": "application/json; charset=utf-8",
+  "referrer-policy": "no-referrer",
+  "x-content-type-options": "nosniff"
+};
+const HTML_HEADERS = {
+  "cache-control": "no-store",
+  "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action https://github.com; frame-ancestors 'none'",
+  "content-type": "text/html; charset=utf-8",
+  "cross-origin-opener-policy": "same-origin",
+  "cross-origin-resource-policy": "same-origin",
+  "permissions-policy": "camera=(), geolocation=(), microphone=()",
+  "referrer-policy": "no-referrer",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "x-robots-tag": "noindex, nofollow"
 };
 const EVENT_TTL_SECONDS = 60 * 60 * 24 * 30;
 export const MAX_WEBHOOK_PAYLOAD_BYTES = 1024 * 1024;
@@ -55,6 +70,10 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/github/app/install-info") {
       return jsonResponse(200, createHostedInstallInfo(env));
+    }
+
+    if ((request.method === "GET" || request.method === "HEAD") && (url.pathname === "/github/app" || url.pathname === "/github/app/")) {
+      return htmlResponse(200, request.method === "HEAD" ? "" : createHostedInstallPage(env));
     }
 
     if (request.method === "GET" && url.pathname === "/github/app/manifest-callback") {
@@ -132,6 +151,15 @@ export default {
         accepted: false,
         stage: "event",
         reason: "missing_delivery_id",
+        privacy: HOSTED_WORKER_PRIVACY
+      });
+    }
+
+    if (!isGitHubDeliveryId(deliveryId)) {
+      return jsonResponse(400, {
+        accepted: false,
+        stage: "event",
+        reason: "invalid_delivery_id",
         privacy: HOSTED_WORKER_PRIVACY
       });
     }
@@ -354,7 +382,7 @@ export function createHostedWorkerHealth(env = {}, state = {}) {
     ok: true,
     service: "ai-saas-guard-hosted",
     mode: "webhook-ingress",
-    routes: ["/healthz", "/github/app/install-info", "/github/app/manifest-callback", "/github/webhook"],
+    routes: ["/healthz", "/github/app", "/github/app/install-info", "/github/app/manifest-callback", "/github/webhook"],
     storage: "cloudflare_kv",
     checkRunPublisher: hasGitHubCheckRunConfig(env) ? "configured" : "not_configured",
     rateLimit: getRepositoryRateLimitConfig(env) ? "configured" : "not_configured",
@@ -385,6 +413,140 @@ export function createHostedInstallInfo(env = {}) {
     scannerVersion: env.SCANNER_VERSION || "unknown",
     privacy: HOSTED_WORKER_PRIVACY
   };
+}
+
+export function createHostedInstallPage(env = {}) {
+  const info = createHostedInstallInfo(env);
+  const installUrl = escapeHtml(info.installUrl);
+  const scannerVersion = escapeHtml(info.scannerVersion);
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Public-safe installation and privacy details for the AI SaaS Guard hosted GitHub App.">
+  <meta name="robots" content="noindex,nofollow">
+  <title>AI SaaS Guard | Hosted GitHub App</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17191d; background: #f4f6f8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 280px; background: #f4f6f8; color: #17191d; }
+    a { color: inherit; }
+    a:focus-visible { outline: 3px solid #0b57a3; outline-offset: 3px; }
+    .shell { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #d9dee5; }
+    .brand { font-size: 15px; font-weight: 760; text-decoration: none; }
+    .status { display: inline-flex; align-items: center; gap: 8px; color: #365044; font-size: 13px; font-weight: 650; }
+    .status::before { width: 8px; height: 8px; border-radius: 50%; background: #0b57a3; content: ""; }
+    .hero { min-height: 430px; padding: 76px 0 64px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+    .eyebrow { margin: 0 0 16px; color: #9a4a16; font-size: 13px; font-weight: 760; text-transform: uppercase; }
+    h1 { margin: 0; max-width: 820px; font-size: 52px; line-height: 1.04; letter-spacing: 0; }
+    .lede { max-width: 720px; margin: 22px 0 0; color: #505760; font-size: 19px; line-height: 1.65; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+    .button { min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #17191d; border-radius: 6px; font-size: 14px; font-weight: 720; text-decoration: none; }
+    .button.primary { background: #17191d; color: #fff; }
+    .button.secondary { background: transparent; color: #17191d; }
+    .button.primary:hover { background: #34383f; }
+    .button.secondary:hover { background: #fff; }
+    .band { border-top: 1px solid #d9dee5; padding: 54px 0 64px; }
+    .band h2 { margin: 0 0 26px; font-size: 24px; letter-spacing: 0; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .panel { min-width: 0; padding: 24px; border: 1px solid #d9dee5; border-radius: 8px; background: #fff; }
+    .panel h3 { margin: 0 0 12px; font-size: 16px; letter-spacing: 0; }
+    .panel p { margin: 0; color: #59616b; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+    .panel strong { color: #17191d; }
+    .workflow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; counter-reset: step; }
+    .step { min-width: 0; counter-increment: step; }
+    .step::before { display: block; margin-bottom: 12px; color: #0b57a3; font-size: 13px; font-weight: 800; content: "0" counter(step); }
+    .step h3 { margin: 0 0 8px; font-size: 16px; }
+    .step p { margin: 0; color: #59616b; font-size: 14px; line-height: 1.65; }
+    code { padding: 3px 6px; border-radius: 4px; background: #e8edf2; color: #26313c; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+    footer { padding: 28px 0 40px; border-top: 1px solid #d9dee5; color: #68717b; font-size: 13px; }
+    .footer-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 28px, 680px); }
+      .topbar { min-height: 58px; padding: 12px 0; flex-wrap: wrap; }
+      .status { font-size: 12px; }
+      .hero { min-height: 0; padding: 32px 0 24px; }
+      .eyebrow { margin-bottom: 12px; }
+      h1 { font-size: 36px; line-height: 1.08; }
+      .lede { margin-top: 16px; font-size: 16px; line-height: 1.5; }
+      .actions { width: 100%; gap: 10px; margin-top: 22px; }
+      .button { width: 100%; }
+      .band { padding: 32px 0 50px; }
+      .grid, .workflow { grid-template-columns: 1fr; }
+      .workflow { gap: 30px; }
+      .footer-row { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell topbar">
+    <a class="brand" href="https://github.com/zr9959/ai-saas-guard">AI SaaS Guard</a>
+    <a class="status" href="/healthz">View service status</a>
+  </header>
+  <main>
+    <section class="shell hero">
+      <p class="eyebrow">Limited hosted trial</p>
+      <h1>AI SaaS Guard</h1>
+      <p class="lede">A selected-repository GitHub check that turns launch-sensitive pull request changes into a focused review queue. The current hosted path is a compact ingress and Check Run, not a public source-code scanner.</p>
+      <div class="actions">
+        <a class="button primary" href="${installUrl}">Open GitHub installation</a>
+        <a class="button secondary" href="https://github.com/zr9959/ai-saas-guard#readme">Use the local CLI</a>
+      </div>
+    </section>
+    <section class="band">
+      <div class="shell">
+        <h2>Before installation</h2>
+        <div class="grid">
+          <article class="panel">
+            <h3>Selected repositories</h3>
+            <p>Install only where the check is needed. Permissions are limited to <strong>contents: read</strong>, <strong>pull requests: read</strong>, <strong>checks: write</strong>, and metadata access.</p>
+          </article>
+          <article class="panel">
+            <h3>Compact data only</h3>
+            <p>No raw source, diffs, PR text, secrets, installation tokens, checkout paths, or customer payloads are included in compact hosted records.</p>
+          </article>
+          <article class="panel">
+            <h3>Conservative boundary</h3>
+            <p>This is a deterministic launch-risk review queue. It is not an AI reviewer, pentest, full audit, certification, or proof that an application is safe.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+    <section class="band">
+      <div class="shell">
+        <h2>What happens on a pull request</h2>
+        <div class="workflow">
+          <div class="step"><h3>Verify</h3><p>The Worker checks the signed GitHub event before parsing or storing compact identity fields.</p></div>
+          <div class="step"><h3>Classify</h3><p>The current ingress groups launch-sensitive file metadata into risk areas without retaining raw patch text.</p></div>
+          <div class="step"><h3>Review</h3><p>A bounded Check Run lists the files, risk areas, and manual proof that should happen before merge.</p></div>
+        </div>
+      </div>
+    </section>
+    <section class="band">
+      <div class="shell grid">
+        <article class="panel"><h3>Current scanner version</h3><p><code>${scannerVersion}</code></p></article>
+        <article class="panel"><h3>Uninstall and deletion</h3><p>Signed uninstall or repository-removal events delete matching compact scan records. The local CLI remains independent.</p></article>
+        <article class="panel"><h3>Public beta status</h3><p>Provider monitoring, rollback, incident, deletion, and real participant evidence remain required before a public hosted beta decision.</p></article>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="shell footer-row">
+      <span>AI SaaS Guard hosted ingress</span>
+      <nav class="footer-links" aria-label="Hosted resources">
+        <a href="/github/app/install-info">Install info JSON</a>
+        <a href="https://github.com/zr9959/ai-saas-guard/blob/main/docs/hosted-install-privacy.md">Privacy details</a>
+        <a href="https://github.com/zr9959/ai-saas-guard">Source repository</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>`;
 }
 
 export function createGitHubAppManifestCallback(url) {
@@ -915,7 +1077,7 @@ function classifyPullRequestFiles({ files, truncated }) {
 
 function classifyPrFile(file) {
   const changedText = file.patch
-    .split(/\r?\n/)
+    .split(/\r\n?|\n/)
     .filter((line) => (line.startsWith("+") && !line.startsWith("+++")) || (line.startsWith("-") && !line.startsWith("---")))
     .map((line) => line.slice(1))
     .join("\n");
@@ -975,57 +1137,101 @@ function summarizeFindings(findings) {
 
 function renderCheckRunSummary({ identity, report, scannerVersion }) {
   const riskAreas = summarizeHostedRiskAreas(report.topRiskyFiles);
-  const repositoryLabel = safeMarkdownInline(identity.repositoryFullName);
-  const scannerVersionLabel = safeMarkdownInline(scannerVersion);
+  const categories = [...new Set(report.topRiskyFiles.flatMap((file) => file.categories))];
+  const launchGate = report.summary.total > 0 ? "review required" : "clear from current heuristics";
+  const localCliCommand = `npx ai-saas-guard@${safeScannerVersion(scannerVersion)} pr-risk --root . --base ${identity.baseSha} --markdown`;
   const lines = [
-    `Launch-risk gate: ${report.summary.total} PR risk signal(s) for ${repositoryLabel}#${identity.pullRequestNumber}.`,
-    "Review task: inspect risk areas and files before merge.",
-    "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
+    "## AI SaaS Guard",
     "",
-    "Risk areas:",
+    `**Launch gate:** ${launchGate}`,
+    "",
+    `**Repository:** ${markdownCode(`${identity.repositoryFullName}#${identity.pullRequestNumber}`)}`,
+    "",
+    `**Review categories:** ${categories.length === 0 ? "None" : categories.map(markdownCode).join(", ")}`,
+    "",
+    "> Review task: inspect the risk areas and files below before merge.",
+    "> Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
+    "",
+    `**Reproduce locally:** ${markdownCode(localCliCommand)}`,
+    "",
+    "**Scope:** Selected repository only. Compact file and category signals only; no webhook bodies, PR text, source, diffs, secrets, checkout paths, or installation tokens.",
+    "",
+    "### Review First",
     ...(riskAreas.length === 0
-      ? ["- None"]
+      ? ["No risk areas in the compact hosted report."]
       : riskAreas
           .slice(0, 5)
-          .map((area) => `- ${safeMarkdownInline(area.name)}: ${area.count} file(s). Proof: ${safeMarkdownInline(area.proof)}`)),
+          .map((area, index) => `${index + 1}. **${safeMarkdownInline(area.name)}** - ${area.count} ${area.count === 1 ? "file" : "files"}. ${safeMarkdownInline(area.proof)}`)),
     "",
-    "Review queue:"
+    "### Files"
   ];
 
   if (report.topRiskyFiles.length > 0) {
-    for (const file of report.topRiskyFiles.slice(0, 5)) {
+    for (const [index, file] of report.topRiskyFiles.slice(0, 5).entries()) {
       lines.push(
-        `- ${safeMarkdownInline(file.path)}: ${file.categories.map(safeMarkdownInline).join(", ")} (${file.added}+/${file.removed}-)`
+        `${index + 1}. ${markdownCode(file.path)}`,
+        `   - Categories: ${file.categories.map(markdownCode).join(", ")}`,
+        `   - Diff: +${file.added} / -${file.removed}`
       );
     }
     lines.push(
       "",
-      "Reviewer checklist:",
+      "### Reviewer Checklist",
       "- What trust boundary changed?",
       "- Why is this auth, billing, data, deploy, or test decision safe?",
       "- What manual proof shows it fails closed?"
     );
   } else {
-    lines.push("- None");
+    lines.push("No files in the review queue.");
   }
 
   lines.push(
     "",
-    `Boundary: selected repository only; scanner ${scannerVersionLabel}; not an AI reviewer, pentest, full audit, or certification.`,
-    "Privacy: compact file/category signals only; no webhook bodies, PR text, source, diffs, secrets, checkout paths, or installation tokens."
+    "### Scope And Privacy",
+    `- Scanner: ${markdownCode(safeScannerVersion(scannerVersion))}.`,
+    "- Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification.",
+    "- Privacy: compact file/category signals only; no webhook bodies, PR text, source, diffs, secrets, checkout paths, or installation tokens."
   );
 
   if (report.truncated) {
     lines.push("", "Note: PR file pagination was capped; run the local CLI for a complete review.");
   }
 
-  return lines.join("\n").slice(0, 6_000);
+  return truncateCheckRunMarkdown(lines.join("\n"), 6_000);
 }
 
 function safeMarkdownInline(value) {
+  return normalizeMarkdownInline(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replace(/([\\`*_[\]|])/g, "\\$1");
+}
+
+function markdownCode(value) {
+  return `\`${normalizeMarkdownInline(value).replaceAll("`", "'")}\``;
+}
+
+function normalizeMarkdownInline(value) {
   return String(value ?? "")
-    .replace(/\r?\n/g, " ")
-    .replace(/[\\`*_{}[\]()#+!|<>]/g, "\\$&");
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g, "")
+    .replace(/[\r\n]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function safeScannerVersion(value) {
+  return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(String(value ?? "")) ? String(value) : "latest";
+}
+
+function truncateCheckRunMarkdown(markdown, maxChars) {
+  if (markdown.length <= maxChars) return markdown;
+  const suffix = "\n\n_Additional files were truncated by the hosted output limit. Run the local CLI for the full report._";
+  const availableChars = maxChars - suffix.length;
+  const candidate = markdown.slice(0, Math.max(0, availableChars));
+  const lineBreak = candidate.lastIndexOf("\n");
+  const prefix = lineBreak > 0 ? candidate.slice(0, lineBreak) : candidate;
+  return `${prefix.trimEnd()}${suffix}`.slice(0, maxChars);
 }
 
 function summarizeHostedRiskAreas(files) {
@@ -1252,6 +1458,8 @@ function safeGitHubApiBaseUrl(value) {
       url.password ||
       url.search ||
       url.hash ||
+      url.port ||
+      url.hostname.toLowerCase() !== "api.github.com" ||
       !isRootPath(url.pathname) ||
       isUnsafeHostedHostname(url.hostname)
     ) {
@@ -1261,6 +1469,10 @@ function safeGitHubApiBaseUrl(value) {
   } catch {
     return undefined;
   }
+}
+
+function isGitHubDeliveryId(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 function isRootPath(pathname) {
@@ -1379,7 +1591,7 @@ function isPermissionSurface(filePath) {
 }
 
 function isRemovedOrWeakenedTest(filePath, patch) {
-  const lines = patch.split(/\r?\n/);
+  const lines = patch.split(/\r\n?|\n/);
   const hasRemovedLine = lines.some((line) => line.startsWith("-") && !line.startsWith("---"));
   if (!hasRemovedLine) return false;
   return (
@@ -1394,4 +1606,20 @@ function jsonResponse(status, body) {
     status,
     headers: JSON_HEADERS
   });
+}
+
+function htmlResponse(status, body) {
+  return new Response(body, {
+    status,
+    headers: HTML_HEADERS
+  });
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }

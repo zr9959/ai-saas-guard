@@ -1,97 +1,91 @@
 # Sample Launch Report
 
-This is a synthetic, public-safe example of the kind of review queue `ai-saas-guard` produces. Paths, snippets, and checks are intentionally small so a founder or reviewer can understand the output before running the tool.
+This synthetic, public-safe example shows the review queue produced by `ai-saas-guard`. The paths and findings are intentionally small enough to inspect before running the tool.
+
+## Summary Output
 
 ```text
-ai-saas-guard scan summary
-Findings: 6 findings: 0 critical, 3 high, 3 medium, 0 low, 0 info
-Launch gate: review required: high-risk launch paths need manual verification before launch
-Decision queue: Can a real user get access they should not have? Review auth, tenant ownership, Supabase RLS, webhook entitlement, and data mutation findings first.
-Review trust-boundary findings before deploy/cost hygiene.
+ai-saas-guard | SCAN SUMMARY
+----------------------------------------
+Target       /path/to/your-saas
+Launch gate  review required: high-risk launch paths need manual verification before launch
+Findings     6 findings | 0 critical | 3 high | 3 medium | 0 low | 0 info
+Decision     Can a real user get access they should not have? Review auth, tenant ownership, Supabase RLS, webhook entitlement, and data mutation findings first.
 
-Top risks:
-- HIGH stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:12 - Stripe webhook does not verify the Stripe signature
-- HIGH auth.clerk.unsafe-metadata at app/api/auth/profile/route.ts:8 - Clerk unsafe metadata is used as authorization input
-- HIGH data.prisma.tenant-scope-missing at app/api/projects/[projectId]/route.ts:9 - Prisma query lacks an obvious tenant or owner predicate
+TOP RISKS
+1. HIGH stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:12 - Stripe webhook does not verify the Stripe signature
+2. HIGH auth.clerk.unsafe-metadata at app/api/auth/profile/route.ts:8 - Clerk unsafe metadata is used as authorization input
+3. HIGH data.prisma.tenant-scope-missing at app/api/projects/[projectId]/route.ts:9 - Prisma query lacks an obvious tenant or owner predicate
 
-Manual proof to run next:
-- Replay a webhook with an invalid signature and confirm the route rejects it.
-- Try changing the same metadata as a normal signed-in user and confirm it cannot grant admin, paid plan, tenant, workspace, or entitlement access.
-- Create this resource as Tenant/User A, then attempt the same update with Tenant/User B.
+MANUAL PROOF
+1. Replay a webhook with an invalid signature and confirm the route rejects it.
+2. Try changing the same metadata as a normal signed-in user and confirm it cannot grant admin, paid plan, tenant, workspace, or entitlement access.
+3. Create this resource as Tenant/User A, then attempt the same update with Tenant/User B.
 
-Next steps
-- Fix critical and high trust-boundary findings first: auth/session, billing/webhook, tenant data, and silent-success paths.
-- Run the manual proof steps above in staging and confirm each risky path fails closed.
+NEXT STEPS
+1. Fix critical and high trust-boundary findings first: auth/session, billing/webhook, tenant data, and silent-success paths.
+2. Run the manual proof steps above in staging and confirm each risky path fails closed.
 
-Full report:
+FULL REPORT
   Rerun without --summary, or use --json, --sarif, or --markdown where supported.
 ```
 
-Markdown reports include the same decision queue plus:
-
-- why auth, billing, tenant data, RLS, webhooks, and silent-success findings rank first
-- a trust statement: local-first, deterministic, read-only, no code upload, no LLM calls
-- a reviewer checklist for PR risk output
-
-The full terminal report expands each finding:
+Markdown output adds the launch decision queue, ranking explanation, trust statement, and PR reviewer checklist. The full terminal report expands each item into a consistent scan card:
 
 ```text
-6 findings: 3 high, 3 medium
+[1/6] HIGH | Stripe webhook does not verify the Stripe signature
+  Rule      stripe.webhook.missing-signature
+  Location  app/api/stripe/webhook/route.ts:12
+  Why       Billing access can be granted from a webhook path that does not verify Stripe signatures.
+  Verify    Replay a webhook with an invalid signature and confirm the route rejects it.
+  Fix       Read the raw body, verify the stripe-signature header, and reject invalid events before changing entitlement state.
+  Evidence
+    - app/api/stripe/webhook/route.ts:12 -> const event = await request.json();
 
-HIGH stripe.webhook.missing-signature
-Rule: stripe.webhook.missing-signature
-File: app/api/stripe/webhook/route.ts:12
-Why: Billing access can be granted from a webhook path that does not verify Stripe signatures.
-Verify: Replay a webhook with an invalid signature and confirm the route rejects it.
-Fix direction: In Next.js route handlers, read the payload with `await req.text()`, read the `stripe-signature` header, call `stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)`, and return 400 before any entitlement mutation when verification fails.
+[2/6] HIGH | Clerk unsafe metadata is used as authorization input
+  Rule      auth.clerk.unsafe-metadata
+  Location  app/api/auth/profile/route.ts:8
+  Why       Client-writable metadata can accidentally become authorization input for roles, plans, tenants, or entitlements.
+  Verify    Change the metadata as a normal user and confirm it cannot grant privileged access.
+  Fix       Store authorization and billing state in server-controlled metadata or the application database.
+  Evidence
+    - app/api/auth/profile/route.ts:8 -> const role = user.unsafeMetadata.role;
 
-HIGH auth.clerk.unsafe-metadata
-Rule: auth.clerk.unsafe-metadata
-File: app/api/auth/profile/route.ts:8
-Why: Clerk unsafe metadata can be changed from the client side, so roles, paid plans, tenant membership, or entitlements stored there can become authorization input by accident.
-Verify: Try changing the same metadata as a normal signed-in user and confirm it cannot grant admin, paid plan, tenant, workspace, or entitlement access.
-Fix direction: Store authorization and billing state in server-controlled Clerk private/public metadata or your database.
+[3/6] HIGH | Prisma query lacks an obvious tenant or owner predicate
+  Rule      data.prisma.tenant-scope-missing
+  Location  app/api/projects/[projectId]/route.ts:9
+  Why       Authentication alone does not stop a caller from guessing another tenant's resource ID.
+  Verify    Create the resource as User A, then attempt the same read, update, and delete as User B.
+  Fix       Add tenant, organization, workspace, owner, user, or membership predicates to the Prisma where clause.
+  Evidence
+    - app/api/projects/[projectId]/route.ts:9 -> where: { id: projectId }
 
-HIGH data.prisma.tenant-scope-missing
-Rule: data.prisma.tenant-scope-missing
-File: app/api/projects/[projectId]/route.ts:9
-Why: A route can authenticate the caller but still read or mutate another tenant's resource when Prisma queries only scope by a guessed resource ID.
-Verify: Create this resource as Tenant/User A, then attempt the same update with Tenant/User B.
-Fix direction: Add tenant, organization, workspace, owner, user, or membership predicates to the Prisma where clause.
+[4/6] MEDIUM | Supabase policy lacks an obvious tenant predicate
+  Rule      supabase.rls.tenant-predicate-missing
+  Location  supabase/migrations/20260524_projects.sql:22
+  Why       Multi-tenant rows need owner or membership predicates for every allowed operation.
+  Verify    Confirm User B cannot SELECT, INSERT, UPDATE, or DELETE User A rows.
+  Fix       Scope USING and WITH CHECK to tenant membership or ownership.
+  Evidence
+    - supabase/migrations/20260524_projects.sql:22 -> create policy projects_access on projects
 
-MEDIUM supabase.rls.tenant-predicate-missing
-Rule: supabase.rls.tenant-predicate-missing
-File: supabase/migrations/20260524_projects.sql:22
-Why: Multi-tenant tables need tenant, workspace, organization, owner, or membership predicates.
-Verify: Sign in as user A and user B; confirm neither can SELECT, INSERT, UPDATE, or DELETE the other's rows.
-Fix direction: Tie every policy to tenant/workspace/organization membership or owner columns, and mirror the same tenant scope in `WITH CHECK` for INSERT and UPDATE.
+[5/6] MEDIUM | Vercel cron route lacks an obvious guard
+  Rule      deploy.vercel.cron-missing-guard
+  Location  app/api/cron/reconcile-billing/route.ts:3
+  Why       Stateful scheduled jobs need authorization, idempotency, and request tracing.
+  Verify    Call the route without the cron secret and replay one request ID; confirm both cases fail safely.
+  Fix       Validate a server-only secret, use a run lock or idempotency key, and log a request ID.
+  Evidence
+    - app/api/cron/reconcile-billing/route.ts:3 -> export async function GET() {
 
-MEDIUM deploy.vercel.cron-missing-guard
-Rule: deploy.vercel.cron-missing-guard
-File: app/api/cron/reconcile-billing/route.ts:3
-Why: Scheduled billing, tenant, or cleanup jobs need a secret guard, idempotency, and request tracing before launch.
-Verify: Call the cron route without the expected cron secret and with a repeated request ID; confirm unauthorized calls fail and repeated runs do not duplicate state changes.
-Fix direction: Check a server-only cron secret, record an idempotency key or run lock, and log a request/trace ID before stateful cron work starts.
-
-MEDIUM silent-success.swallowed-error
-Rule: silent-success.swallowed-error
-File: app/api/billing/checkout/route.ts:31
-Why: Swallowed provider, auth, billing, or data errors can make a launch path look successful when it failed.
-Verify: Force the upstream provider call to fail and confirm the route returns an error or disclosed degraded mode.
-Fix direction: Log the failure with a request id, return a 4xx/5xx error or explicit degraded-mode response, and do not grant entitlement, change ownership, or mutate tenant data after the failed dependency.
-
-Next steps
-- Fix critical and high trust-boundary findings first: auth/session, billing/webhook, tenant data, and silent-success paths.
-- Run the manual proof steps above in staging and confirm each risky path fails closed.
-- Treat low and info deploy/CI hygiene hints as cleanup after critical, high, and medium launch paths are understood.
+[6/6] MEDIUM | Provider failure may be swallowed
+  Rule      silent-success.swallowed-error
+  Location  app/api/billing/checkout/route.ts:31
+  Why       Swallowed billing or data errors can make a failed launch path look successful.
+  Verify    Force the provider call to fail and confirm the route returns an explicit error or disclosed degraded mode.
+  Fix       Log a request ID, return a 4xx/5xx response, and avoid entitlement or tenant mutations after the failure.
+  Evidence
+    - app/api/billing/checkout/route.ts:31 -> catch { return Response.json({ ok: true }); }
 ```
 
-## How To Read It
-
-Start with the highest severity findings that touch trust-boundary code: auth, billing, tenant data, webhooks, and scheduled jobs. Each finding should give you enough to answer three launch questions:
-
-- What file should I inspect first?
-- Why could this fail for real users?
-- What manual proof shows the path fails closed?
-
-The report is a focused launch decision queue. It does not replace your two-account authorization tests, Stripe webhook replay, deploy-preview checks, or human review.
+Start with auth, billing, tenant data, webhooks, and stateful jobs. For each item, inspect the named file, understand the real-user failure, and run the listed proof until the path fails closed.
