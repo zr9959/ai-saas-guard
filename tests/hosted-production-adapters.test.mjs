@@ -124,6 +124,17 @@ test("hosted installation token request rejects unsafe GitHub API base URLs with
   assert.deepEqual(plan.blockedReasons, ["invalid_github_api_url"]);
   assert.equal(plan.request.url, "https://api.github.com/app/installations/123/access_tokens");
   assert.doesNotMatch(serialized, /localhost|user:pass|should-not-appear|#fragment/);
+
+  const externalHostPlan = planHostedGitHubInstallationTokenRequest({
+    installationId: 123,
+    repositoryId: 456,
+    purpose: "first_slice",
+    requestedAt: "2026-05-24T13:00:00.000Z",
+    apiBaseUrl: "https://api.not-github.example"
+  });
+  assert.equal(externalHostPlan.readyToRequestToken, false);
+  assert.deepEqual(externalHostPlan.blockedReasons, ["invalid_github_api_url"]);
+  assert.equal(externalHostPlan.request.url, "https://api.github.com/app/installations/123/access_tokens");
 });
 
 test("hosted production worker execution fixes command, bounds resources, and plans cleanup for every terminal state", async () => {

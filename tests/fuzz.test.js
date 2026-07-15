@@ -67,7 +67,7 @@ test("fuzz: markdown report keeps arbitrary evidence from creating structure", (
 
       assert.doesNotMatch(markdown, /^### injected/m);
       assert.doesNotMatch(markdown, /^\| injected \| table \|$/m);
-      assert.match(markdown, /Evidence: `src\/example\.ts:1` - prefix/);
+      assert.match(markdown, /\*\*Evidence 1:\*\* `src\/example\.ts:1` - prefix/);
     }),
     { numRuns: 120, seed: fuzzSeed }
   );
