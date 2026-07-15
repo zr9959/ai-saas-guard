@@ -152,7 +152,7 @@ Status meanings:
 | 93 | Full automated suite | Pass | All 221 tests passed, including hosted, CLI, docs, fuzz, and packaging behavior. |
 | 94 | Property-based fuzzing | Pass | Markdown structure, SARIF JSON, and secret redaction fuzz properties pass. |
 | 95 | Workflow least privilege and pinning | Pass | Checkout/setup/upload/CodeQL actions are commit-pinned with narrow permissions and timeouts. |
-| 96 | Workflow static analysis | Pass | CI includes actionlint, zizmor, and CodeQL coverage. |
+| 96 | Workflow static analysis | Pass | PR `#134` passed actionlint, zizmor, workflow CodeQL, and Advanced Security CodeQL after its initial regex finding was fixed. |
 | 97 | npm publishing credentials | Pass | Release workflow uses trusted publishing with OIDC rather than a stored npm token. |
 | 98 | Package contents | Pass | Dry-run packaging produced 175 expected files and excluded local/cache/AppleDouble artifacts. |
 | 99 | English/Chinese README alignment | Fixed | Both READMEs now show the same current summary layout and are checked together. |

@@ -54,6 +54,13 @@ Latest local verification on 2026-07-15:
 
 No Cloudflare deployment, GitHub App mutation, KV deletion, npm publication, release tag, or commercial feature is included.
 
+GitHub review state:
+
+- draft PR: `#134`, `https://github.com/zr9959/ai-saas-guard/pull/134`
+- current branch head before this handoff-status update: `3d30e5b`
+- passing checks: test, fuzz, actionlint, zizmor, workflow CodeQL, and Advanced Security CodeQL
+- the initial Advanced Security high finding for polynomial ANSI/OSC regex backtracking was fixed with a linear scanner and disappeared on the rerun
+
 ## Key Files
 
 CLI:
