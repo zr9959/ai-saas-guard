@@ -1,7 +1,11 @@
 import type { BaseReport, Evidence, Summary } from "../types.js";
 
 const terminalControlPattern = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g;
-const terminalEscapeSequencePattern = /\u001b(?:\][^\u0007]*(?:\u0007|\u001b\\)|\[[0-?]*[ -/]*[@-~])/g;
+const ESCAPE = 0x1b;
+const BELL = 0x07;
+const CSI_OPEN = 0x5b;
+const OSC_OPEN = 0x5d;
+const STRING_TERMINATOR = 0x5c;
 
 export function formatSummaryCounts(summary: Summary): string {
   if (summary.total === 0) return "0 findings";
@@ -16,8 +20,7 @@ export function formatEvidenceLocation(evidence: Evidence | undefined): string |
 }
 
 export function sanitizeTerminalInline(value: string): string {
-  return value
-    .replace(terminalEscapeSequencePattern, "")
+  return stripTerminalEscapeSequences(value)
     .replace(terminalControlPattern, "")
     .replace(/[\r\n]+/g, " ")
     .replace(/\s+/g, " ")
@@ -97,6 +100,58 @@ function normalizeInline(value: string): string {
     .replace(/[\r\n]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function stripTerminalEscapeSequences(value: string): string {
+  const parts: string[] = [];
+  let index = 0;
+  let textStart = 0;
+
+  while (index < value.length) {
+    if (value.charCodeAt(index) !== ESCAPE) {
+      index += 1;
+      continue;
+    }
+
+    if (textStart < index) parts.push(value.slice(textStart, index));
+    index = skipTerminalEscapeSequence(value, index);
+    textStart = index;
+  }
+
+  if (textStart < value.length) parts.push(value.slice(textStart));
+  return parts.join("");
+}
+
+function skipTerminalEscapeSequence(value: string, escapeIndex: number): number {
+  const nextIndex = escapeIndex + 1;
+  if (nextIndex >= value.length) return value.length;
+  const kind = value.charCodeAt(nextIndex);
+
+  if (kind === CSI_OPEN) {
+    let cursor = nextIndex + 1;
+    while (cursor < value.length && isCodeInRange(value, cursor, 0x30, 0x3f)) cursor += 1;
+    while (cursor < value.length && isCodeInRange(value, cursor, 0x20, 0x2f)) cursor += 1;
+    if (cursor < value.length && isCodeInRange(value, cursor, 0x40, 0x7e)) cursor += 1;
+    return cursor;
+  }
+
+  if (kind === OSC_OPEN) {
+    let cursor = nextIndex + 1;
+    while (cursor < value.length) {
+      const code = value.charCodeAt(cursor);
+      if (code === BELL) return cursor + 1;
+      if (code === ESCAPE && value.charCodeAt(cursor + 1) === STRING_TERMINATOR) return cursor + 2;
+      cursor += 1;
+    }
+    return value.length;
+  }
+
+  return Math.min(value.length, escapeIndex + 2);
+}
+
+function isCodeInRange(value: string, index: number, lower: number, upper: number): boolean {
+  const code = value.charCodeAt(index);
+  return code >= lower && code <= upper;
 }
 
 function escapeMarkdownSyntax(value: string): string {

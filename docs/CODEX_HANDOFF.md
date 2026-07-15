@@ -31,7 +31,7 @@ Current review branch scope:
 - narrower stack applicability and deterministic traversal/finding order
 - synchronized English/Chinese public examples
 - a 100-dimension audit in `docs/release-quality-audit-2026-07-15.md`
-- local verification: 220 tests passed, npm audit found 0 vulnerabilities, repository and focused self-scans found 0 findings, and dry-run packaging contained 175 expected files
+- local verification: 221 tests passed, npm audit found 0 vulnerabilities, repository and focused self-scans found 0 findings, and dry-run packaging contained 175 expected files
 
 Latest release state:
 

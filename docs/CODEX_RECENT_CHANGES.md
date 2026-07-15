@@ -14,6 +14,7 @@ Changed:
 - rebuilt terminal, summary, Markdown, and hosted Check Run presentation around a consistent launch-gate, review-first, manual-proof, and next-step hierarchy
 - replaced narrow Markdown tables with mobile-friendly vertical finding and file layouts
 - added terminal ANSI/OSC/control-character normalization, Markdown structure hardening, safe hosted reproduction values, and line-boundary truncation
+- replaced the first ANSI/OSC regex with a linear escape-sequence scanner after GitHub CodeQL identified polynomial backtracking on hostile input
 - added a responsive, script-free `/github/app` install and privacy page with selected-repository permissions, conservative product boundaries, and hardened browser headers
 - made incomplete scans return an `incomplete` launch gate instead of a misleading clear result
 - rejected malformed or option-like `pr-risk --base` refs before Git command parsing
@@ -25,7 +26,7 @@ Changed:
 
 Verification:
 
-- `npm test`: 220 passed, 0 failed
+- `npm test`: 221 passed, 0 failed
 - `npm audit --audit-level=high --registry=https://registry.npmjs.org`: 0 vulnerabilities
 - repository self-scan: 0 findings with 116 files scanned, no skipped or unreadable inputs, and Cloudflare plus GitHub Actions detected
 - focused Actions, Supabase, MCP, and Stripe scans: 0 findings

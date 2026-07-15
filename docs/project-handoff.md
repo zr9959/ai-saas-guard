@@ -14,7 +14,7 @@ Public source-of-truth branch: `main`
 
 Current review branch: `codex/ui-quality-audit`, based on current `main` commit `96ea609` after the published `v0.43.3` release and later maintenance merges. It improves report presentation, the mobile hosted install page, scanner applicability, and trust-boundary validation. It does not change the package version or deploy the Worker.
 
-Current quality record: `docs/release-quality-audit-2026-07-15.md` documents 100 dimensions. Local verification passed 220 tests, found 0 npm vulnerabilities at the high threshold, produced a 0-finding complete repository self-scan, and built a 175-file dry-run package without macOS metadata.
+Current quality record: `docs/release-quality-audit-2026-07-15.md` documents 100 dimensions. Local verification passed 221 tests, found 0 npm vulnerabilities at the high threshold, produced a 0-finding complete repository self-scan, and built a 175-file dry-run package without macOS metadata.
 
 Recent setup commits at the time this handoff was created:
 
