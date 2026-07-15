@@ -9,6 +9,7 @@ import {
   reviewFirst,
   trustStatement
 } from "./launchGate.js";
+import { escapeMarkdownInline, formatScanCoverage, formatSummaryCounts, hasIncompleteScanCoverage, markdownCode } from "./presentation.js";
 
 export function formatMarkdownReport(report: BaseReport): string {
   if (report.command === "demo") return `${formatDemoMarkdown(report as ShowcaseReport)}\n`;
@@ -18,217 +19,236 @@ export function formatMarkdownReport(report: BaseReport): string {
 
 function formatDemoMarkdown(report: ShowcaseReport): string {
   const lines: string[] = [];
-  lines.push("## ai-saas-guard demo");
+  lines.push("## ai-saas-guard - Demo");
   lines.push("");
-  lines.push("AI-built SaaS can look ready while launch risks stay hidden. This is not a pentest, full audit, or certification.");
+  lines.push("AI-built SaaS can look ready while launch risks stay hidden.");
   lines.push("");
-  lines.push(`- Risky demo: ${escapeMarkdownInline(summaryText(report.demos.risky))}`);
-  lines.push(`- Safe demo: ${escapeMarkdownInline(summaryText(report.demos.safe))}`);
+  lines.push("> This is a deterministic launch-risk review queue, not a pentest, full audit, or certification.");
+  lines.push("");
+  lines.push("### Result");
+  appendList(lines, [
+    `**Risky demo:** ${escapeMarkdownInline(formatSummaryCounts(report.demos.risky.summary))}`,
+    `**Safe demo:** ${escapeMarkdownInline(formatSummaryCounts(report.demos.safe.summary))}`
+  ]);
   lines.push("");
   lines.push("### What This Proves");
-  appendList(lines, [
+  appendEscapedList(lines, [
     "The same SaaS surfaces can look finished while auth, billing, data, deploy, and CI risks still need review.",
     "The safe demo keeps the same SaaS surfaces but removes the intentional launch-risk patterns."
-  ].map(escapeMarkdownInline));
+  ]);
   lines.push("");
   lines.push("### Review First");
-  appendList(lines, reviewFirst(report.demos.risky.findings).map(escapeMarkdownInline));
+  appendEscapedList(lines, reviewFirst(report.demos.risky.findings));
   lines.push("");
-  lines.push("### Manual Proof To Run Next");
-  appendList(lines, manualProofSteps(report.demos.risky.findings).map(escapeMarkdownInline));
+  lines.push("### Manual Proof");
+  appendEscapedList(lines, manualProofSteps(report.demos.risky.findings));
   lines.push("");
   lines.push("### Next Steps");
-  appendList(lines, report.nextSteps.map(escapeMarkdownInline));
+  appendEscapedList(lines, report.nextSteps);
   lines.push("");
   lines.push("Run against your app:");
   lines.push("");
-  lines.push("```bash");
-  lines.push("npx ai-saas-guard@latest scan --root /path/to/your-saas");
-  lines.push("```");
+  appendIndentedCode(lines, ["npx ai-saas-guard@latest scan --root /path/to/your-saas"]);
   return lines.join("\n");
 }
 
 function formatPrRiskMarkdown(report: PrRiskReport): string {
   const lines: string[] = [];
-  lines.push("## ai-saas-guard PR risk summary");
+  lines.push("## ai-saas-guard - PR Risk Review");
   lines.push("");
-  lines.push(summaryLine(report));
   lines.push(`**Launch gate:** ${escapeMarkdownInline(launchGateVerdict(report))}`);
+  lines.push("");
+  lines.push(`**Findings:** ${escapeMarkdownInline(formatSummaryCounts(report.summary))}`);
 
   if (report.categories.length > 0) {
     lines.push("");
-    lines.push(`**Risk categories:** ${report.categories.map((category) => `\`${category}\``).join(", ")}`);
+    lines.push(`**Risk categories:** ${report.categories.map(markdownCode).join(", ")}`);
   }
 
   lines.push("");
-  lines.push("### Launch Decision Queue");
-  appendList(lines, launchDecisionQuestions(report.findings).map(escapeMarkdownInline));
+  lines.push("### Review First");
+  appendRiskyFiles(lines, report);
 
   lines.push("");
-  lines.push("### Review first");
-  if (report.topRiskyFiles.length === 0) {
-    lines.push("");
-    lines.push("No changed trust-boundary files were classified by `pr-risk`.");
-  } else {
-    lines.push("");
-    lines.push("| File | Score | Categories | Diff |");
-    lines.push("| --- | ---: | --- | ---: |");
-    for (const file of report.topRiskyFiles.slice(0, 10)) {
-      lines.push(
-        `| \`${escapeMarkdownTableCell(file.path)}\` | ${file.score} | ${file.categories.map((category) => `\`${escapeMarkdownTableCell(category)}\``).join("<br>")} | +${file.added} / -${file.removed} |`
-      );
-    }
-  }
-
-  lines.push("");
-  lines.push("### Required verification");
-  appendList(lines, report.requiredTests.length > 0 ? report.requiredTests : report.reviewChecklist);
-
-  lines.push("");
-  lines.push("### Reviewer checklist");
-  appendList(lines, prReviewerChecklist().map(escapeMarkdownInline));
-
-  lines.push("");
-  lines.push("### Why this review order");
-  appendList(lines, [
-    "Rank trust-boundary files before cosmetic files because auth, billing, tenant data, RLS, webhook, and silent-success changes can affect real users before UI issues do.",
-    ...rankingExplanation(report.findings)
-  ].map(escapeMarkdownInline));
-
-  lines.push("");
-  lines.push("### Suggested PR split");
-  appendList(lines, report.suggestedSplit.length > 0 ? report.suggestedSplit : ["No split suggestion from the current diff."]);
+  lines.push("### Manual Proof");
+  appendEscapedList(lines, report.requiredTests.length > 0 ? report.requiredTests : report.reviewChecklist);
 
   lines.push("");
   lines.push("### Findings");
   appendFindings(lines, report.findings);
 
+  lines.push("");
+  lines.push("### Launch Decision Queue");
+  appendEscapedList(lines, launchDecisionQuestions(report.findings));
+
+  lines.push("");
+  lines.push("### Reviewer Checklist");
+  appendEscapedList(lines, prReviewerChecklist());
+
+  lines.push("");
+  lines.push("### Why This Review Order");
+  appendEscapedList(lines, [
+    "Trust-boundary files come before cosmetic files because auth, billing, tenant data, RLS, webhook, and silent-success changes can affect real users first.",
+    ...rankingExplanation(report.findings)
+  ]);
+
+  lines.push("");
+  lines.push("### Suggested PR Split");
+  appendEscapedList(lines, report.suggestedSplit.length > 0 ? report.suggestedSplit : ["No split suggestion from the current diff."]);
+
+  appendTrustStatement(lines);
   return lines.join("\n");
 }
 
 function formatGenericMarkdown(report: BaseReport): string {
   const lines: string[] = [];
-  lines.push(`## ai-saas-guard ${report.command}`);
+  lines.push(`## ai-saas-guard - ${escapeMarkdownInline(report.command)}`);
   lines.push("");
-  lines.push(summaryLine(report));
   lines.push(`**Launch gate:** ${escapeMarkdownInline(launchGateVerdict(report))}`);
-  appendLaunchQueue(lines, report.findings);
+  lines.push("");
+  lines.push(`**Findings:** ${escapeMarkdownInline(formatSummaryCounts(report.summary))}`);
+  const scanCoverage = formatScanCoverage(report);
+  if (scanCoverage) {
+    lines.push("");
+    lines.push(`**Coverage:** ${escapeMarkdownInline(scanCoverage)}`);
+  }
+
+  if (report.findings.length === 0) {
+    lines.push("");
+    lines.push("### Result");
+    lines.push("");
+    lines.push(
+      hasIncompleteScanCoverage(report)
+        ? "No findings were produced, but scan coverage was incomplete. Resolve unreadable or skipped inputs and rerun before using this result."
+        : "No heuristic launch-readiness risks found by this command. This remains a heuristic result, not a certification."
+    );
+  } else {
+    lines.push("");
+    lines.push("### Review First");
+    appendEscapedList(lines, reviewFirst(report.findings));
+    lines.push("");
+    lines.push("### Manual Proof");
+    appendEscapedList(lines, manualProofSteps(report.findings));
+  }
+
   lines.push("");
   lines.push("### Findings");
   appendFindings(lines, report.findings);
+
+  lines.push("");
+  lines.push("### Next Steps");
+  appendEscapedList(lines, nextSteps(report.findings));
+
+  lines.push("");
+  lines.push("### Launch Decision Queue");
+  appendEscapedList(lines, launchDecisionQuestions(report.findings));
+
+  lines.push("");
+  lines.push("### Why This Is Ranked First");
+  appendEscapedList(lines, rankingExplanation(report.findings));
+
+  appendTrustStatement(lines);
   appendGenericExtras(lines, report);
   return lines.join("\n");
 }
 
-function summaryLine(report: BaseReport): string {
-  return `**Findings:** ${report.summary.total} total | critical ${report.summary.critical} | high ${report.summary.high} | medium ${report.summary.medium} | low ${report.summary.low} | info ${report.summary.info}`;
-}
+function appendRiskyFiles(lines: string[], report: PrRiskReport): void {
+  if (report.topRiskyFiles.length === 0) {
+    lines.push("");
+    lines.push("No changed trust-boundary files were classified by `pr-risk`.");
+    return;
+  }
 
-function appendList(lines: string[], items: string[]): void {
-  for (const item of items) {
-    lines.push(`- ${item}`);
+  for (const [index, file] of report.topRiskyFiles.slice(0, 10).entries()) {
+    lines.push("");
+    lines.push(`${index + 1}. **${markdownCode(file.path)}**`);
+    lines.push(`   - Score: ${file.score}`);
+    lines.push(`   - Categories: ${file.categories.map(markdownCode).join(", ")}`);
+    lines.push(`   - Diff: +${file.added} / -${file.removed}`);
   }
 }
 
-function appendLaunchQueue(lines: string[], findings: Finding[]): void {
-  lines.push("");
-  lines.push("### Launch Decision Queue");
-  appendList(lines, launchDecisionQuestions(findings).map(escapeMarkdownInline));
+function appendList(lines: string[], items: string[]): void {
+  for (const item of items) lines.push(`- ${item}`);
+}
 
-  lines.push("");
-  lines.push("### Why This Is Ranked First");
-  appendList(lines, rankingExplanation(findings).map(escapeMarkdownInline));
-
-  lines.push("");
-  lines.push("### Trust Statement");
-  appendList(lines, trustStatement().map(escapeMarkdownInline));
-
-  if (findings.length === 0) return;
-
-  lines.push("");
-  lines.push("### Review First");
-  appendList(lines, reviewFirst(findings).map(escapeMarkdownInline));
-  lines.push("");
-  lines.push("### Manual Proof To Run Next");
-  appendList(lines, manualProofSteps(findings).map(escapeMarkdownInline));
-  lines.push("");
-  lines.push("### Next Steps");
-  appendList(lines, nextSteps(findings).map(escapeMarkdownInline));
+function appendEscapedList(lines: string[], items: string[]): void {
+  appendList(lines, items.map(escapeMarkdownInline));
 }
 
 function appendFindings(lines: string[], findings: Finding[]): void {
   if (findings.length === 0) {
     lines.push("");
-    lines.push("No heuristic launch-readiness risks found by this command.");
+    lines.push("No findings in this report.");
     return;
   }
 
   for (const [index, finding] of findings.entries()) {
     lines.push("");
-    lines.push(
-      `${index + 1}. **[${finding.severity.toUpperCase()}] ${escapeMarkdownInline(finding.title)}**`
-    );
-    lines.push(`   - Rule: \`${finding.ruleId}\``);
-    lines.push(`   - Evidence: ${formatEvidence(finding.evidence[0])}`);
-    lines.push(`   - Why: ${escapeMarkdownInline(finding.why)}`);
-    lines.push(`   - Verify: ${escapeMarkdownInline(finding.suggestedVerification)}`);
-    lines.push(`   - Fix direction: ${escapeMarkdownInline(finding.suggestedFix)}`);
+    lines.push(`#### ${index + 1}. ${finding.severity.toUpperCase()} - ${escapeMarkdownInline(finding.title)}`);
+    lines.push("");
+    lines.push(`- **Rule:** ${markdownCode(finding.ruleId)}`);
+    for (const [evidenceIndex, evidence] of finding.evidence.slice(0, 3).entries()) {
+      lines.push(`- **Evidence ${evidenceIndex + 1}:** ${formatEvidence(evidence)}`);
+    }
+    if (finding.evidence.length > 3) {
+      lines.push(`- **More evidence:** ${finding.evidence.length - 3} additional item(s) are available in JSON or SARIF output.`);
+    }
+    lines.push(`- **Why:** ${escapeMarkdownInline(finding.why)}`);
+    lines.push(`- **Verify:** ${escapeMarkdownInline(finding.suggestedVerification)}`);
+    lines.push(`- **Fix direction:** ${escapeMarkdownInline(finding.suggestedFix)}`);
   }
+}
+
+function appendTrustStatement(lines: string[]): void {
+  lines.push("");
+  lines.push("### Trust Statement");
+  appendEscapedList(lines, trustStatement());
 }
 
 function appendGenericExtras(lines: string[], report: BaseReport): void {
   if (report.command === "check-supabase") {
     const supabase = report as SupabaseReport;
-    if (supabase.doctor.sqlCookbook.length === 0) return;
-    lines.push("");
-    lines.push("### Supabase RLS Doctor");
-    appendList(lines, supabase.doctor.twoAccountVerificationSteps);
-    lines.push("");
-    lines.push("```sql");
-    lines.push(...supabase.doctor.sqlCookbook);
-    lines.push("```");
+    if (supabase.doctor.sqlCookbook.length > 0) {
+      lines.push("");
+      lines.push("### Supabase RLS Doctor");
+      appendEscapedList(lines, supabase.doctor.twoAccountVerificationSteps);
+      lines.push("");
+      appendIndentedCode(lines, supabase.doctor.sqlCookbook);
+    }
   }
 
   if (report.command === "check-mcp") {
     const mcp = report as McpReport;
-    if (!mcp.policyTemplate) return;
-    lines.push("");
-    lines.push("### MCP Policy Template");
-    lines.push("");
-    lines.push("```yaml");
-    lines.push(...mcp.policyTemplate.localPolicyTemplate);
-    lines.push("```");
-    lines.push("");
-    lines.push(`Receipt fields: ${mcp.policyTemplate.receiptFormat.map((field) => `\`${field}\``).join(", ")}`);
+    if (mcp.policyTemplate) {
+      lines.push("");
+      lines.push("### MCP Policy Template");
+      lines.push("");
+      appendIndentedCode(lines, mcp.policyTemplate.localPolicyTemplate);
+      lines.push("");
+      lines.push(`Receipt fields: ${mcp.policyTemplate.receiptFormat.map(markdownCode).join(", ")}`);
+    }
   }
 
   if (report.command === "check-actions") {
     const actions = report as ActionsReport;
     lines.push("");
     lines.push("### GitHub Actions Hygiene Checklist");
-    appendList(lines, actions.hygieneChecklist);
+    appendEscapedList(lines, actions.hygieneChecklist);
   }
 }
 
-function formatEvidence(evidence: Evidence | undefined): string {
-  if (!evidence) return "`none`";
-  const location = evidence.line ? `${evidence.file}:${evidence.line}` : evidence.file;
+function appendIndentedCode(lines: string[], values: string[]): void {
+  for (const value of values) {
+    const normalized = value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g, "");
+    for (const line of normalized.split(/\r\n?|\n/)) lines.push(`    ${line}`);
+  }
+}
+
+function formatEvidence(evidence: Evidence): string {
+  const location = `${evidence.file}${evidence.line === undefined ? "" : `:${evidence.line}`}${evidence.column === undefined ? "" : `:${evidence.column}`}`;
   const detail = evidence.snippet ?? evidence.match;
-  const safeLocation = escapeMarkdownInline(location).replaceAll("`", "'");
   return detail
-    ? `\`${safeLocation}\` - ${escapeMarkdownInline(detail)}`
-    : `\`${safeLocation}\``;
-}
-
-function escapeMarkdownTableCell(value: string): string {
-  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
-}
-
-function escapeMarkdownInline(value: string): string {
-  return value.replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
-}
-
-function summaryText(report: BaseReport): string {
-  if (report.summary.total === 0) return "0 findings";
-  return `${report.summary.total} findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low, ${report.summary.info} info`;
+    ? `${markdownCode(location)} - ${escapeMarkdownInline(detail)}`
+    : markdownCode(location);
 }

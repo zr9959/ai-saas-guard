@@ -748,21 +748,19 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.equal(failing.conclusion, "failure");
   assert.match(withTotal.output.title, /2 findings/);
   assert.match(findings.output.summary, /Launch gate: review required/i);
-  assert.match(findings.output.summary, /launch-risk gate/i);
   assert.match(findings.output.summary, /not an AI reviewer/i);
   assert.match(findings.output.summary, /Review task: inspect risk areas and files before merge/i);
   assert.match(findings.output.summary, /not.*full audit/i);
   assert.match(findings.output.summary, /Boundary: selected repository only/i);
   assert.match(findings.output.summary, /Manual proof: prove changed auth, billing, data, deploy, or tests fail closed/i);
   assert.match(clean.output.summary, /Launch gate: clear from current heuristics/i);
-  assert.match(findings.output.text, /Launch-risk gate/i);
-  assert.match(findings.output.text, /Launch decision queue/i);
+  assert.match(findings.output.text, /\*\*Launch gate:\*\* review required/i);
+  assert.match(findings.output.text, /### Launch Decision Queue/i);
   assert.match(findings.output.text, /not an AI reviewer/i);
-  assert.match(findings.output.text, /Launch gate: review required/i);
-  assert.match(findings.output.text, /Review task: inspect risk areas and files before merge/i);
+  assert.match(findings.output.text, /Review task: inspect the risk areas and files below before merge/i);
   assert.match(findings.output.text, /Manual proof: prove changed auth, billing, data, deploy, or tests fail closed/i);
-  assert.match(findings.output.text, /Boundary: selected repository only/i);
-  assert.match(findings.output.text, /Risk areas/i);
+  assert.match(findings.output.text, /Selected repository only/i);
+  assert.match(findings.output.text, /### Review First/i);
   assert.match(findings.output.text, /Billing and entitlement/i);
   assert.match(findings.output.text, /Tenant data access/i);
   assert.match(findings.output.text, /force unsigned, duplicate, failed, and canceled billing events/i);
@@ -771,9 +769,9 @@ test("hosted check-run summaries use conservative conclusions and review-first l
   assert.match(findings.output.text, /Why this auth billing data or deploy decision is safe/i);
   assert.match(findings.output.text, /What manual test proves it fails closed/i);
   assert.match(findings.output.text, /Review categories/i);
-  assert.match(findings.output.text, /Verification steps/i);
-  assert.match(findings.output.text, /Files to review first/i);
-  assert.match(findings.output.text, /Local CLI/i);
+  assert.match(findings.output.text, /### Manual Proof/i);
+  assert.match(findings.output.text, /### Files/i);
+  assert.match(findings.output.text, /Reproduce locally/i);
   assert.match(findings.output.text, /npx ai-saas-guard@0\.10\.0 pr-risk --root \. --base b{40} --json/);
   assert.equal(findings.localCliCommand, `npx ai-saas-guard@0.10.0 pr-risk --root . --base ${"b".repeat(40)} --json`);
   assert.match(findings.output.text, /stripe\.webhook\.missing-signature/);
@@ -822,15 +820,17 @@ test("hosted check-run summaries escape markdown table control characters", () =
         {
           ruleId: "stripe.webhook|missing\\signature",
           severity: "high",
-          file: "app\\api|stripe\nwebhook.ts",
+          file: "app\\api|stripe\nwebhook.ts\r### carriage heading",
           line: 12
         }
       ]
     })
   });
 
-  assert.match(summary.output.text, /stripe\.webhook\\\|missing\\\\signature/);
-  assert.match(summary.output.text, /app\\\\api\\\|stripe webhook\.ts:12/);
+  assert.match(summary.output.text, /`stripe\.webhook\|missing\\signature`/);
+  assert.match(summary.output.text, /`app\\api\|stripe webhook\.ts ### carriage heading:12`/);
+  assert.doesNotMatch(summary.output.text, /^### carriage heading/m);
+  assert.doesNotMatch(summary.output.text, /\| Severity \| Rule \| Evidence \|/);
 });
 
 test("hosted check-run publication planner creates a bounded check-only payload", async () => {
@@ -879,8 +879,9 @@ test("hosted check-run publication planner creates a bounded check-only payload"
   assert.equal(plan.request.payload.external_id, "job-check-run");
   assert.equal(plan.request.payload.output.text.length <= 900, true);
   assert.match(plan.request.payload.output.text, /Review categories/i);
-  assert.match(plan.request.payload.output.text, /Verification steps/i);
-  assert.match(plan.request.payload.output.text, /Local CLI/i);
+  assert.match(plan.request.payload.output.text, /Manual proof/i);
+  assert.match(plan.request.payload.output.text, /Reproduce locally/i);
+  assert.match(plan.request.payload.output.text, /Selected repository only/i);
   assert.match(plan.request.payload.output.text, /npx ai-saas-guard@0\.10\.0 pr-risk --root \./);
   assert.equal(plan.request.payload.output.annotations.length, 2);
   assert.equal(plan.privacy.includesRawSource, false);

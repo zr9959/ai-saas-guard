@@ -1364,7 +1364,7 @@ export function createHostedCheckRunSummary(
 ): HostedCheckRunSummary {
   const { report } = input;
   const totalFindings = getHostedReportFindingTotal(report);
-  const localCliCommand = `npx ai-saas-guard@${report.scannerVersion} pr-risk --root . --base ${report.baseSha} --json`;
+  const localCliCommand = `npx ai-saas-guard@${safeHostedCliVersion(report.scannerVersion)} pr-risk --root . --base ${safeHostedBaseSha(report.baseSha)} --json`;
   const conclusion = resolveCheckRunConclusion(report, input.failOnSeverity);
   const launchGate = hostedLaunchGateVerdict(report);
 
@@ -1374,7 +1374,7 @@ export function createHostedCheckRunSummary(
     output: {
       title: formatCheckRunTitle(totalFindings, conclusion, input.failOnSeverity),
       summary: [
-        `Launch-risk gate: ${launchGate}. Launch gate: ${launchGate}.`,
+        `Launch gate: ${launchGate}. ${totalFindings} finding${totalFindings === 1 ? "" : "s"}.`,
         "Review task: inspect risk areas and files before merge.",
         "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
         "Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification."
@@ -2257,62 +2257,64 @@ function formatCheckRunMarkdown(
   const findingLines =
     report.evidence.length === 0
       ? ["No findings in the compact hosted report."]
-      : [
-          "| Severity | Rule | Evidence |",
-          "| --- | --- | --- |",
-          ...report.evidence.map(
-            (finding) =>
-              `| ${escapeMarkdownTableCell(finding.severity)} | ${escapeMarkdownTableCell(
-                finding.ruleId
-              )} | ${escapeMarkdownTableCell(formatFindingLocation(finding))} |`
-          )
-        ];
+      : report.evidence.flatMap((finding, index) => [
+          `${index + 1}. **${escapeHostedMarkdownInline(finding.severity.toUpperCase())}** ${hostedMarkdownCode(finding.ruleId)}`,
+          `   - Location: ${hostedMarkdownCode(formatFindingLocation(finding))}`
+        ]);
 
   return [
-    "### AI SaaS Guard Launch-risk gate",
+    "## AI SaaS Guard",
     "",
-    "Review task: inspect risk areas and files before merge.",
-    "Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
-    "Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification.",
+    `**Launch gate:** ${escapeHostedMarkdownInline(launchGate)}`,
     "",
-    `Launch gate: ${launchGate}`,
-    `Conclusion: ${conclusion}`,
-    `Local CLI: \`${localCliCommand}\``,
-    `Retention: compact report ${report.retentionDays} days; no raw source, diffs, secrets, or customer payloads.`,
+    `**Conclusion:** ${escapeHostedMarkdownInline(conclusion)}`,
     "",
-    "Review categories:",
-    ...(categories.length === 0 ? ["- None"] : categories.map((category) => `- ${category}`)),
+    `**Review categories:** ${categories.length === 0 ? "None" : categories.map(hostedMarkdownCode).join(", ")}`,
     "",
-    "Verification steps:",
-    "- Inspect the listed files locally before release or merge.",
-    "- Reproduce locally with the CLI command above.",
-    "- Prove changed auth, billing, data, deploy, or tests fail closed.",
+    "> Review task: inspect the risk areas and files below before merge.",
+    "> Manual proof: prove changed auth, billing, data, deploy, or tests fail closed.",
     "",
-    "Risk areas:",
+    `**Reproduce locally:** ${hostedMarkdownCode(localCliCommand)}`,
+    "",
+    "**Scope:** Selected repository only. No raw source, diffs, secrets, installation tokens, or customer payloads are included.",
+    "",
+    "### Review First",
     ...(riskAreas.length === 0
-      ? ["- None"]
-      : riskAreas.map((area) => `- ${area.name}: ${area.count} finding(s). Proof: ${area.proof}`)),
+      ? ["No risk areas in the compact hosted report."]
+      : riskAreas.map((area, index) => `${index + 1}. **${escapeHostedMarkdownInline(area.name)}** - ${area.count} finding(s). ${escapeHostedMarkdownInline(area.proof)}`)),
     "",
-    "Launch decision queue:",
+    "### Files",
+    ...(filesToReview.length === 0
+      ? ["No files in the review queue."]
+      : filesToReview.map((file, index) => `${index + 1}. ${hostedMarkdownCode(file)}`)),
+    "",
+    "### Findings",
+    ...findingLines,
+    "",
+    "### Manual Proof",
+    "1. Inspect each listed file locally before release or merge.",
+    "2. Reproduce the result with the local CLI command below.",
+    "3. Prove changed auth, billing, data, deploy, or tests fail closed.",
+    "",
+    "### Launch Decision Queue",
     "- Can a real user get access they should not have?",
     "- Can the app claim success when something failed?",
     "- Can launch infrastructure do too much damage?",
     "",
-    "Summary:",
+    "### Scan Summary",
     ...severityOrder.map(
       (severity) => `- ${capitalize(severity)}: ${report.summaryCounts[severity] ?? 0}`
     ),
     "",
-    "Files to review first:",
-    ...(filesToReview.length === 0 ? ["- None"] : filesToReview.map((file) => `- ${file}`)),
-    "",
-    "Launch-boundary reviewer checklist:",
+    "### Reviewer Checklist",
     "- What changed at the launch boundary?",
     "- Why this auth billing data or deploy decision is safe?",
     "- What manual test proves it fails closed?",
     "",
-    "Findings:",
-    ...findingLines
+    "### Scope And Privacy",
+    "- Boundary: selected repository only; not an AI reviewer, pentest, full audit, or certification.",
+    `- Retention: compact report ${report.retentionDays} days.`,
+    "- No raw source, diffs, secrets, installation tokens, or customer payloads are included."
   ].join("\n");
 }
 
@@ -2332,7 +2334,11 @@ function truncateMarkdown(markdown: string, maxMarkdownChars?: number): string {
     return suffix.slice(0, maxChars);
   }
 
-  return `${markdown.slice(0, maxChars - suffix.length).trimEnd()}${suffix}`;
+  const availableChars = maxChars - suffix.length;
+  const candidate = markdown.slice(0, availableChars);
+  const lastLineBreak = candidate.lastIndexOf("\n");
+  const safePrefix = lastLineBreak > 0 ? candidate.slice(0, lastLineBreak) : candidate;
+  return `${safePrefix.trimEnd()}${suffix}`;
 }
 
 function severityRank(severity: string): number {
@@ -2463,8 +2469,33 @@ function getHostedCheckRunFiles(report: CompactHostedReport): string[] {
   return [...new Set(report.evidence.map((finding) => finding.file))].slice(0, 10);
 }
 
-function escapeMarkdownTableCell(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll("|", "\\|").replaceAll("\r", " ").replaceAll("\n", " ");
+function escapeHostedMarkdownInline(value: string): string {
+  return normalizeHostedMarkdownInline(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replace(/([\\`*_[\]])/g, "\\$1")
+    .replaceAll("|", "\\|");
+}
+
+function hostedMarkdownCode(value: string): string {
+  return `\`${normalizeHostedMarkdownInline(value).replaceAll("`", "'")}\``;
+}
+
+function normalizeHostedMarkdownInline(value: string): string {
+  return value
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g, "")
+    .replace(/[\r\n]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function safeHostedCliVersion(value: string): string {
+  return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value) ? value : "latest";
+}
+
+function safeHostedBaseSha(value: string): string {
+  return /^[a-f0-9]{40}$/i.test(value) ? value : "<base-sha>";
 }
 
 function capitalize(value: string): string {

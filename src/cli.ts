@@ -8,6 +8,7 @@ import { formatMarkdownReport } from "./report/markdown.js";
 import { formatSarifReport } from "./report/sarif.js";
 import { formatSummaryReport } from "./report/summary.js";
 import { formatTerminalReport } from "./report/terminal.js";
+import { isSafeGitBaseRef } from "./scanners/gitDiff.js";
 import type { BaseReport, CommandName, Severity } from "./types.js";
 
 interface ParsedArgs {
@@ -142,6 +143,9 @@ function parseArgs(argv: string[]): ParsedArgs {
     if (arg === "--base") {
       const value = argv[index + 1];
       if (!value) throw new Error("--base requires a branch or ref");
+      if (!isSafeGitBaseRef(value)) {
+        throw new Error("--base must be a safe branch or ref using letters, numbers, dots, underscores, slashes, or hyphens");
+      }
       result.base = value;
       index += 1;
       continue;

@@ -1,8 +1,32 @@
 # Codex TODO
 
-Last updated: 2026-05-27, Asia/Shanghai.
+Last updated: 2026-07-15, Asia/Shanghai.
 
 Do not start commercialization. The current work is pre-commercial evidence, feedback, and operational readiness.
+
+## P0: Review And Merge The Current Quality Branch
+
+Acceptance:
+
+- `codex/ui-quality-audit` retains the 100-dimension audit, report/UI improvements, scanner applicability fixes, and security boundary tests
+- complete local verification remains green before commit and push
+- the branch is published as a draft pull request for CI and human review
+- no npm publish, Cloudflare deploy, GitHub App installation mutation, KV deletion, or release tag occurs as part of this task
+- temporary npm cache files and local test/browser processes are removed after verification
+
+Files/modules:
+
+- `src/report/`
+- `src/stackInventory.ts`
+- `src/scanners/gitDiff.ts`
+- `src/hosted/`
+- `hosted/cloudflare-worker/`
+- `tests/`
+- `README.md`
+- `docs/README.zh-CN.md`
+- `docs/release-quality-audit-2026-07-15.md`
+
+After this pull request, return to real design-partner feedback and current provider monitoring, rollback, deletion, and incident evidence. Do not add speculative product features to fill an evidence gap.
 
 ## P0: Preserve Handoff State And Stop Business Development
 
@@ -45,26 +69,25 @@ Risks:
 - accidental deletion of hosted evidence weakens release traceability
 - accidental secret printing or committing would require immediate rotation
 
-## P1: Resolve Or Commit Documentation Handoff Changes
+## P1: Refresh Handoff After The Quality Branch Outcome
 
 Acceptance:
 
-- review `git status --short --branch`
-- decide whether to commit, update, or discard documentation-only handoff changes
+- after the draft PR is merged or closed, update the handoff with the actual branch outcome and commit or PR reference
+- keep `v0.43.3` as the latest release until an intentional later release is authorized and completed
+- keep `.local/project-handoff.md` local-only and never force-add it
 - do not revert user-owned changes without explicit approval
 
 Files/modules:
 
 - `docs/project-handoff.md`
 - `docs/CODEX_*.md`
-- `docs/public-beta-evidence-feedback.md`
-- `docs/hosted-operational-release-gate.md`
 - `.local/project-handoff.md` if local-only updates are needed
 
 Risks:
 
-- `docs/project-handoff.md` had an uncommitted update before the CODEX handoff package was generated
-- `docs/public-beta-evidence-feedback.md` and the release-gate cross-reference are documentation-only follow-up changes and should be reviewed before committing or discarding
+- a review branch is not the public source of truth until its pull request is merged
+- handoff files must not claim a Worker deploy or npm release from this branch
 - `.local/project-handoff.md` is ignored by git and should not be expected in remote clones
 
 ## P1: Collect Real Design-Partner Feedback
@@ -198,7 +221,7 @@ Acceptance:
 
 - no admin dashboard or mobile app is built unless explicitly requested
 - before beta, define operator workflows for pause, rollback, queue/failure checks, compact record deletion, and support
-- docs remain readable on mobile, but no mobile UI is required
+- docs and the hosted install page remain readable on mobile, but no separate mobile app or product UI is required
 
 Files/modules:
 

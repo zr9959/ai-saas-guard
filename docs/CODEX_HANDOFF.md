@@ -1,6 +1,6 @@
 # Codex Handoff
 
-Last updated: 2026-05-28, Asia/Shanghai.
+Last updated: 2026-07-15, Asia/Shanghai.
 
 This handoff is the source of truth for a new Codex conversation. Do not rely on the old long chat history.
 
@@ -19,12 +19,24 @@ Long-term product goal: become the launch-risk middle layer for AI-built SaaS ap
 
 ## Current True Progress
 
-Current branch: `main`.
+Public source-of-truth branch: `main`.
+
+Current review branch: `codex/ui-quality-audit`, based on current `main` commit `96ea609` after the published `v0.43.3` release and later maintenance merges. It contains report/UI quality work and has not changed the package version or deployed hosted service.
+
+Current review branch scope:
+
+- clearer terminal, summary, Markdown, and hosted Check Run layouts
+- responsive public-safe `/github/app` install/privacy page in Worker source
+- incomplete-scan, Git base-ref, delivery-ID, GitHub API destination, and output-injection hardening
+- narrower stack applicability and deterministic traversal/finding order
+- synchronized English/Chinese public examples
+- a 100-dimension audit in `docs/release-quality-audit-2026-07-15.md`
+- local verification: 220 tests passed, npm audit found 0 vulnerabilities, repository and focused self-scans found 0 findings, and dry-run packaging contained 175 expected files
 
 Latest release state:
 
 - latest release commit: `1db0253 Reduce silent-success false positives (#121)`
-- current `main` HEAD at the 2026-05-28 post-release recheck: `1db0253 Reduce silent-success false positives (#121)`
+- current local and tracked `origin/main` HEAD at the 2026-07-15 branch check: `96ea609 deps(deps): bump github/codeql-action from 4.36.0 to 4.36.2 (#128)`
 - package version: `0.43.3`
 - npm latest: `ai-saas-guard@0.43.3`
 - GitHub Release: `v0.43.3`
@@ -54,7 +66,7 @@ Current working tree note: `.local/project-handoff.md` is local-only and ignored
 
 ## User Latest Requirement
 
-The user's latest explicit request is to focus back on this project and execute the evidence/docs review plan in order. Business code should not change unless explicitly requested.
+The user's latest explicit request is to finish the in-progress interface polish and detailed multi-dimensional review, fix verified issues, verify the complete change, clean local resources, and publish the work to GitHub for review. npm publication and hosted deployment are not part of this branch.
 
 The user also previously established this strategic boundary:
 

@@ -1,20 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="title desc">
   <title id="title">ai-saas-guard demo terminal screenshot</title>
   <desc id="desc">Terminal-style screenshot showing risky and safe demo summaries.</desc>
-  <rect width="960" height="560" fill="#0b1020"/>
-  <rect x="32" y="32" width="896" height="496" rx="8" fill="#111827" stroke="#334155"/>
+  <rect width="960" height="640" fill="#0b1020"/>
+  <rect x="32" y="32" width="896" height="576" rx="8" fill="#111827" stroke="#475569"/>
   <circle cx="62" cy="58" r="7" fill="#ef4444"/>
   <circle cx="86" cy="58" r="7" fill="#f59e0b"/>
   <circle cx="110" cy="58" r="7" fill="#22c55e"/>
   <text x="48" y="104" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="22">npx ai-saas-guard@latest demo --summary</text>
-  <text x="48" y="152" fill="#93c5fd" font-family="Menlo, Consolas, monospace" font-size="20">ai-saas-guard demo summary</text>
-  <text x="48" y="190" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="18">AI-built SaaS can look ready while launch risks stay hidden.</text>
-  <text x="48" y="232" fill="#fca5a5" font-family="Menlo, Consolas, monospace" font-size="20">Risky demo: 19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info</text>
-  <text x="48" y="270" fill="#86efac" font-family="Menlo, Consolas, monospace" font-size="20">Safe demo: 0 findings</text>
-  <text x="48" y="320" fill="#fde68a" font-family="Menlo, Consolas, monospace" font-size="18">What this proves:</text>
-  <text x="72" y="356" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="17">- same SaaS surfaces, different launch-risk patterns</text>
-  <text x="72" y="388" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="17">- review auth, billing, data, deploy, CI before real users</text>
-  <text x="48" y="438" fill="#fde68a" font-family="Menlo, Consolas, monospace" font-size="18">Top risks:</text>
-  <text x="72" y="474" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="16">- CRITICAL stripe.webhook.missing-signature</text>
-  <text x="72" y="504" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="16">- CRITICAL supabase.rls.broad-policy</text>
+  <text x="48" y="150" fill="#93c5fd" font-family="Menlo, Consolas, monospace" font-size="20">ai-saas-guard | DEMO SUMMARY</text>
+  <text x="48" y="184" fill="#64748b" font-family="Menlo, Consolas, monospace" font-size="18">----------------------------------------</text>
+  <text x="48" y="220" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="17">AI-built SaaS can look ready while launch risks stay hidden.</text>
+  <text x="48" y="262" fill="#fde68a" font-family="Menlo, Consolas, monospace" font-size="17">RESULT</text>
+  <text x="48" y="298" fill="#fca5a5" font-family="Menlo, Consolas, monospace" font-size="18">Risky demo  19 findings | 2 critical | 6 high | 7 medium</text>
+  <text x="48" y="330" fill="#fca5a5" font-family="Menlo, Consolas, monospace" font-size="18">            | 3 low | 1 info</text>
+  <text x="48" y="362" fill="#86efac" font-family="Menlo, Consolas, monospace" font-size="18">Safe demo   0 findings</text>
+  <text x="48" y="408" fill="#fde68a" font-family="Menlo, Consolas, monospace" font-size="17">WHAT THIS PROVES</text>
+  <text x="72" y="442" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="16">1. Same SaaS surfaces, different launch-risk patterns</text>
+  <text x="72" y="472" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="16">2. Review auth, billing, data, deploy, and CI before users</text>
+  <text x="48" y="518" fill="#fde68a" font-family="Menlo, Consolas, monospace" font-size="17">TOP RISKS</text>
+  <text x="72" y="550" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="15">1. CRITICAL stripe.webhook.missing-signature</text>
+  <text x="72" y="580" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="15">2. CRITICAL supabase.rls.broad-policy</text>
 </svg>

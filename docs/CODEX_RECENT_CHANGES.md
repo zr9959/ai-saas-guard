@@ -1,6 +1,43 @@
 # Codex Recent Changes
 
-Last updated: 2026-05-28, Asia/Shanghai.
+Last updated: 2026-07-15, Asia/Shanghai.
+
+## 2026-07-15 Report UI, Mobile Install Page, And Quality Audit
+
+Why:
+
+- The user asked for a more polished interface and a detailed review across 100 separate quality, security, consistency, mobile, and efficiency dimensions.
+- The work needed to improve readability without widening the product into billing, pricing, customer accounts, or other commercialization features.
+
+Changed:
+
+- rebuilt terminal, summary, Markdown, and hosted Check Run presentation around a consistent launch-gate, review-first, manual-proof, and next-step hierarchy
+- replaced narrow Markdown tables with mobile-friendly vertical finding and file layouts
+- added terminal ANSI/OSC/control-character normalization, Markdown structure hardening, safe hosted reproduction values, and line-boundary truncation
+- added a responsive, script-free `/github/app` install and privacy page with selected-repository permissions, conservative product boundaries, and hardened browser headers
+- made incomplete scans return an `incomplete` launch gate instead of a misleading clear result
+- rejected malformed or option-like `pr-risk --base` refs before Git command parsing
+- pinned credential-bearing hosted GitHub API calls to `https://api.github.com` and rejected arbitrary destinations
+- validated GitHub delivery IDs before using them in KV keys
+- narrowed Supabase applicability, added nested package and deploy-config discovery, separated Svelte/SvelteKit, React Router/Remix, and MySQL/MariaDB, and made traversal/finding order deterministic
+- added `docs/release-quality-audit-2026-07-15.md` with exactly 100 reviewed dimensions
+- synchronized the English and Chinese README examples plus demo output, screenshot, sample report, and hosted Worker documentation
+
+Verification:
+
+- `npm test`: 220 passed, 0 failed
+- `npm audit --audit-level=high --registry=https://registry.npmjs.org`: 0 vulnerabilities
+- repository self-scan: 0 findings with 116 files scanned, no skipped or unreadable inputs, and Cloudflare plus GitHub Actions detected
+- focused Actions, Supabase, MCP, and Stripe scans: 0 findings
+- `demo --summary`: risky fixture 19 findings; safe fixture 0 findings
+- `npm pack --dry-run --json`: 175 files; no AppleDouble or `.DS_Store` metadata
+- Wrangler 4.110.0 `deploy --dry-run`: passed without deploying
+- browser checks at 1440x900, 390x844, and 320x568 found no horizontal overflow; primary controls remained 44px high and the next section stayed visible on mobile
+
+Not done:
+
+- no Cloudflare deploy, GitHub App installation mutation, KV deletion, npm publish, release tag, billing, pricing, paid packaging, marketplace conversion, sales funnel, or customer-account work
+- no static review result is being treated as design-partner feedback or current provider monitoring, rollback, deletion, or incident evidence
 
 ## 2026-05-28 Silent-Success False Positive Patch And v0.43.3 Release
 

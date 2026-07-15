@@ -39,7 +39,15 @@ export function sortFindings(findings: Finding[]): Finding[] {
   return [...findings].sort((a, b) => {
     const severityDelta = severities.indexOf(a.severity) - severities.indexOf(b.severity);
     if (severityDelta !== 0) return severityDelta;
-    return a.ruleId.localeCompare(b.ruleId);
+    const ruleDelta = compareText(a.ruleId, b.ruleId);
+    if (ruleDelta !== 0) return ruleDelta;
+    const fileDelta = compareText(a.evidence[0]?.file ?? "", b.evidence[0]?.file ?? "");
+    if (fileDelta !== 0) return fileDelta;
+    const lineDelta = (a.evidence[0]?.line ?? 0) - (b.evidence[0]?.line ?? 0);
+    if (lineDelta !== 0) return lineDelta;
+    const columnDelta = (a.evidence[0]?.column ?? 0) - (b.evidence[0]?.column ?? 0);
+    if (columnDelta !== 0) return columnDelta;
+    return compareText(a.title, b.title);
   });
 }
 
@@ -60,4 +68,8 @@ export function uniqueFindings(findings: Finding[]): Finding[] {
   }
 
   return result;
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }

@@ -22,6 +22,7 @@ import {
 } from "../dist/index.js";
 import { collectTextFiles, collectTextFilesWithDiagnostics } from "../dist/utils/files.js";
 import { formatMarkdownReport } from "../dist/report/markdown.js";
+import { sortFindings } from "../dist/report/findings.js";
 import { formatSummaryReport } from "../dist/report/summary.js";
 import { formatTerminalReport } from "../dist/report/terminal.js";
 
@@ -133,6 +134,45 @@ test("stack inventory detects common web SaaS tools before specialized rules run
   assert.ok(inventory.evidence.some((item) => item.tool === "sqlite" && item.file === "package.json"));
 });
 
+test("stack inventory ignores documentation examples and detects nested project signals", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stack-inventory-"));
+  await mkdir(resolve(rootDir, "docs"), { recursive: true });
+  await mkdir(resolve(rootDir, "apps", "web"), { recursive: true });
+  await mkdir(resolve(rootDir, "apps", "worker"), { recursive: true });
+  await mkdir(resolve(rootDir, "services", "site"), { recursive: true });
+  await mkdir(resolve(rootDir, "database"), { recursive: true });
+  await writeFile(
+    resolve(rootDir, "docs", "rls-guide.md"),
+    "create policy demo on public.projects using (auth.uid() = owner_id);\n"
+  );
+  await writeFile(
+    resolve(rootDir, "apps", "web", "package.json"),
+    JSON.stringify({ dependencies: { svelte: "latest", "react-router": "latest", mariadb: "latest" } })
+  );
+  await writeFile(resolve(rootDir, "apps", "web", "vercel.json"), "{}\n");
+  await writeFile(resolve(rootDir, "apps", "worker", "wrangler.jsonc"), "{}\n");
+  await writeFile(resolve(rootDir, "services", "site", "netlify.toml"), "[build]\n");
+  await writeFile(
+    resolve(rootDir, "database", "policies.sql"),
+    "alter table projects enable row level security;\ncreate policy tenant_rows on projects using (tenant_id = current_setting('app.tenant_id')::uuid);\n"
+  );
+
+  try {
+    const inventory = await detectStackInventory({ rootDir });
+
+    assert.deepEqual(inventory.frameworks, ["react-router", "svelte"]);
+    assert.deepEqual(inventory.databases, ["mariadb"]);
+    assert.deepEqual(inventory.deploy, ["cloudflare", "netlify", "vercel"]);
+    assert.equal(inventory.databases.includes("supabase"), false);
+    assert.equal(inventory.frameworks.includes("remix"), false);
+    assert.equal(inventory.frameworks.includes("sveltekit"), false);
+    assert.ok(inventory.evidence.some((item) => item.file === "apps/web/package.json"));
+    assert.ok(inventory.evidence.some((item) => item.file === "apps/worker/wrangler.jsonc"));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("text file collection can cap file count and total bytes", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-resource-cap-"));
   await writeFile(resolve(rootDir, "a.txt"), "abcd\n");
@@ -215,8 +255,11 @@ test("scan summaries expose local file collection coverage when files are skippe
   };
 
   const summary = formatSummaryReport(report);
+  const terminal = formatTerminalReport(report);
+  const markdown = formatMarkdownReport(report);
 
-  assert.match(summary, /Scan coverage:/);
+  assert.match(summary, /^Launch gate\s+incomplete:/m);
+  assert.match(summary, /^Coverage\s+/m);
   assert.match(summary, /7 files scanned/);
   assert.match(summary, /1 unreadable file/);
   assert.match(summary, /1 unreadable directory/);
@@ -224,6 +267,11 @@ test("scan summaries expose local file collection coverage when files are skippe
   assert.match(summary, /1 budget-skipped file/);
   assert.match(summary, /total byte budget reached/);
   assert.match(summary, /1 malformed package manifest/);
+  assert.match(summary, /No findings were produced, but scan coverage was incomplete/);
+  assert.match(terminal, /^Coverage\s+7 files scanned/m);
+  assert.match(terminal, /^Launch gate\s+incomplete:/m);
+  assert.match(markdown, /\*\*Coverage:\*\* 7 files scanned/);
+  assert.match(markdown, /\*\*Launch gate:\*\* incomplete:/);
 });
 
 test("scan reports malformed package inventory instead of silently skipping stack detection", async () => {
@@ -278,7 +326,7 @@ test("generic markdown report keeps attacker-controlled evidence on one escaped 
           {
             file: "src/example.ts",
             line: 12,
-            snippet: "safe text\n### injected heading | table"
+            snippet: "safe text\n### injected heading | table\r### carriage heading"
           }
         ],
         why: "why line\nwith break",
@@ -297,10 +345,39 @@ test("generic markdown report keeps attacker-controlled evidence on one escaped 
   });
 
   assert.doesNotMatch(markdown, /^### injected heading/m);
-  assert.match(markdown, /safe text ### injected heading \\| table/);
-  assert.match(markdown, /Why: why line with break/);
-  assert.match(markdown, /Verify: verify line with break/);
-  assert.match(markdown, /Fix direction: fix line with break/);
+  assert.doesNotMatch(markdown, /^### carriage heading/m);
+  assert.match(markdown, /safe text ### injected heading \\| table ### carriage heading/);
+  assert.match(markdown, /\*\*Why:\*\* why line with break/);
+  assert.match(markdown, /\*\*Verify:\*\* verify line with break/);
+  assert.match(markdown, /\*\*Fix direction:\*\* fix line with break/);
+});
+
+test("terminal reports remove control sequences from repository-controlled text", () => {
+  const terminal = formatTerminalReport({
+    command: "scan",
+    rootDir: "\u001b]8;;https://example.invalid\u0007unsafe-root\u001b]8;;\u0007",
+    generatedAt: "2026-07-11T00:00:00.000Z",
+    findings: [
+      {
+        ruleId: "test.control-sequence",
+        title: "\u001b[2JInjected title",
+        severity: "high",
+        evidence: [{ file: "src/example.ts", line: 1, snippet: "\u001b[31mred\u001b[0m\nnext line" }],
+        why: "why\nline",
+        suggestedVerification: "verify\tstep",
+        suggestedFix: "fix\rstep"
+      }
+    ],
+    summary: { critical: 0, high: 1, medium: 0, low: 0, info: 0, total: 1 }
+  });
+
+  assert.doesNotMatch(terminal, /\u001b|\u0007|\u001b\]8/);
+  assert.doesNotMatch(terminal, /https:\/\/example\.invalid/);
+  assert.match(terminal, /unsafe-root/);
+  assert.match(terminal, /red next line/);
+  assert.match(terminal, /why line/);
+  assert.match(terminal, /fix step/);
+  assert.doesNotMatch(terminal, /\r/);
 });
 
 test("reports start with a launch gate and next manual proof", () => {
@@ -336,28 +413,49 @@ test("reports start with a launch gate and next manual proof", () => {
   };
 
   const terminal = formatTerminalReport(report);
-  assert.match(terminal, /Launch gate: review required/);
-  assert.match(terminal, /Review first:/);
+  assert.match(terminal, /^Launch gate\s+review required/m);
+  assert.match(terminal, /^REVIEW FIRST$/m);
   assert.match(terminal, /HIGH stripe\.webhook\.missing-signature at app\/api\/stripe\/webhook\/route\.ts:7/);
-  assert.match(terminal, /Manual proof to run next:/);
+  assert.match(terminal, /^MANUAL PROOF$/m);
   assert.match(terminal, /Send a forged Stripe webhook/);
-  assert.match(terminal, /Next steps:/);
+  assert.match(terminal, /^NEXT STEPS$/m);
   assert.match(terminal, /Fix critical and high trust-boundary findings first/i);
 
   const markdown = formatMarkdownReport(report);
   assert.match(markdown, /\*\*Launch gate:\*\* review required/);
   assert.match(markdown, /### Review First/);
-  assert.match(markdown, /### Manual Proof To Run Next/);
+  assert.match(markdown, /### Manual Proof/);
   assert.match(markdown, /### Next Steps/);
   assert.match(markdown, /Fix critical and high trust-boundary findings first/i);
 
   const summary = formatSummaryReport(report);
-  assert.match(summary, /^ai-saas-guard scan summary/m);
-  assert.match(summary, /Launch gate: review required/);
-  assert.match(summary, /Top risks:/);
-  assert.match(summary, /Manual proof to run next:/);
-  assert.match(summary, /Next steps:/);
+  assert.match(summary, /^ai-saas-guard \| SCAN SUMMARY/m);
+  assert.match(summary, /^Launch gate\s+review required/m);
+  assert.match(summary, /^TOP RISKS$/m);
+  assert.match(summary, /^MANUAL PROOF$/m);
+  assert.match(summary, /^NEXT STEPS$/m);
   assert.doesNotMatch(summary, /Evidence:/);
+});
+
+test("finding order is deterministic within the same severity and rule", () => {
+  const base = {
+    ruleId: "secrets.detected",
+    title: "Secret-like value detected",
+    severity: "high",
+    why: "why",
+    suggestedVerification: "verify",
+    suggestedFix: "fix"
+  };
+  const sorted = sortFindings([
+    { ...base, evidence: [{ file: "z.ts", line: 1 }] },
+    { ...base, evidence: [{ file: "a.ts", line: 9 }] },
+    { ...base, evidence: [{ file: "a.ts", line: 2 }] }
+  ]);
+
+  assert.deepEqual(
+    sorted.map((finding) => `${finding.evidence[0].file}:${finding.evidence[0].line}`),
+    ["a.ts:2", "a.ts:9", "z.ts:1"]
+  );
 });
 
 test("markdown reports explain the launch decision queue and trust model", () => {
@@ -420,8 +518,8 @@ test("markdown reports explain the launch decision queue and trust model", () =>
   assert.match(markdown, /local-first, deterministic, read-only/i);
   assert.match(markdown, /does not upload code or call an LLM/i);
 
-  assert.match(summary, /Decision queue:/);
-  assert.match(summary, /Review trust-boundary findings before deploy\/cost hygiene/i);
+  assert.match(summary, /^Decision\s+Can a real user get access they should not have/m);
+  assert.match(summary, /^TOP RISKS$/m);
 });
 
 test("rule catalog contains metadata for every published rule", () => {
@@ -1016,6 +1114,26 @@ test("pr-risk explains missing base refs instead of silently reporting no diff",
   assert.ok(!findingRuleIds(report).includes("pr-risk.no-diff"));
 });
 
+test("pr-risk rejects option-like base refs before git command parsing", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-unsafe-base-"));
+  const unexpectedOutput = resolve(rootDir, "owned...HEAD");
+
+  try {
+    const report = await classifyPrRisk({ rootDir, base: "--output=owned" });
+    const finding = report.findings.find((candidate) => candidate.ruleId === "pr-risk.diff-unavailable");
+    assert.ok(finding);
+    assert.match(finding.title, /invalid base ref/i);
+    assert.doesNotMatch(JSON.stringify(finding), /--output=owned/);
+
+    const cli = await runCli(["pr-risk", "--root", rootDir, "--base", "--output=owned"]);
+    assert.equal(cli.code, 1);
+    assert.match(cli.stderr, /--base must be a safe branch or ref/i);
+    await assert.rejects(readFile(unexpectedOutput, "utf8"));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("pr-risk falls back to a direct base diff when histories have no merge base", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-no-merge-base-"));
 
@@ -1054,7 +1172,10 @@ test("npm package excludes macOS AppleDouble metadata files", async () => {
   await writeFile(appleDoubleFile, "macOS metadata should never ship\n");
 
   try {
-    const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json"], { cwd: packageRoot });
+    const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json"], {
+      cwd: packageRoot,
+      env: { ...process.env, npm_config_cache: resolve(tmpdir(), "ai-saas-guard-npm-cache") }
+    });
     const [pack] = JSON.parse(stdout);
     const packedPaths = pack.files.map((file) => file.path);
     const npmIgnore = await readFile(resolve(packageRoot, ".npmignore"), "utf8");
@@ -1175,17 +1296,17 @@ test("CLI can emit a PR-focused markdown summary for pr-risk", async () => {
     "--markdown"
   ]);
 
-  assert.match(stdout, /^## ai-saas-guard PR risk summary/m);
-  assert.match(stdout, /### Review first/m);
+  assert.match(stdout, /^## ai-saas-guard - PR Risk Review/m);
+  assert.match(stdout, /### Review First/m);
   assert.match(stdout, /app\/api\/stripe\/webhook\/route\.ts/);
   assert.match(stdout, /billing\/subscription/);
-  assert.match(stdout, /### Required verification/m);
-  assert.match(stdout, /### Reviewer checklist/m);
+  assert.match(stdout, /### Manual Proof/m);
+  assert.match(stdout, /### Reviewer Checklist/m);
   assert.match(stdout, /What changed at the trust boundary/i);
   assert.match(stdout, /What manual proof should block merge/i);
-  assert.match(stdout, /### Why this review order/m);
-  assert.match(stdout, /trust-boundary files before cosmetic files/i);
-  assert.match(stdout, /### Suggested PR split/m);
+  assert.match(stdout, /### Why This Review Order/m);
+  assert.match(stdout, /Trust-boundary files come before cosmetic files/i);
+  assert.match(stdout, /### Suggested PR Split/m);
   assert.doesNotMatch(stdout, /LGTM|ship it|looks good/i);
 });
 
@@ -1223,10 +1344,10 @@ test("CLI supports Supabase doctor, MCP policy template, and Actions hygiene com
 test("CLI demo shows packaged risky and safe examples without a target repo", async () => {
   const terminal = await runCli(["demo"]);
   assert.equal(terminal.code, 0);
-  assert.match(terminal.stdout, /ai-saas-guard demo/i);
+  assert.match(terminal.stdout, /^ai-saas-guard \| DEMO/m);
   assert.match(terminal.stdout, /AI-built SaaS can look ready while launch risks stay hidden/i);
   assert.match(terminal.stdout, /Risky demo/i);
-  assert.match(terminal.stdout, /19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info/i);
+  assert.match(terminal.stdout, /19 findings \| 2 critical \| 6 high \| 7 medium \| 3 low \| 1 info/i);
   assert.match(terminal.stdout, /Safe demo/i);
   assert.match(terminal.stdout, /0 findings/i);
   assert.match(terminal.stdout, /What this proves/i);
@@ -1245,14 +1366,14 @@ test("CLI demo shows packaged risky and safe examples without a target repo", as
 
   const summary = await runCli(["demo", "--summary"]);
   assert.equal(summary.code, 0);
-  assert.match(summary.stdout, /^ai-saas-guard demo summary/m);
+  assert.match(summary.stdout, /^ai-saas-guard \| DEMO SUMMARY/m);
   assert.match(summary.stdout, /AI-built SaaS can look ready while launch risks stay hidden/i);
-  assert.match(summary.stdout, /Risky demo: 19 findings/i);
-  assert.match(summary.stdout, /Safe demo: 0 findings/i);
-  assert.match(summary.stdout, /What this proves:/);
+  assert.match(summary.stdout, /^Risky demo\s+19 findings/im);
+  assert.match(summary.stdout, /^Safe demo\s+0 findings/im);
+  assert.match(summary.stdout, /^WHAT THIS PROVES$/m);
   assert.match(summary.stdout, /same SaaS surfaces/i);
-  assert.match(summary.stdout, /Top risks:/);
-  assert.match(summary.stdout, /Manual proof to run next:/);
+  assert.match(summary.stdout, /^TOP RISKS$/m);
+  assert.match(summary.stdout, /^MANUAL PROOF$/m);
   assert.doesNotMatch(summary.stdout, /Evidence:/);
 });
 
@@ -1265,14 +1386,23 @@ test("CLI summary output keeps the first run focused on top risks", async () => 
   ]);
 
   assert.equal(summary.code, 0);
-  assert.match(summary.stdout, /^ai-saas-guard scan summary/m);
-  assert.match(summary.stdout, /Launch gate:/);
-  assert.match(summary.stdout, /Top risks:/);
-  assert.match(summary.stdout, /Manual proof to run next:/);
-  assert.match(summary.stdout, /Next steps:/);
-  assert.match(summary.stdout, /Full report:/);
+  assert.match(summary.stdout, /^ai-saas-guard \| SCAN SUMMARY/m);
+  assert.match(summary.stdout, /^Launch gate\s+/m);
+  assert.match(summary.stdout, /^TOP RISKS$/m);
+  assert.match(summary.stdout, /^MANUAL PROOF$/m);
+  assert.match(summary.stdout, /^NEXT STEPS$/m);
+  assert.match(summary.stdout, /^FULL REPORT$/m);
   assert.doesNotMatch(summary.stdout, /^4\./m);
   assert.doesNotMatch(summary.stdout, /Evidence:/);
+});
+
+test("CLI fails instead of reporting a clear gate for an unreadable scan root", async () => {
+  const missingRoot = resolve(tmpdir(), `ai-saas-guard-missing-${Date.now()}`);
+  const result = await runCli(["scan", "--root", missingRoot, "--summary"]);
+
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /Could not read scan root/);
+  assert.doesNotMatch(result.stdout, /clear from current heuristics/i);
 });
 
 test("CLI --fail-on exits non-zero only because findings meet the threshold", async () => {
@@ -1285,7 +1415,7 @@ test("CLI --fail-on exits non-zero only because findings meet the threshold", as
   ]);
 
   assert.equal(result.code, 1);
-  assert.match(result.stdout, /ai-saas-guard scan/);
+  assert.match(result.stdout, /^ai-saas-guard \| SCAN/m);
   assert.match(result.stderr, /Failing because findings met --fail-on high/);
   assert.doesNotMatch(result.stderr, /Unknown argument/);
 });
@@ -1337,7 +1467,7 @@ test("CLI applies checked-in rule config to JSON, SARIF, and terminal output", a
 
     const terminalResult = await runCli(["check-stripe", "--root", rootDir]);
     assert.equal(terminalResult.code, 0);
-    assert.match(terminalResult.stdout, /\[LOW\] Stripe webhook lacks obvious duplicate event idempotency/);
+    assert.match(terminalResult.stdout, /\[1\/1\] LOW \| Stripe webhook lacks obvious duplicate event idempotency/);
     assert.doesNotMatch(terminalResult.stdout, /missing-signature|missing-critical-event/);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
@@ -1588,12 +1718,12 @@ test("public docs include a copy-paste sample launch report", async () => {
 
   assert.match(readme, /docs\/sample-launch-report\.md/);
   assert.match(zhReadme, /sample-launch-report\.md/);
-  assert.match(sampleReport, /ai-saas-guard scan summary/);
-  assert.match(sampleReport, /Top risks:/);
-  assert.match(sampleReport, /Manual proof to run next:/);
-  assert.match(sampleReport, /Rule: auth\.clerk\.unsafe-metadata/);
-  assert.match(sampleReport, /Rule: data\.prisma\.tenant-scope-missing/);
-  assert.match(sampleReport, /Rule: deploy\.vercel\.cron-missing-guard/);
+  assert.match(sampleReport, /ai-saas-guard \| SCAN SUMMARY/);
+  assert.match(sampleReport, /^TOP RISKS$/m);
+  assert.match(sampleReport, /^MANUAL PROOF$/m);
+  assert.match(sampleReport, /Rule\s+auth\.clerk\.unsafe-metadata/);
+  assert.match(sampleReport, /Rule\s+data\.prisma\.tenant-scope-missing/);
+  assert.match(sampleReport, /Rule\s+deploy\.vercel\.cron-missing-guard/);
   assert.doesNotMatch(sampleReport, /full audit|certification|pentest/i);
 });
 
@@ -1919,11 +2049,11 @@ test("README first screen leads with buyer pain, demo output, and product bounda
   assert.match(zhReadme, /docs\/demo-terminal-output\.txt/);
   assert.match(zhReadme, /docs\/demo-terminal-screenshot\.svg/);
   assert.match(zhReadme, /和替代方案的区别/);
-  assert.match(demoOutput, /ai-saas-guard demo --summary/i);
-  assert.match(demoOutput, /Risky demo: 19 findings/i);
-  assert.match(demoOutput, /Safe demo: 0 findings/i);
-  assert.match(demoScreenshot, /Risky demo: 19 findings/i);
-  assert.match(demoScreenshot, /Safe demo: 0 findings/i);
+  assert.match(demoOutput, /ai-saas-guard@latest demo --summary/i);
+  assert.match(demoOutput, /^Risky demo\s+19 findings/im);
+  assert.match(demoOutput, /^Safe demo\s+0 findings/im);
+  assert.match(demoScreenshot, /Risky demo\s+19 findings/i);
+  assert.match(demoScreenshot, /Safe demo\s+0 findings/i);
   assert.match(coldStartReview, /30-second GitHub cold-start/i);
   assert.match(coldStartReview, /Does the first screen explain the painful problem/i);
   assert.doesNotMatch(readme, /certified secure|full audit|pentest replacement/i);
