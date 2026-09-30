@@ -22,6 +22,7 @@ import {
 } from "../dist/index.js";
 import { collectTextFiles, collectTextFilesWithDiagnostics } from "../dist/utils/files.js";
 import { formatMarkdownReport } from "../dist/report/markdown.js";
+import { formatCommentReport } from "../dist/report/comment.js";
 import { formatSummaryReport } from "../dist/report/summary.js";
 import { formatTerminalReport } from "../dist/report/terminal.js";
 
@@ -1040,6 +1041,23 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
 
   assert.ok(report.categories.includes("auth/session"));
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
+});
+
+test("pr-risk comment format renders a paste-ready PR review queue", async () => {
+  const diffText = await readFile(resolve(fixtureRoot, "risky-pr.diff"), "utf8");
+  const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
+  const comment = formatCommentReport(report);
+
+  assert.ok(comment.includes("## \u{1F6E1}\uFE0F ai-saas-guard PR risk"));
+  assert.ok(comment.includes("**Verdict:**"));
+  assert.ok(comment.includes("This PR touches:"));
+  assert.ok(comment.includes("Review these"));
+  assert.ok(comment.includes("first"));
+  const topFile = report.topRiskyFiles[0]?.path;
+  if (topFile) assert.ok(comment.includes(topFile));
+  assert.ok(comment.includes("Verify before merge"));
+  assert.ok(comment.includes("read-only"));
+  assert.ok(!comment.includes("undefined"));
 });
 
 test("pr-risk avoids auth and billing false positives in workflow hardening diffs", async () => {

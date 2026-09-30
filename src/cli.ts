@@ -3,6 +3,7 @@
 import { resolve } from "node:path";
 import { applyGuardConfig, loadGuardConfig } from "./config.js";
 import { checkActions, checkMcp, checkStripe, checkSupabase, classifyPrRisk, runShowcase, scanRepository } from "./index.js";
+import { formatCommentReport } from "./report/comment.js";
 import { formatJsonReport } from "./report/json.js";
 import { formatMarkdownReport } from "./report/markdown.js";
 import { formatSarifReport } from "./report/sarif.js";
@@ -13,7 +14,7 @@ import type { BaseReport, CommandName, Severity } from "./types.js";
 interface ParsedArgs {
   command?: CommandName | "help";
   rootDir: string;
-  format: "terminal" | "json" | "sarif" | "markdown" | "summary";
+  format: "terminal" | "json" | "sarif" | "markdown" | "summary" | "comment";
   base?: string;
   failOn?: Severity | "none";
   configPath?: string;
@@ -110,8 +111,8 @@ function parseArgs(argv: string[]): ParsedArgs {
 
     if (arg === "--format") {
       const value = argv[index + 1];
-      if (value !== "terminal" && value !== "json" && value !== "sarif" && value !== "markdown" && value !== "summary") {
-        throw new Error("--format requires terminal, json, sarif, markdown, or summary");
+      if (value !== "terminal" && value !== "json" && value !== "sarif" && value !== "markdown" && value !== "summary" && value !== "comment") {
+        throw new Error("--format requires terminal, json, sarif, markdown, summary, or comment");
       }
       result.format = value;
       index += 1;
@@ -182,6 +183,7 @@ function formatReport(report: BaseReport, format: ParsedArgs["format"]): string 
   if (format === "sarif") return formatSarifReport(report);
   if (format === "markdown") return formatMarkdownReport(report);
   if (format === "summary") return `${formatSummaryReport(report)}\n`;
+  if (format === "comment") return `${formatCommentReport(report)}\n`;
   return `${formatTerminalReport(report)}\n`;
 }
 
@@ -217,7 +219,7 @@ Usage:
   ai-saas-guard check-stripe [--root <repo>] [--config <file>] [--json|--sarif|--summary] [--fail-on <severity>]
   ai-saas-guard check-mcp [--root <repo>] [--config <file>] [--policy-template] [--json|--sarif|--summary] [--fail-on <severity>]
   ai-saas-guard check-actions [--root <repo>] [--config <file>] [--json|--sarif|--summary] [--fail-on <severity>]
-  ai-saas-guard pr-risk [--root <repo>] [--config <file>] [--base <branch>] [--json|--sarif|--markdown|--summary] [--fail-on <severity>]
+  ai-saas-guard pr-risk [--root <repo>] [--config <file>] [--base <branch>] [--json|--sarif|--markdown|--summary|--format comment] [--fail-on <severity>]
 
 Defaults:
   - read-only
@@ -227,6 +229,7 @@ Defaults:
   - terminal output by default, JSON with --json
   - SARIF output for GitHub code scanning with --sarif
   - PR-focused markdown summary with --markdown
+  - PR-comment-ready markdown with pr-risk --format comment (paste into a review)
   - first-run launch summary with --summary
   - project config auto-loaded from .ai-saas-guard.json when present
   - --doctor is deprecated: the Supabase RLS doctor section is always included in check-supabase output; the flag is still accepted but has no effect
