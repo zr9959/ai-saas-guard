@@ -4,7 +4,7 @@ import { resolveScanContext } from "../context.js";
 import { createReport, finding, uniqueFindings } from "../report/findings.js";
 import { lineAt, lineNumberForIndex } from "../utils/files.js";
 
-const broadPermissionPattern = /^\s*(contents|pull-requests|actions|id-token|deployments|checks|packages):\s*write\b/gim;
+const broadPermissionPattern = /^[ \t]*(contents|pull-requests|actions|id-token|deployments|checks|packages|security-events):[ \t]*write\b/gim;
 const unpinnedActionPattern = /^\s*-\s*uses:\s*([^@\s]+)@([^\s#]+).*$/gim;
 
 export async function checkActions(input: ScanInput): Promise<ActionsReport> {
@@ -191,7 +191,19 @@ function findBroadPermission(content: string): { permission: string; line?: numb
   broadPermissionPattern.lastIndex = 0;
   const match = broadPermissionPattern.exec(content);
   broadPermissionPattern.lastIndex = 0;
-  if (!match) return undefined;
+  if (!match) {
+    // `permissions: write-all` grants every permission at once; it is the
+    // broadest possible grant, but the explicit-permission pattern above
+    // never matches it.
+    const writeAll = /^[ \t]*permissions[ \t]*:[ \t]*write-all\b/im.exec(content);
+    if (!writeAll) return undefined;
+    const line = lineNumberForIndex(content, writeAll.index);
+    return {
+      permission: "write-all",
+      line,
+      snippet: lineAt(content, line)
+    };
+  }
   const line = lineNumberForIndex(content, match.index);
   return {
     permission: match[1],

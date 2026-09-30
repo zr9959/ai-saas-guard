@@ -28,7 +28,7 @@ The risky demo intentionally includes unsigned Stripe webhook handling, a silent
 Expected summary:
 
 ```text
-19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info
+20 findings: 2 critical, 6 high, 8 medium, 3 low, 1 info
 ```
 
 The first findings should point at trust-boundary files such as:

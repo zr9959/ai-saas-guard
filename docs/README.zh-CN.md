@@ -107,7 +107,7 @@ npx ai-saas-guard@latest pr-risk --root /path/to/your-saas --base origin/main --
 npx ai-saas-guard@latest demo --summary
 ```
 
-demo 命令使用包内公开 fixture：`examples/demo-risky-saas` 当前会故意触发 19 个 finding，覆盖 Stripe、Supabase、silent-success、Next/Vercel deploy 提示和 GitHub Actions；`examples/demo-safe-saas` 在同类风险面上使用更安全的静态写法，当前返回 0 个 finding。去掉 `--summary` 可看完整报告；想本地查看 fixture 文件时再看 [demo-quickstart.md](demo-quickstart.md)。
+demo 命令使用包内公开 fixture：`examples/demo-risky-saas` 当前会故意触发 20 个 finding，覆盖 Stripe、Supabase、silent-success、Next/Vercel deploy 提示和 GitHub Actions；`examples/demo-safe-saas` 在同类风险面上使用更安全的静态写法，当前返回 0 个 finding。去掉 `--summary` 可看完整报告；想本地查看 fixture 文件时再看 [demo-quickstart.md](demo-quickstart.md)。
 
 ## 输出长什么样
 
@@ -115,7 +115,7 @@ demo 命令使用包内公开 fixture：`examples/demo-risky-saas` 当前会故�
 
 ```text
 ai-saas-guard scan summary
-Findings: 19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info
+Findings: 20 findings: 2 critical, 6 high, 8 medium, 3 low, 1 info
 Launch gate: blocked: critical launch-readiness findings need review before inviting users
 
 Top risks:

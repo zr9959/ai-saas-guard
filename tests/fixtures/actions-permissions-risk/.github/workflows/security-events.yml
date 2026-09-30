@@ -1,0 +1,14 @@
+name: Risky security-events CI
+
+on:
+  pull_request:
+
+permissions:
+  security-events: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: npm test

@@ -62,7 +62,7 @@ function scanSwallowedErrors(filePath: string, content: string): Finding[] {
     }
   }
 
-  for (const match of content.matchAll(/\.catch\s*\([^)]*=>\s*(?:\(\s*)?(?:\{\s*\}|\[\s*\]|null|true|\{\s*(?:success|ok)\s*:\s*true)/gi)) {
+  for (const match of content.matchAll(/\.catch\s*\(\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*(?:\(\s*)?(?:\{\s*\}|\[\s*\]|null|true|\{\s*(?:success|ok)\s*:\s*true)/gi)) {
     const line = lineNumberForIndex(content, match.index ?? 0);
     findings.push(
       finding({

@@ -50,6 +50,7 @@ const expectedRuleIds = [
   "actions.secrets-missing-failfast",
   "actions.unpinned-action",
   "api.route.auth-without-ownership",
+  "api.route.cors-wildcard",
   "api.route.missing-rate-limit",
   "api.route.provider-debug-exposed",
   "auth.clerk.unsafe-metadata",
@@ -579,6 +580,33 @@ test("Supabase scanner accepts scoped storage object policies", async () => {
   assert.deepEqual(report.findings, []);
 });
 
+test("Supabase scanner flags schema-qualified public.storage.objects policies", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "schema-qualified-storage-supabase")
+  });
+  const storageFindings = report.findings.filter(
+    (finding) => finding.ruleId === "supabase.storage.public-bucket"
+  );
+
+  assert.ok(storageFindings.length >= 1);
+  assert.ok(storageFindings.some((finding) => finding.evidence[0]?.file.endsWith("001_storage.sql")));
+});
+
+test("Supabase scanner tolerates schema-prefix mismatch between CREATE TABLE and ENABLE RLS", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "rls-schema-mismatch-supabase")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "supabase.rls.not-enabled"),
+    []
+  );
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "supabase.rls.enabled-no-policy"),
+    []
+  );
+});
+
 test("Supabase scanner ignores generic SQL schemas when no Supabase context exists", async () => {
   const report = await checkSupabase({
     rootDir: resolve(fixtureRoot, "sqlite-express-schema")
@@ -624,6 +652,34 @@ test("API scanner does not call admin-only provider configuration probes public"
   );
 });
 
+test("API scanner flags wildcard CORS origins on API routes and middleware", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "cors-wildcard-risk")
+  });
+  const corsFindings = report.findings.filter(
+    (finding) => finding.ruleId === "api.route.cors-wildcard"
+  );
+
+  assert.equal(corsFindings.length, 2);
+  assert.ok(corsFindings.some((finding) => finding.evidence[0]?.file.endsWith("app/api/profile/route.ts")));
+  assert.ok(corsFindings.some((finding) => finding.evidence[0]?.file.endsWith("middleware.ts")));
+  assert.ok(corsFindings.every((finding) => finding.severity === "medium"));
+  assert.ok(
+    corsFindings.every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix)
+  );
+});
+
+test("API scanner accepts allowlisted CORS origins", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "cors-wildcard-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "api.route.cors-wildcard"),
+    []
+  );
+});
+
 test("API route ownership heuristic accepts public content internal proxy and scope-token routes", async () => {
   const report = await scanRepository({
     rootDir: resolve(fixtureRoot, "route-classification-safe")
@@ -665,6 +721,15 @@ test("silent-success guard flags fake success, mock data, bypasses, and weakened
   assert.match(
     report.findings.find((finding) => finding.ruleId === "silent-success.swallowed-error")?.suggestedFix ?? "",
     /request id.*4xx\/5xx.*do not grant entitlement/is
+  );
+  assert.ok(
+    report.findings.some(
+      (finding) =>
+        finding.ruleId === "silent-success.swallowed-error" &&
+        finding.evidence[0]?.file.endsWith("refund/route.ts") &&
+        finding.evidence[0]?.snippet.includes(".catch((err) => null)")
+    ),
+    "expected .catch((err) => null) with parenthesized arrow args to be flagged"
   );
 });
 
@@ -866,6 +931,22 @@ test("GitHub Actions hygiene check accepts bounded PR workflows", async () => {
   });
 
   assert.deepEqual(report.findings, []);
+});
+
+test("GitHub Actions check flags write-all and security-events:write permissions", async () => {
+  const report = await checkActions({
+    rootDir: resolve(fixtureRoot, "actions-permissions-risk")
+  });
+  const broadFindings = report.findings.filter(
+    (finding) => finding.ruleId === "actions.permissions.too-broad"
+  );
+
+  assert.equal(broadFindings.length, 2);
+  assert.ok(broadFindings.some((finding) => finding.evidence[0]?.snippet.includes("write-all")));
+  assert.ok(broadFindings.some((finding) => finding.evidence[0]?.snippet.includes("security-events")));
+  assert.ok(
+    broadFindings.every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix)
+  );
 });
 
 test("GitHub Actions hygiene accepts expression-based PR concurrency cancellation", async () => {
@@ -1226,7 +1307,7 @@ test("CLI demo shows packaged risky and safe examples without a target repo", as
   assert.match(terminal.stdout, /ai-saas-guard demo/i);
   assert.match(terminal.stdout, /AI-built SaaS can look ready while launch risks stay hidden/i);
   assert.match(terminal.stdout, /Risky demo/i);
-  assert.match(terminal.stdout, /19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info/i);
+  assert.match(terminal.stdout, /20 findings: 2 critical, 6 high, 8 medium, 3 low, 1 info/i);
   assert.match(terminal.stdout, /Safe demo/i);
   assert.match(terminal.stdout, /0 findings/i);
   assert.match(terminal.stdout, /What this proves/i);
@@ -1238,8 +1319,8 @@ test("CLI demo shows packaged risky and safe examples without a target repo", as
   assert.equal(json.code, 0);
   const report = JSON.parse(json.stdout);
   assert.equal(report.command, "demo");
-  assert.equal(report.summary.total, 19);
-  assert.equal(report.demos.risky.summary.total, 19);
+  assert.equal(report.summary.total, 20);
+  assert.equal(report.demos.risky.summary.total, 20);
   assert.equal(report.demos.safe.summary.total, 0);
   assert.ok(report.demos.risky.findings.some((finding) => finding.ruleId === "stripe.webhook.missing-signature"));
 
@@ -1247,7 +1328,7 @@ test("CLI demo shows packaged risky and safe examples without a target repo", as
   assert.equal(summary.code, 0);
   assert.match(summary.stdout, /^ai-saas-guard demo summary/m);
   assert.match(summary.stdout, /AI-built SaaS can look ready while launch risks stay hidden/i);
-  assert.match(summary.stdout, /Risky demo: 19 findings/i);
+  assert.match(summary.stdout, /Risky demo: 20 findings/i);
   assert.match(summary.stdout, /Safe demo: 0 findings/i);
   assert.match(summary.stdout, /What this proves:/);
   assert.match(summary.stdout, /same SaaS surfaces/i);
@@ -1920,9 +2001,9 @@ test("README first screen leads with buyer pain, demo output, and product bounda
   assert.match(zhReadme, /docs\/demo-terminal-screenshot\.svg/);
   assert.match(zhReadme, /和替代方案的区别/);
   assert.match(demoOutput, /ai-saas-guard demo --summary/i);
-  assert.match(demoOutput, /Risky demo: 19 findings/i);
+  assert.match(demoOutput, /Risky demo: 20 findings/i);
   assert.match(demoOutput, /Safe demo: 0 findings/i);
-  assert.match(demoScreenshot, /Risky demo: 19 findings/i);
+  assert.match(demoScreenshot, /Risky demo: 20 findings/i);
   assert.match(demoScreenshot, /Safe demo: 0 findings/i);
   assert.match(coldStartReview, /30-second GitHub cold-start/i);
   assert.match(coldStartReview, /Does the first screen explain the painful problem/i);

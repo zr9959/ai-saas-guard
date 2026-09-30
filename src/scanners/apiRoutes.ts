@@ -13,7 +13,9 @@ const providerCredentialProbePattern =
   /(client_credentials|oauth2\/token|access_token|PAYPAL_SECRET|PAYPAL_CLIENT_SECRET|STRIPE_SECRET|GITHUB_APP_PRIVATE_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|SENDGRID_API_KEY|RESEND_API_KEY)/i;
 
 export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
-  const files = (await resolveScanContext(input)).getFiles((file) => isApiRoute(file.path));
+  const files = (await resolveScanContext(input)).getFiles(
+    (file) => isApiRoute(file.path) || /(^|\/)middleware\.[cm]?[jt]sx?$/i.test(file.path)
+  );
   const findings: Finding[] = [];
 
   for (const file of files) {
@@ -23,6 +25,7 @@ export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
     findings.push(...scanClerkUnsafeMetadata(file.path, file.content));
     findings.push(...scanPrismaTenantScope(file.path, file.content));
     findings.push(...scanProviderDebugEndpoint(file.path, file.content));
+    findings.push(...scanCorsWildcard(file.path, file.content));
 
     if (isSensitive && hasPostOrMutation && !rateLimitPattern.test(file.content)) {
       findings.push(
@@ -64,6 +67,31 @@ export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
   }
 
   return uniqueFindings(findings);
+}
+
+function scanCorsWildcard(filePath: string, content: string): Finding[] {
+  // AI-generated code often sets Access-Control-Allow-Origin: * to make local
+  // frontend development work; left in place it lets any site read responses
+  // from this API, which is dangerous on cookie-authenticated or mutating routes.
+  const headerPattern = /Access-Control-Allow-Origin\s*["']?\s*[:,]\s*["']?\s*\*/i;
+  const corsConfigPattern = /\bcors\b[\s\S]{0,400}\borigin\s*:\s*["']\*["']/i;
+  const match = headerPattern.exec(content) ?? corsConfigPattern.exec(content);
+  if (!match) return [];
+
+  const line = lineNumberForIndex(content, match.index ?? 0);
+  return [
+    finding({
+      ruleId: "api.route.cors-wildcard",
+      title: `CORS allows any origin (*) on ${filePath}`,
+      severity: "medium",
+      evidence: [{ file: filePath, line, snippet: lineAt(content, line) }],
+      why: "A wildcard CORS origin lets any website read responses from this API. Combined with cookie auth or credentialed requests, it can turn a session-riding attack into cross-origin data theft.",
+      suggestedVerification:
+        "Call the route from an untrusted origin in staging and confirm whether cookies or authorization headers are honored; if they are, the wildcard must go before launch.",
+      suggestedFix:
+        "Replace `*` with the exact production frontend origin(s), keep the allowlist in an environment variable, and avoid `Access-Control-Allow-Credentials: true` with a wildcard origin."
+    })
+  ];
 }
 
 function scanProviderDebugEndpoint(filePath: string, content: string): Finding[] {

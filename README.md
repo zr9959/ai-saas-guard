@@ -112,7 +112,7 @@ Want to see the report before scanning your own repo?
 npx ai-saas-guard@latest demo --summary
 ```
 
-The demo command uses packaged public fixtures: `examples/demo-risky-saas` currently returns 19 intentional findings across Stripe, Supabase, silent-success paths, Next/Vercel deploy hints, and GitHub Actions; `examples/demo-safe-saas` returns 0 findings for the same broad surfaces with safer static patterns. Rerun `demo` without `--summary` for the full human-readable report, or see [docs/demo-quickstart.md](docs/demo-quickstart.md) if you want to inspect the fixture files locally.
+The demo command uses packaged public fixtures: `examples/demo-risky-saas` currently returns 20 intentional findings across Stripe, Supabase, silent-success paths, Next/Vercel deploy hints, and GitHub Actions; `examples/demo-safe-saas` returns 0 findings for the same broad surfaces with safer static patterns. Rerun `demo` without `--summary` for the full human-readable report, or see [docs/demo-quickstart.md](docs/demo-quickstart.md) if you want to inspect the fixture files locally.
 
 ## See The Output
 
@@ -120,7 +120,7 @@ The report is designed to be read before launch or before merging an AI-heavy PR
 
 ```text
 ai-saas-guard scan summary
-Findings: 19 findings: 2 critical, 6 high, 7 medium, 3 low, 1 info
+Findings: 20 findings: 2 critical, 6 high, 8 medium, 3 low, 1 info
 Launch gate: blocked: critical launch-readiness findings need review before inviting users
 
 Top risks:
