@@ -540,7 +540,10 @@ function isScopedOwnershipPredicate(predicate: string): boolean {
 }
 
 function isStorageObjectsTable(tableName: string): boolean {
-  return tableName === "storage.objects";
+  // Migrations almost always reference the table as public.storage.objects
+  // (normalizeSqlIdentifier keeps the schema prefix), so match the suffix
+  // instead of the bare table name.
+  return /(^|\.)storage\.objects$/.test(tableName);
 }
 
 function isUnscopedStoragePredicate(predicate: string): boolean {
