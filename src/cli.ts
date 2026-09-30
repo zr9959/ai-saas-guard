@@ -41,6 +41,9 @@ async function main(argv: string[]): Promise<number> {
       report = await scanRepository({ rootDir: args.rootDir });
       break;
     case "check-supabase":
+      if (args.doctor) {
+        process.stderr.write("Note: --doctor is deprecated; the Supabase RLS doctor section is always included.\n");
+      }
       report = await checkSupabase({ rootDir: args.rootDir, doctor: args.doctor });
       break;
     case "check-stripe":
@@ -210,7 +213,7 @@ Repo-local launch-readiness scanner for AI-built SaaS apps.
 Usage:
   ai-saas-guard scan [--root <repo>] [--config <file>] [--json|--sarif|--summary] [--fail-on <severity>]
   ai-saas-guard demo [--json|--markdown|--summary]
-  ai-saas-guard check-supabase [--root <repo>] [--config <file>] [--doctor] [--json|--sarif|--summary] [--fail-on <severity>]
+  ai-saas-guard check-supabase [--root <repo>] [--config <file>] [--json|--sarif|--summary] [--fail-on <severity>]
   ai-saas-guard check-stripe [--root <repo>] [--config <file>] [--json|--sarif|--summary] [--fail-on <severity>]
   ai-saas-guard check-mcp [--root <repo>] [--config <file>] [--policy-template] [--json|--sarif|--summary] [--fail-on <severity>]
   ai-saas-guard check-actions [--root <repo>] [--config <file>] [--json|--sarif|--summary] [--fail-on <severity>]
@@ -226,6 +229,7 @@ Defaults:
   - PR-focused markdown summary with --markdown
   - first-run launch summary with --summary
   - project config auto-loaded from .ai-saas-guard.json when present
+  - --doctor is deprecated: the Supabase RLS doctor section is always included in check-supabase output; the flag is still accepted but has no effect
 `;
 }
 
