@@ -66,7 +66,12 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
     }
 
     for (const match of file.content.matchAll(/alter\s+table\s+([a-zA-Z0-9_."]+)\s+enable\s+row\s+level\s+security/gi)) {
-      rlsEnabledTables.add(normalizeSqlIdentifier(match[1]));
+      // Migrations mix qualified (public.accounts) and unqualified (accounts)
+      // references to the same table; register both so the enable check lines
+      // up with CREATE TABLE regardless of which form each statement uses.
+      for (const variant of tableNameVariants(normalizeSqlIdentifier(match[1]))) {
+        rlsEnabledTables.add(variant);
+      }
     }
 
     for (const policy of parsePolicies(file.content)) {
@@ -179,7 +184,7 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
       );
     }
 
-    if (!rlsEnabledTables.has(table.name)) {
+    if (!isRlsEnabled(rlsEnabledTables, table.name)) {
       findings.push(
         finding({
           ruleId: "supabase.rls.not-enabled",
@@ -199,7 +204,7 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
   findings.push(...buildDoctorFindings(files, tables, rlsEnabledTables, policies));
 
   return createReport<SupabaseReport>("check-supabase", context.rootDir, uniqueFindings(findings), {
-    riskyTables: [...new Set(tables.filter((table) => table.sensitive && !rlsEnabledTables.has(table.name)).map((table) => table.name))],
+    riskyTables: [...new Set(tables.filter((table) => table.sensitive && !isRlsEnabled(rlsEnabledTables, table.name)).map((table) => table.name))],
     riskyPolicies,
     manualAuthorizationTest: [
       "Create User A and User B in the same environment.",
@@ -230,16 +235,20 @@ function buildDoctorFindings(
   const findings: Finding[] = [];
   const policiesByTable = new Map<string, ScannedPolicy[]>();
   for (const policy of policies) {
-    const list = policiesByTable.get(policy.tableName) ?? [];
-    list.push(policy);
-    policiesByTable.set(policy.tableName, list);
+    for (const variant of tableNameVariants(policy.tableName)) {
+      const list = policiesByTable.get(variant) ?? [];
+      list.push(policy);
+      policiesByTable.set(variant, list);
+    }
   }
 
   for (const table of tables) {
-    const tablePolicies = policiesByTable.get(table.name) ?? [];
+    const tablePolicies = [
+      ...new Set(tableNameVariants(table.name).flatMap((variant) => policiesByTable.get(variant) ?? []))
+    ];
     const content = files.find((file) => file.path === table.file)?.content ?? "";
 
-    if (rlsEnabledTables.has(table.name) && tablePolicies.length === 0) {
+    if (isRlsEnabled(rlsEnabledTables, table.name) && tablePolicies.length === 0) {
       findings.push(
         finding({
           ruleId: "supabase.rls.enabled-no-policy",
@@ -310,7 +319,10 @@ function buildDoctorFindings(
       );
     }
 
-    const mismatch = findAuthUidColumnMismatch(predicate, tables.find((table) => table.name === policy.tableName));
+    const policyTable = tables.find((table) =>
+      tableNameVariants(table.name).some((variant) => variant === policy.tableName)
+    );
+    const mismatch = findAuthUidColumnMismatch(predicate, policyTable);
     if (mismatch) {
       findings.push(
         finding({
@@ -424,6 +436,18 @@ function parseColumnTypes(columns: string): Map<string, string> {
 
 function normalizeSqlIdentifier(value: string): string {
   return value.replace(/"/g, "").trim().toLowerCase();
+}
+
+function tableNameVariants(name: string): string[] {
+  // Supabase migrations mix qualified (public.accounts) and unqualified
+  // (accounts) references to the same table. Return both forms so enable
+  // checks and policy lookups line up across files and statements.
+  const bare = name.replace(/^public\./, "");
+  return bare === name ? [name] : [name, bare];
+}
+
+function isRlsEnabled(rlsEnabledTables: Set<string>, tableName: string): boolean {
+  return tableNameVariants(tableName).some((variant) => rlsEnabledTables.has(variant));
 }
 
 function parsePolicies(content: string): PolicyInfo[] {
