@@ -158,6 +158,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "`auth.uid()` is a UUID; comparing it to text/email/name columns commonly causes silent policy failures.",
     stability: "experimental"
   },
+  "supabase.rls.update-without-with-check": {
+    ruleId: "supabase.rls.update-without-with-check",
+    severity: "medium",
+    title: "Supabase UPDATE policy has no WITH CHECK predicate",
+    why: "Without WITH CHECK, an UPDATE policy lets a user change a readable row into a row they should not own.",
+    stability: "experimental"
+  },
   "supabase.rls.weak-with-check": {
     ruleId: "supabase.rls.weak-with-check",
     severity: "high",

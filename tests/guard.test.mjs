@@ -101,6 +101,7 @@ const expectedRuleIds = [
   "supabase.rls.public-write-policy",
   "supabase.rls.tenant-predicate-missing",
   "supabase.rls.uid-column-mismatch",
+  "supabase.rls.update-without-with-check",
   "supabase.rls.weak-with-check",
   "supabase.rls.write-policy-missing",
   "supabase.storage.public-bucket",
@@ -556,6 +557,35 @@ test("Supabase scanner flags weak WITH CHECK ownership mistakes", async () => {
   assert.ok(weakWithCheckFindings.every((finding) => finding.evidence[0]?.file.endsWith("001_policies.sql")));
   assert.ok(report.riskyPolicies.some((policy) => policy.reason.includes("WITH CHECK")));
   assert.ok(weakWithCheckFindings.every((finding) => /auth\.uid\(\).*WITH CHECK.*membership/is.test(finding.suggestedFix)));
+});
+
+test("Supabase scanner flags UPDATE policies missing WITH CHECK", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "update-without-with-check-supabase")
+  });
+  const updateFindings = report.findings.filter(
+    (finding) => finding.ruleId === "supabase.rls.update-without-with-check"
+  );
+
+  assert.equal(updateFindings.length, 1);
+  assert.ok(updateFindings[0].title.includes("users update own accounts"));
+  assert.equal(updateFindings[0].severity, "medium");
+  assert.ok(updateFindings[0].evidence[0]?.file.endsWith("001_policies.sql"));
+  assert.ok(report.riskyPolicies.some((policy) => policy.reason.includes("WITH CHECK")));
+  assert.ok(
+    updateFindings.every((finding) => /with check.*auth\.uid\(\)/is.test(finding.suggestedFix))
+  );
+});
+
+test("Supabase scanner accepts UPDATE policies with scoped WITH CHECK", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "update-without-with-check-supabase")
+  });
+
+  assert.ok(
+    !findingRuleIds(report).includes("supabase.rls.weak-with-check"),
+    "scoped WITH CHECK must not trip weak-with-check"
+  );
 });
 
 test("Supabase scanner flags public storage object write policies", async () => {

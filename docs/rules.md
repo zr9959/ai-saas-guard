@@ -63,6 +63,7 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 | `supabase.rls.public-write-policy` | high | Public write policies can expose inserts or mutations when predicates are incomplete. |
 | `supabase.rls.tenant-predicate-missing` | high | Multi-tenant SaaS tables need tenant, workspace, organization, owner, or membership predicates. |
 | `supabase.rls.uid-column-mismatch` | medium | `auth.uid()` is a UUID; comparing it to text/email/name columns commonly causes silent policy failures. |
+| `supabase.rls.update-without-with-check` | medium (experimental) | An UPDATE policy without `WITH CHECK` lets a user change a readable row into a row they should not own. |
 | `supabase.rls.weak-with-check` | high | Write policies need `WITH CHECK` predicates tied to the current user or tenant membership. |
 | `supabase.rls.write-policy-missing` | medium | Reads can work while inserts, updates, or deletes silently fail when write policies are missing. |
 | `supabase.table.missing-owner-column` | medium | Sensitive tables are hard to protect without owner/tenant keys. |
