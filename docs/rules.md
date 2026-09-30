@@ -16,6 +16,16 @@ Stability labels describe how much confidence reviewers should place in a findin
 
 SARIF output includes the rule stability in `properties["ai-saas-guard/stability"]` and a `stability:<level>` tag for code scanning consumers.
 
+## Rule Lifecycle
+
+New rules always land as **experimental** first. This is a deliberate convention: a launch gate earns trust through precision, and an unproven heuristic should prioritize review, not prove a defect. A rule can only graduate to `default` or `strict` after:
+
+1. It ships with positive and negative fixture coverage in `tests/` (see the precision corpus convention below).
+2. It runs against the bundled risky/safe demo fixtures and real-world migrations without new false positives for at least one release cycle.
+3. Its finding copy (why / verify / fix) has been reviewed against at least one real incident or launch review.
+
+Document any graduation in the rule's catalog `why` and keep the change reviewable in a dedicated PR.
+
 ## Suppressing False Positives
 
 Prefer fixing risky code over suppressing findings. When a finding is a reviewed false positive for a specific generated file, fixture, or documented launch exception, use path-specific `suppressions` in `.ai-saas-guard.json` instead of disabling the whole rule:
