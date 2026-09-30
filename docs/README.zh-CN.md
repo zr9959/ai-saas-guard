@@ -24,6 +24,11 @@
   <a href="../package.json"><img alt="Node.js >=20" src="https://img.shields.io/badge/node-%3E%3D20-339933.svg"></a>
 </p>
 
+<p align="center">
+  <strong>30 秒快速体验 —— 无需注册、不上传代码、不调用 LLM：</strong><br>
+  <code>npx ai-saas-guard@latest demo --summary</code>
+</p>
+
 ---
 
 ## 邀请真实用户前先看这里

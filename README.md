@@ -25,6 +25,11 @@
   <a href="docs/release-quality-knowledge-base.md"><img alt="Release gate documented" src="https://img.shields.io/badge/release%20gate-documented-0f766e.svg"></a>
 </p>
 
+<p align="center">
+  <strong>Try the 30-second demo — no signup, no code upload, no LLM call:</strong><br>
+  <code>npx ai-saas-guard@latest demo --summary</code>
+</p>
+
 ---
 
 ## Before You Invite Users

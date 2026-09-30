@@ -11,7 +11,7 @@ Run from the app repository:
 ```bash
 npx ai-saas-guard@latest scan --root .
 npx ai-saas-guard@latest pr-risk --root . --base origin/main
-npx ai-saas-guard@latest check-supabase --root . --doctor
+npx ai-saas-guard@latest check-supabase --root .
 npx ai-saas-guard@latest check-stripe --root .
 npx ai-saas-guard@latest check-mcp --root . --policy-template
 npx ai-saas-guard@latest check-actions --root .
@@ -140,7 +140,7 @@ Check:
 
 Manual verification should still use the two-account flow above. Scanner findings can point to weak policies, but the actual product workflow determines whether access is correctly isolated.
 
-Use `check-supabase --doctor` when RLS behavior is confusing. It outputs static debugging hints, two-account/cross-tenant verification steps, and a SQL cookbook prompt for staging. It does not connect to Supabase.
+`check-supabase` always includes the RLS doctor section when RLS behavior is confusing. It outputs static debugging hints, two-account/cross-tenant verification steps, and a SQL cookbook prompt for staging. It does not connect to Supabase. (The old `--doctor` flag is deprecated; it is still accepted but has no effect.)
 
 ## Silent Success Checks
 

@@ -81,6 +81,43 @@ jobs:
 
 Use markdown for PR review triage. It is intentionally short enough for a GitHub step summary or a PR comment created by your own workflow. It does not require a hosted service. The report keeps the middle-layer contract explicit: it translates trust-boundary changes into human review questions, not an automatic approval.
 
+## PR Comment
+
+Use `pr-risk --format comment` when you want the review queue posted directly on the PR: a compact verdict, the trust-boundary categories the PR touches, the top 3 riskiest files to review first, and the verification each one needs before merge. The output is plain markdown, ready to paste or post from a workflow.
+
+```yaml
+name: ai-saas-guard-pr-comment
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr-comment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: zr9959/ai-saas-guard@v0
+        with:
+          command: pr-risk
+          root: ${{ github.workspace }}
+          base: origin/main
+          config: .ai-saas-guard.json
+          format: comment
+          output: ai-saas-guard-comment.md
+      - run: gh pr comment "$PR_NUMBER" --body-file ai-saas-guard-comment.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+```
+
+The comment is a review aid, not a merge gate: it keeps the middle-layer contract explicit and never auto-approves. Pair it with `fail-on` when a hard gate is what you want instead.
+
 ## Project Config
 
 The Action auto-loads `.ai-saas-guard.json` from `root` when the file exists. Use the `config` input when the policy file lives somewhere else or when you want the workflow to be explicit:

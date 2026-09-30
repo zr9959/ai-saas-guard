@@ -157,6 +157,29 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
           })
         );
       }
+
+      if (sensitiveTablePattern.test(tableName) && isUpdateMissingWithCheck(policy)) {
+        riskyPolicies.push({
+          file: file.path,
+          line,
+          policyName,
+          tableName,
+          reason: "UPDATE policy has no `WITH CHECK` predicate."
+        });
+        findings.push(
+          finding({
+            ruleId: "supabase.rls.update-without-with-check",
+            title: `Supabase UPDATE policy "${policyName}" has no WITH CHECK predicate`,
+            severity: "medium",
+            evidence: [{ file: file.path, line, snippet: lineAt(file.content, line) }],
+            why: "An UPDATE policy without WITH CHECK lets a user turn a row they can read into a row they should not own: Postgres checks USING to pick target rows, but never re-checks the new values against ownership or tenant scope.",
+            suggestedVerification:
+              "As User A, update an owned row to carry User B's owner, organization, workspace, or tenant ID and confirm the database rejects it.",
+            suggestedFix:
+              "Add a WITH CHECK predicate mirroring the policy's USING scope, tied to auth.uid() or the same owner, tenant, or membership relationship used for reads."
+          })
+        );
+      }
     }
 
     for (const match of file.content.matchAll(/storage\.buckets[\s\S]{0,200}\bpublic\b\s*[,=]\s*true/gi)) {
@@ -533,6 +556,16 @@ function hasWeakWithCheck(policy: PolicyInfo): boolean {
   if (!policy.withCheckPredicate) return policy.operation === "insert";
   if (isBroadPredicate(policy.withCheckPredicate)) return true;
   return !isScopedOwnershipPredicate(policy.withCheckPredicate);
+}
+
+function isUpdateMissingWithCheck(policy: PolicyInfo): boolean {
+  // UPDATE (and FOR ALL) policies use USING to pick target rows but only
+  // WITH CHECK re-validates the new values; without it a user can move a
+  // readable row into another owner or tenant. Require a USING clause so
+  // fully-unscoped policies stay with the broader ownership rules.
+  if (policy.operation !== "update" && policy.operation !== "all") return false;
+  if (policy.withCheckPredicate) return false;
+  return Boolean(policy.usingPredicate);
 }
 
 function isScopedOwnershipPredicate(predicate: string): boolean {

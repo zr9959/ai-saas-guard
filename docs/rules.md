@@ -16,6 +16,28 @@ Stability labels describe how much confidence reviewers should place in a findin
 
 SARIF output includes the rule stability in `properties["ai-saas-guard/stability"]` and a `stability:<level>` tag for code scanning consumers.
 
+## Rule Lifecycle
+
+New rules always land as **experimental** first. This is a deliberate convention: a launch gate earns trust through precision, and an unproven heuristic should prioritize review, not prove a defect. A rule can only graduate to `default` or `strict` after:
+
+1. It ships with positive and negative fixture coverage in `tests/` (see the precision corpus convention below).
+2. It runs against the bundled risky/safe demo fixtures and real-world migrations without new false positives for at least one release cycle.
+3. Its finding copy (why / verify / fix) has been reviewed against at least one real incident or launch review.
+
+Document any graduation in the rule's catalog `why` and keep the change reviewable in a dedicated PR.
+
+## Precision Corpus
+
+`tests/precision-corpus.test.mjs` is the precision guardrail for this launch gate: every core rule carries a **positive** snippet (must fire the rule) and a **negative** snippet (must stay silent). The corpus exists because a launch gate that cries wolf or stays silent on a real hole destroys reviewer trust faster than any missing rule.
+
+Convention when adding or changing a rule:
+
+1. Write the corpus pair first (positive + negative), in `tests/precision-corpus.test.mjs` using a temp repo.
+2. Add a persistent fixture under `tests/fixtures/` for behavior worth pinning across refactors.
+3. Register the rule ID in `expectedRuleIds` so the catalog, SARIF output, and docs stay in sync.
+
+The corpus deliberately covers past precision bugs (schema-qualified storage policies, schema-prefix RLS mismatches, `permissions: write-all`, parenthesized `.catch`, `process.env` secret false positives) so regressions fail loudly in CI.
+
 ## Suppressing False Positives
 
 Prefer fixing risky code over suppressing findings. When a finding is a reviewed false positive for a specific generated file, fixture, or documented launch exception, use path-specific `suppressions` in `.ai-saas-guard.json` instead of disabling the whole rule:
@@ -63,6 +85,7 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 | `supabase.rls.public-write-policy` | high | Public write policies can expose inserts or mutations when predicates are incomplete. |
 | `supabase.rls.tenant-predicate-missing` | high | Multi-tenant SaaS tables need tenant, workspace, organization, owner, or membership predicates. |
 | `supabase.rls.uid-column-mismatch` | medium | `auth.uid()` is a UUID; comparing it to text/email/name columns commonly causes silent policy failures. |
+| `supabase.rls.update-without-with-check` | medium (experimental) | An UPDATE policy without `WITH CHECK` lets a user change a readable row into a row they should not own. |
 | `supabase.rls.weak-with-check` | high | Write policies need `WITH CHECK` predicates tied to the current user or tenant membership. |
 | `supabase.rls.write-policy-missing` | medium | Reads can work while inserts, updates, or deletes silently fail when write policies are missing. |
 | `supabase.table.missing-owner-column` | medium | Sensitive tables are hard to protect without owner/tenant keys. |

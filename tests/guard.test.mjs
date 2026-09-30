@@ -22,6 +22,7 @@ import {
 } from "../dist/index.js";
 import { collectTextFiles, collectTextFilesWithDiagnostics } from "../dist/utils/files.js";
 import { formatMarkdownReport } from "../dist/report/markdown.js";
+import { formatCommentReport } from "../dist/report/comment.js";
 import { formatSummaryReport } from "../dist/report/summary.js";
 import { formatTerminalReport } from "../dist/report/terminal.js";
 
@@ -101,6 +102,7 @@ const expectedRuleIds = [
   "supabase.rls.public-write-policy",
   "supabase.rls.tenant-predicate-missing",
   "supabase.rls.uid-column-mismatch",
+  "supabase.rls.update-without-with-check",
   "supabase.rls.weak-with-check",
   "supabase.rls.write-policy-missing",
   "supabase.storage.public-bucket",
@@ -558,6 +560,35 @@ test("Supabase scanner flags weak WITH CHECK ownership mistakes", async () => {
   assert.ok(weakWithCheckFindings.every((finding) => /auth\.uid\(\).*WITH CHECK.*membership/is.test(finding.suggestedFix)));
 });
 
+test("Supabase scanner flags UPDATE policies missing WITH CHECK", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "update-without-with-check-supabase")
+  });
+  const updateFindings = report.findings.filter(
+    (finding) => finding.ruleId === "supabase.rls.update-without-with-check"
+  );
+
+  assert.equal(updateFindings.length, 1);
+  assert.ok(updateFindings[0].title.includes("users update own accounts"));
+  assert.equal(updateFindings[0].severity, "medium");
+  assert.ok(updateFindings[0].evidence[0]?.file.endsWith("001_policies.sql"));
+  assert.ok(report.riskyPolicies.some((policy) => policy.reason.includes("WITH CHECK")));
+  assert.ok(
+    updateFindings.every((finding) => /with check.*auth\.uid\(\)/is.test(finding.suggestedFix))
+  );
+});
+
+test("Supabase scanner accepts UPDATE policies with scoped WITH CHECK", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "update-without-with-check-supabase")
+  });
+
+  assert.ok(
+    !findingRuleIds(report).includes("supabase.rls.weak-with-check"),
+    "scoped WITH CHECK must not trip weak-with-check"
+  );
+});
+
 test("Supabase scanner flags public storage object write policies", async () => {
   const report = await checkSupabase({
     rootDir: resolve(fixtureRoot, "public-storage-supabase")
@@ -1010,6 +1041,23 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
 
   assert.ok(report.categories.includes("auth/session"));
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
+});
+
+test("pr-risk comment format renders a paste-ready PR review queue", async () => {
+  const diffText = await readFile(resolve(fixtureRoot, "risky-pr.diff"), "utf8");
+  const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
+  const comment = formatCommentReport(report);
+
+  assert.ok(comment.includes("## \u{1F6E1}\uFE0F ai-saas-guard PR risk"));
+  assert.ok(comment.includes("**Verdict:**"));
+  assert.ok(comment.includes("This PR touches:"));
+  assert.ok(comment.includes("Review these"));
+  assert.ok(comment.includes("first"));
+  const topFile = report.topRiskyFiles[0]?.path;
+  if (topFile) assert.ok(comment.includes(topFile));
+  assert.ok(comment.includes("Verify before merge"));
+  assert.ok(comment.includes("read-only"));
+  assert.ok(!comment.includes("undefined"));
 });
 
 test("pr-risk avoids auth and billing false positives in workflow hardening diffs", async () => {
