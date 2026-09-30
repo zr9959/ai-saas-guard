@@ -79,6 +79,7 @@ export async function scanSecrets(input: ScanInput): Promise<Finding[]> {
       for (const match of file.content.matchAll(secretPattern.pattern)) {
         const matchedText = match[0] ?? "";
         if (isObviousPlaceholderSecret(file.path, matchedText)) continue;
+        if (isEnvReference(matchedText)) continue;
         const line = lineNumberForIndex(file.content, match.index ?? 0);
         findings.push(
           finding({
@@ -117,6 +118,13 @@ function isObviousPlaceholderSecret(filePath: string, matchedText: string): bool
     /\b(?:1x|2x)0{10,}[A-Za-z0-9_-]*\b/.test(matchedText);
 
   return hasPlaceholderValue && (isExampleFile || !/sk_(?:live|test)_|gh[pousr]_|-----BEGIN|SUPABASE_SERVICE_ROLE_KEY\s*=\s*eyJ/i.test(matchedText));
+}
+
+function isEnvReference(matchedText: string): boolean {
+  // `const KEY = process.env.KEY` is the recommended pattern, not a
+  // committed secret; the env accessor itself can exceed the 24-char
+  // secret-like threshold and used to trigger a false positive.
+  return /\b(process\.env|import\.meta\.env)\s*[.[]/i.test(matchedText) || /\bDeno\.env\.get\s*\(/i.test(matchedText);
 }
 
 export async function scanNextPublicEnv(input: ScanInput): Promise<Finding[]> {

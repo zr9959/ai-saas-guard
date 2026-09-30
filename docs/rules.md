@@ -26,6 +26,18 @@ New rules always land as **experimental** first. This is a deliberate convention
 
 Document any graduation in the rule's catalog `why` and keep the change reviewable in a dedicated PR.
 
+## Precision Corpus
+
+`tests/precision-corpus.test.mjs` is the precision guardrail for this launch gate: every core rule carries a **positive** snippet (must fire the rule) and a **negative** snippet (must stay silent). The corpus exists because a launch gate that cries wolf or stays silent on a real hole destroys reviewer trust faster than any missing rule.
+
+Convention when adding or changing a rule:
+
+1. Write the corpus pair first (positive + negative), in `tests/precision-corpus.test.mjs` using a temp repo.
+2. Add a persistent fixture under `tests/fixtures/` for behavior worth pinning across refactors.
+3. Register the rule ID in `expectedRuleIds` so the catalog, SARIF output, and docs stay in sync.
+
+The corpus deliberately covers past precision bugs (schema-qualified storage policies, schema-prefix RLS mismatches, `permissions: write-all`, parenthesized `.catch`, `process.env` secret false positives) so regressions fail loudly in CI.
+
 ## Suppressing False Positives
 
 Prefer fixing risky code over suppressing findings. When a finding is a reviewed false positive for a specific generated file, fixture, or documented launch exception, use path-specific `suppressions` in `.ai-saas-guard.json` instead of disabling the whole rule:
