@@ -214,6 +214,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "Login checks do not prove resource ownership checks.",
     stability: "experimental"
   },
+  "api.route.cors-wildcard": {
+    ruleId: "api.route.cors-wildcard",
+    severity: "medium",
+    title: "CORS allows any origin (*)",
+    why: "Wildcard CORS origins let any website read API responses.",
+    stability: "experimental"
+  },
   "auth.clerk.unsafe-metadata": {
     ruleId: "auth.clerk.unsafe-metadata",
     severity: "high",

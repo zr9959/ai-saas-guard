@@ -105,6 +105,7 @@ Specialized rules should declare or enforce required stack evidence before repor
 | `api.route.missing-rate-limit` | medium | Login, checkout, upload, AI, and webhook routes are common abuse targets. |
 | `api.route.auth-without-ownership` | high | Login checks do not prove resource ownership checks. |
 | `api.route.provider-debug-exposed` | high | Public provider token/configuration probe endpoints can spend quota, reveal integration state, or exercise server credentials without returning the token. |
+| `api.route.cors-wildcard` | medium | A wildcard `Access-Control-Allow-Origin` lets any website read API responses; dangerous on cookie-authenticated or mutating routes. |
 | `auth.clerk.unsafe-metadata` | high | Clerk unsafe metadata is user-writable and should not hold roles, plans, tenant membership, or entitlements. |
 | `data.prisma.tenant-scope-missing` | high | Authenticated Prisma reads or mutations on tenant-like resources need tenant, owner, organization, or workspace predicates. |
 | `deploy.next.static-export-api-risk` | medium | Static export can conflict with runtime API assumptions. |

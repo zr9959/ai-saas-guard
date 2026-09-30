@@ -50,6 +50,7 @@ const expectedRuleIds = [
   "actions.secrets-missing-failfast",
   "actions.unpinned-action",
   "api.route.auth-without-ownership",
+  "api.route.cors-wildcard",
   "api.route.missing-rate-limit",
   "api.route.provider-debug-exposed",
   "auth.clerk.unsafe-metadata",
@@ -647,6 +648,34 @@ test("API scanner does not call admin-only provider configuration probes public"
 
   assert.deepEqual(
     findingRuleIds(report).filter((ruleId) => ruleId === "api.route.provider-debug-exposed"),
+    []
+  );
+});
+
+test("API scanner flags wildcard CORS origins on API routes and middleware", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "cors-wildcard-risk")
+  });
+  const corsFindings = report.findings.filter(
+    (finding) => finding.ruleId === "api.route.cors-wildcard"
+  );
+
+  assert.equal(corsFindings.length, 2);
+  assert.ok(corsFindings.some((finding) => finding.evidence[0]?.file.endsWith("app/api/profile/route.ts")));
+  assert.ok(corsFindings.some((finding) => finding.evidence[0]?.file.endsWith("middleware.ts")));
+  assert.ok(corsFindings.every((finding) => finding.severity === "medium"));
+  assert.ok(
+    corsFindings.every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix)
+  );
+});
+
+test("API scanner accepts allowlisted CORS origins", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "cors-wildcard-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "api.route.cors-wildcard"),
     []
   );
 });
