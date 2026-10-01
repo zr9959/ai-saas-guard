@@ -1796,6 +1796,25 @@ test("middleware missing-auth ignores pure config files without middleware logic
   }
 });
 
+test("middleware missing-auth flags arrow-function middleware exports", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-middleware-arrow-"));
+  await writeFile(
+    resolve(rootDir, "middleware.ts"),
+    'import { NextResponse } from "next/server";\n\nexport const middleware = async (req) => {\n  return NextResponse.next();\n};\n\nexport const config = {\n  matcher: ["/admin/:path*"]\n};\n'
+  );
+
+  try {
+    const report = await scanRepository({ rootDir });
+    const middlewareFindings = report.findings.filter(
+      (finding) => finding.ruleId === "next.middleware.missing-auth"
+    );
+    assert.equal(middlewareFindings.length, 1);
+    assert.equal(middlewareFindings[0].evidence[0]?.line, 3);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("prisma tenant-scope rule covers findMany, create, and count", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-prisma-ops-"));
   const apiDir = resolve(rootDir, "app", "api", "invoices");

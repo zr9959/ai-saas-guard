@@ -19,11 +19,14 @@ const middlewarePathPattern = /(^|\/)middleware\.[cm]?[jt]sx?$/i;
 // Only treat the file as middleware when it actually exports middleware
 // logic. A bare `import type { NextRequest }` plus `export const config`
 // (a pure matcher-config file) must not count as a middleware export.
+// Arrow-function style (`export const middleware = async (req) => ...`)
+// is the most common modern form and must count as a real export.
 const middlewareExportPattern =
-  /export\s+(default\s+)?(async\s+)?function\s+middleware\b|export\s+default\s+middleware\b|export\s+default\s+(async\s+)?function\b/;
+  /export\s+(default\s+)?(async\s+)?function\s+middleware\b|export\s+default\s+middleware\b|export\s+default\s+(async\s+)?function\b|export\s+(?:const|let|var)\s+middleware\s*=/;
 const middlewareAuthPattern =
   /\b(auth|getSession|withAuth|clerkMiddleware|updateSession|getToken|verifyToken|jwtVerify|requireAuth|withApiAuthRequired|getUser|currentUser|validateSession|checkSession)\b/i;
-const middlewareExportLinePattern = /export\s+(default\s+)?(async\s+)?function\s+middleware\b/;
+const middlewareExportLinePattern =
+  /export\s+(default\s+)?(async\s+)?function\s+middleware\b|export\s+(?:const|let|var)\s+middleware\s*=/;
 
 export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
   const files = (await resolveScanContext(input)).getFiles(
