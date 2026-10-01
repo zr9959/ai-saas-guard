@@ -1343,6 +1343,21 @@ test(".ai-saas-guardignore excludes matching files from scans", async () => {
   assert.ok(!files.includes("ignored/.env.example"));
 });
 
+test("middleware missing-auth ignores pure config files without middleware logic", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-middleware-config-"));
+  await writeFile(
+    resolve(rootDir, "middleware.ts"),
+    'import type { NextRequest } from "next/server";\n\nexport const config = {\n  matcher: ["/((?!_next/static|favicon.ico).*)"]\n};\n'
+  );
+
+  try {
+    const report = await scanRepository({ rootDir });
+    assert.ok(!findingRuleIds(report).includes("next.middleware.missing-auth"));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("prisma tenant-scope rule covers findMany, create, and count", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-prisma-ops-"));
   const apiDir = resolve(rootDir, "app", "api", "invoices");
