@@ -1687,8 +1687,8 @@ test("GitHub Action validates enumerated inputs before invoking the CLI", async 
 
   assert.ok(runStep, "expected action.yml to contain the Run ai-saas-guard step");
   assert.match(runStep[1], /case "\$\{INPUT_COMMAND\}" in[\s\S]*scan\|check-supabase\|check-stripe\|check-mcp\|check-actions\|pr-risk/);
-  assert.match(action, /Output format: terminal, json, sarif, markdown, or summary/);
-  assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif\|markdown\|summary/);
+  assert.match(action, /Output format: terminal, json, sarif, markdown, summary, or comment/);
+  assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif\|markdown\|summary\|comment/);
   assert.match(runStep[1], /case "\$\{INPUT_FAIL_ON\}" in[\s\S]*none\|critical\|high\|medium\|low\|info/);
   assert.match(runStep[1], /--markdown/);
   assert.match(runStep[1], /--summary/);
