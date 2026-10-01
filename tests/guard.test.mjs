@@ -24,6 +24,7 @@ import { collectTextFiles, collectTextFilesWithDiagnostics } from "../dist/utils
 import { formatMarkdownReport } from "../dist/report/markdown.js";
 import { formatCommentReport } from "../dist/report/comment.js";
 import { formatSummaryReport } from "../dist/report/summary.js";
+import { formatSarifReport } from "../dist/report/sarif.js";
 import { formatTerminalReport } from "../dist/report/terminal.js";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
@@ -1130,6 +1131,44 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
 
   assert.ok(report.categories.includes("auth/session"));
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
+});
+
+test("sarif output omits the region when evidence has no line", () => {
+  const report = {
+    command: "scan",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    summary: { total: 2, critical: 0, high: 1, medium: 0, low: 0, info: 1 },
+    findings: [
+      {
+        ruleId: "example.no-line",
+        title: "finding without a line",
+        severity: "high",
+        evidence: [{ file: "app/example.ts" }],
+        why: "probe",
+        suggestedVerification: "none",
+        suggestedFix: "none"
+      },
+      {
+        ruleId: "example.with-line",
+        title: "finding with a line",
+        severity: "info",
+        evidence: [{ file: "app/example.ts", line: 42 }],
+        why: "probe",
+        suggestedVerification: "none",
+        suggestedFix: "none"
+      }
+    ]
+  };
+  const sarif = JSON.parse(formatSarifReport(report));
+  const [withoutLine, withLine] = sarif.runs[0].results;
+
+  assert.equal(withoutLine.locations[0].physicalLocation.artifactLocation.uri, "app/example.ts");
+  assert.ok(
+    !("region" in withoutLine.locations[0].physicalLocation),
+    "evidence without a line must not default to line 1"
+  );
+  assert.deepEqual(withLine.locations[0].physicalLocation.region, { startLine: 42 });
 });
 
 test("supabase flags parenthesized constant tautologies as broad policies", async () => {

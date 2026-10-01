@@ -71,9 +71,10 @@ function sarifResult(finding: Finding) {
           artifactLocation: {
             uri: evidence.file
           },
-          region: {
-            startLine: evidence.line ?? 1
-          }
+          // Omit the region when the evidence has no line: defaulting to
+          // line 1 would point consumers at the wrong location. A location
+          // without a region refers to the whole file, which is valid SARIF.
+          ...(evidence.line !== undefined ? { region: { startLine: evidence.line } } : {})
         }
       }
     ]
