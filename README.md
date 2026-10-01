@@ -338,7 +338,7 @@ node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --json
 node dist/cli.js pr-risk --root /path/to/your-saas --base origin/main --markdown
 ```
 
-If `--base` cannot be resolved, `pr-risk` emits `pr-risk.diff-unavailable` instead of silently reporting a clean or empty diff. In GitHub Actions, use `actions/checkout` with `fetch-depth: 0` when you need merge-base comparison against `origin/main`.
+If `--base` cannot be resolved, `pr-risk` emits `pr-risk.diff-unavailable` instead of silently reporting a clean or empty diff. `--base` accepts branch, tag, full ref, or commit SHA names only (letters, numbers, dots, underscores, slashes, hyphens); revision expressions such as `HEAD~3` are rejected so option-like or malformed values never reach git argument parsing. In GitHub Actions, use `actions/checkout` with `fetch-depth: 0` when you need merge-base comparison against `origin/main`.
 
 ## Commands
 

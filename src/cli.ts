@@ -9,6 +9,7 @@ import { formatMarkdownReport } from "./report/markdown.js";
 import { formatSarifReport } from "./report/sarif.js";
 import { formatSummaryReport } from "./report/summary.js";
 import { formatTerminalReport } from "./report/terminal.js";
+import { isSafeGitBaseRef } from "./scanners/gitDiff.js";
 import type { BaseReport, CommandName, Severity } from "./types.js";
 
 interface ParsedArgs {
@@ -146,6 +147,9 @@ function parseArgs(argv: string[]): ParsedArgs {
     if (arg === "--base") {
       const value = argv[index + 1];
       if (!value) throw new Error("--base requires a branch or ref");
+      if (!isSafeGitBaseRef(value)) {
+        throw new Error("--base must be a safe branch or ref using letters, numbers, dots, underscores, slashes, or hyphens");
+      }
       result.base = value;
       index += 1;
       continue;
@@ -233,6 +237,7 @@ Defaults:
   - first-run launch summary with --summary
   - project config auto-loaded from .ai-saas-guard.json when present
   - --doctor is deprecated: the Supabase RLS doctor section is always included in check-supabase output; the flag is still accepted but has no effect
+  - --base accepts branch, tag, full ref, or commit SHA names only (letters, numbers, dots, underscores, slashes, hyphens); revisions like HEAD~3 are rejected
 `;
 }
 

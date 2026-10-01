@@ -23,6 +23,16 @@ interface GitDiffReadResult {
   diagnostics: Finding[];
 }
 
+export function isSafeGitBaseRef(value: string): boolean {
+  if (value.length === 0 || value.length > 255 || !/^[A-Za-z0-9_][A-Za-z0-9._/-]*$/.test(value)) {
+    return false;
+  }
+  if (value.includes("..") || value.includes("//") || value.endsWith(".") || value.endsWith("/")) {
+    return false;
+  }
+  return value.split("/").every((segment) => segment.length > 0 && !segment.startsWith(".") && !segment.endsWith(".lock"));
+}
+
 export async function classifyPrRisk(options: PrRiskOptions): Promise<PrRiskReport> {
   const diffResult =
     options.diffText === undefined
@@ -111,6 +121,12 @@ export async function classifyPrRisk(options: PrRiskOptions): Promise<PrRiskRepo
 
 async function readGitDiff(rootDir: string, base?: string): Promise<GitDiffReadResult> {
   if (base) {
+    if (!isSafeGitBaseRef(base)) {
+      return {
+        diffText: "",
+        diagnostics: [buildUnsafeGitBaseFinding()]
+      };
+    }
     const tripleDotArgs = ["diff", `${base}...HEAD`];
     try {
       const { stdout } = await execFileAsync("git", tripleDotArgs, { cwd: rootDir, maxBuffer: 20 * 1024 * 1024 });
@@ -157,6 +173,18 @@ async function readGitDiff(rootDir: string, base?: string): Promise<GitDiffReadR
   }
 
   return { diffText: parts.join("\n"), diagnostics: [] };
+}
+
+function buildUnsafeGitBaseFinding(): Finding {
+  return finding({
+    ruleId: "pr-risk.diff-unavailable",
+    title: "Could not read git diff for an invalid base ref",
+    severity: "info",
+    evidence: [{ file: ".", match: "git diff <invalid-base>...HEAD" }],
+    why: "PR risk classification accepts branch and ref names, but option-like or malformed values must not reach git command parsing.",
+    suggestedVerification: "Use a local branch, tag, full refs path, or commit SHA containing only safe Git ref characters.",
+    suggestedFix: "Pass an existing ref such as `origin/main`, `refs/heads/main`, or a commit SHA."
+  });
 }
 
 function buildGitDiffFailureFinding(rootDir: string, command: string[], error: unknown, base?: string): Finding {

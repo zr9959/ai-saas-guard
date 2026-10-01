@@ -1133,6 +1133,30 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
 });
 
+test("pr-risk --base rejects unsafe ref values", async () => {
+  // Unit-level: the ref allowlist blocks revision syntax and option-like values.
+  const { isSafeGitBaseRef } = await import("../dist/scanners/gitDiff.js");
+  for (const safe of ["origin/main", "refs/heads/main", "v1.2.3", "abc123"]) {
+    assert.equal(isSafeGitBaseRef(safe), true, `${safe} should be accepted`);
+  }
+  for (const unsafe of ["HEAD~3", "--output=/tmp/x", "../main", "", "main..other", ".hidden"]) {
+    assert.equal(isSafeGitBaseRef(unsafe), false, `${unsafe} should be rejected`);
+  }
+
+  // API-level: an unsafe base surfaces a diff-unavailable diagnostic instead
+  // of reaching git argument parsing.
+  const report = await classifyPrRisk({ rootDir: fixtureRoot, base: "--output=/tmp/x" });
+  assert.ok(
+    findingRuleIds(report).includes("pr-risk.diff-unavailable"),
+    "unsafe base must produce a pr-risk.diff-unavailable diagnostic"
+  );
+
+  // CLI-level: rejected before any scan runs.
+  const cliResult = await runCli(["pr-risk", "--base", "HEAD~3", "--root", fixtureRoot]);
+  assert.notEqual(cliResult.code, 0);
+  assert.match(cliResult.stderr, /--base must be a safe branch or ref/);
+});
+
 test("pr-risk does not flag comment-only removals as weakened tests", async () => {
   const commentOnlyDiff = `diff --git a/tests/auth.test.ts b/tests/auth.test.ts
 index 1111111..2222222 100644
