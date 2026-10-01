@@ -1343,6 +1343,35 @@ test(".ai-saas-guardignore excludes matching files from scans", async () => {
   assert.ok(!files.includes("ignored/.env.example"));
 });
 
+test("stripe webhook recognizes unique-constraint duplicate-delivery guards", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stripe-idem-"));
+  const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");
+  await mkdir(apiDir, { recursive: true });
+  await writeFile(
+    resolve(apiDir, "route.ts"),
+    `import Stripe from "stripe";
+import { sql } from "@/lib/db";
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export async function POST(req: Request) {
+  const body = await req.text();
+  const event = stripe.webhooks.constructEvent(body, req.headers.get("stripe-signature")!, process.env.STRIPE_WEBHOOK_SECRET!);
+  await sql\`INSERT INTO stripe_events (event_id, type) VALUES (\${event.id}, \${event.type}) ON CONFLICT (event_id) DO NOTHING\`;
+  return Response.json({ received: true });
+}
+`
+  );
+
+  try {
+    const report = await checkStripe({ rootDir });
+    assert.ok(
+      !findingRuleIds(report).includes("stripe.webhook.missing-idempotency"),
+      "ON CONFLICT DO NOTHING on event_id must count as idempotency"
+    );
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("actions fetch-depth check matches complete depth numbers", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-fetch-depth-"));
   const workflowsDir = resolve(rootDir, ".github", "workflows");

@@ -139,9 +139,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
       );
     }
 
-    const hasIdempotency =
-      /event\.id/.test(file.content) &&
-      /(processed|idempot|webhook_events|recordProcessed|hasProcessed|dedupe)/i.test(file.content);
+    const hasIdempotency = hasEventIdIdempotency(file.content);
     if (!hasIdempotency) {
       findings.push(
         finding({
@@ -209,6 +207,18 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
       "Can app access stay active after failed payment, cancellation, refund, or chargeback?"
     ]
   });
+}
+
+function hasEventIdIdempotency(content: string): boolean {
+  if (!/event\.id/.test(content)) return false;
+  if (/(processed|idempot|webhook_events|recordProcessed|hasProcessed|dedupe)/i.test(content)) return true;
+  // Unique-constraint style duplicate-delivery guards: the event id is written
+  // through INSERT ... ON CONFLICT DO NOTHING / DO UPDATE (or an ORM upsert
+  // keyed by event id), or a UNIQUE index/constraint exists on the event id
+  // column. Any of these makes redelivered events harmless.
+  if (/\bon\s+conflict\b/i.test(content)) return true;
+  if (/\bupsert\s*\(/i.test(content)) return true;
+  return /\bunique\b[\s\S]{0,200}event[_. ]?id|event[_. ]?id[\s\S]{0,200}\bunique\b/i.test(content);
 }
 
 function firstLineMatching(content: string, pattern: RegExp): number | undefined {
