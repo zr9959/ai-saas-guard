@@ -124,7 +124,7 @@ test("fuzz: secret findings redact generated OpenAI-style credentials", async ()
 
         assert.ok(finding);
         assert.doesNotMatch(serializedEvidence, new RegExp(secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-        assert.match(serializedEvidence, /\[redacted\]/);
+        assert.match(serializedEvidence, /\[redacted:[^\]]+\]/);
       } finally {
         await rm(rootDir, { recursive: true, force: true });
       }
