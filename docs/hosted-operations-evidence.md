@@ -501,3 +501,61 @@ Result: all seven areas have deployed evidence above. `phase3GatePassed` is now 
 Phase 4 recheck: `readyForPublicBeta` remains `false`. The remaining blocked reason is `uninstall_deletion_proof_missing` (GitHub App uninstall/repository-removal proof still requires App-management permission; blocked since 2026-05-26). `phase3_gate_missing` is resolved.
 
 Related: PR #148 (worker implementation), PR #151 (trial follow-up fixes). Full trial evidence: `/tmp/phase3-trial.json` (0600; compact findings, SHAs, PR numbers, check-run IDs, stage results only).
+
+## 2026-10-01 Uninstall Deletion Live Proof
+
+Recorded 2026-10-01 after the repository owner uninstalled the staging GitHub App
+`ai-saas-guard-hosted` (app ID `3834787`) from `zr9959/ai-saas-guard` via the GitHub web UI.
+This produced a genuine signed `installation` / `deleted` webhook to the deployed staging
+ingress worker (`ai-saas-guard-hosted.zr9959.workers.dev`, build with PR #147 cleanup logic).
+Verification was read-only: GitHub API (user credential), Cloudflare KV API (key names plus
+operational record values; no secrets read or printed).
+
+### Verification results
+
+| Check | Method | Result |
+| --- | --- | --- |
+| Real uninstall event | GitHub delivered a signed `installation.deleted` webhook; worker signature verification passed (a forged/unsigned payload returns 400 and stores nothing) | **Pass**. Delivery `dcb7119e-bd74-11f1-99c6-b42d0341a87d`, `receivedAt: 2026-10-01T08:48:24Z`, 8s before the owner confirmed the uninstall. Direct API re-check of the installation is impossible with a user token (`GET /repos/{o}/{r}/installation` requires an app JWT; PAT returns 401), so the signed delivery is the authoritative signal. |
+| Webhook executed | `delivery:dcb7119e-...` receipt in staging KV | **Pass**. `accepted: true`, `reason: "installation_deleted"`, `installationId: 135085075`. |
+| Audit record | `cleanup:audit:installation_deleted:135085075:dcb7119e-...` in staging KV | **Pass**. Limited fields only: `cleanupRequestId`, `installationId`, `repositoryIds: []`, `trigger: "installation_deleted"`, `status: "completed"`, `timestamp: 2026-10-01T08:48:48.160Z`, `deletedRecords: 25`, `canceledJobs: 0`. |
+| Compact reports deleted | KV list `scan:135085075:` | **Pass**. 18 keys at baseline → 0 keys after cleanup. |
+| Queued/pending work canceled | Audit `canceledJobs` | **Pass** (vacuous). `canceledJobs: 0` — no queued, pending, or running jobs existed at uninstall time. |
+| No sensitive residue | Swept all `delivery:`, `cleanup:audit:`, `installation_deleted:`, `repeated_cleanup:`, `scan:` values for secret-like patterns (private keys, tokens, `diff --git`, hunk markers) | **Pass**. 0 hits. Remaining records are metadata only (delivery IDs, event names, PR numbers, SHAs, timestamps). |
+| Idempotency | KV keys | **Pass**. `installation_deleted:135085075:all` and `repeated_cleanup:135085075:all` present. |
+| Trial branches | GitHub API ref check | **Pass**. Both Phase 3 trial branches return 404 (no residue). |
+| Worker health after event | `GET /healthz` | **Pass**. HTTP 200, `scannerVersion: "0.43.0"`, `checkRunPublisher: configured`, `processingPaused: false`, all privacy flags false. |
+
+### Residual gap found by this proof (recorded honestly, not hidden)
+
+77 `delivery:` replay-protection receipts attributable to installation `135085075` remain in
+staging KV. Root cause: `deliveryRecordMatchesCleanupScope` in
+`hosted/cloudflare-worker/src/index.js` only matches top-level `stored.installationId`, but real
+`pull_request` delivery receipts nest it under `stored.identity.installationId`, so they were
+skipped. The unit test in `tests/cloudflare-worker.test.mjs` ("cleans compact records on
+installation deletion") never exercised the nested shape — its fixture delivery record carries no
+installation ID at all — which is why the gap survived.
+
+Proportionality, verified rather than assumed:
+
+- The 77 records are replay-protection metadata only (delivery ID, event name, accept/reason,
+  `identity` with installation/repository/PR/SHA, timestamp). They contain no raw source, diffs,
+  secrets, customer payloads, or tokens (swept, 0 hits).
+- All delivery records carry `EVENT_TTL_SECONDS` (30 days); the residue expires automatically.
+- The fix is a one-line predicate change (also match `stored.identity.installationId`) plus a
+  regression test using the real nested receipt shape. Not applied in this task: the task boundary
+  is read-only verification plus docs, and the worker code path itself is proven working.
+
+### Gate recheck (2026-10-01, after live proof)
+
+- `phase3_gate_missing`: resolved (unchanged).
+- `uninstall_deletion_proof_missing`: **remains open, annotated**. The live proof is obtained and
+  the end-to-end path (real uninstall → signed webhook → cleanup → limited audit) is proven
+  working, but the residual above means the deployed behavior does not yet fully match
+  `docs/hosted-uninstall-data-deletion.md` ("deletes `delivery:` replay-protection records
+  attributable to the installation"). Full resolution needs the one-line fix deployed plus a
+  re-proof (or documented acceptance of the 30-day TTL expiry for this record class).
+- `readyForPublicBeta` remains `false`. Blocked reasons: `uninstall_deletion_proof_missing`
+  (annotated as above).
+
+Related: PR #147 (cleanup implementation), this live-proof PR. No app reinstall was performed by
+the agent; reinstall is a user action.
