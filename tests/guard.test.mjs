@@ -1343,6 +1343,35 @@ test(".ai-saas-guardignore excludes matching files from scans", async () => {
   assert.ok(!files.includes("ignored/.env.example"));
 });
 
+test("actions fetch-depth check matches complete depth numbers", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-fetch-depth-"));
+  const workflowsDir = resolve(rootDir, ".github", "workflows");
+  await mkdir(workflowsDir, { recursive: true });
+  const workflow = (depth) =>
+    `name: ci\non: [push]\njobs:\n  scan:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: ${depth}\n      - run: npx ai-saas-guard pr-risk --base origin/main\n`;
+
+  try {
+    // fetch-depth: 10 is still shallow for pr-risk merge-base comparison and
+    // must be judged as the complete number 10, not as the prefix "1".
+    await writeFile(resolve(workflowsDir, "ci.yml"), workflow(10));
+    const shallow = await checkActions({ rootDir });
+    const shallowHits = shallow.findings.filter(
+      (finding) => finding.ruleId === "actions.checkout.fetch-depth"
+    );
+    assert.equal(shallowHits.length, 1);
+    assert.match(shallowHits[0].evidence[0].snippet, /fetch-depth:\s*10/);
+
+    await writeFile(resolve(workflowsDir, "ci.yml"), workflow(0));
+    const full = await checkActions({ rootDir });
+    assert.ok(
+      !findingRuleIds(full).includes("actions.checkout.fetch-depth"),
+      "fetch-depth: 0 (full history) must not be flagged"
+    );
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("middleware missing-auth ignores pure config files without middleware logic", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-middleware-config-"));
   await writeFile(
