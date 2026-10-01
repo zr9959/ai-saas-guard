@@ -8,6 +8,17 @@ const sensitiveTablePattern =
   /\b(user|account|profile|team|tenant|project|order|subscription|invoice|customer|organization|member|message|document|file|workspace)s?\b/i;
 const ownershipColumnPattern = /\b(user_id|owner_id|tenant_id|account_id|organization_id|workspace_id|created_by)\b/i;
 
+// The service role key bypasses every RLS policy. AI-generated code sometimes
+// wires it into client components ("it works locally") or inlines it through
+// a NEXT_PUBLIC_ variable, shipping a database master key to every browser.
+const nextPublicServiceRolePattern = /\bNEXT_PUBLIC_[A-Z0-9_]*SERVICE_ROLE[A-Z0-9_]*\b/;
+const serviceRoleKeyRefPattern = /\bSUPABASE_SERVICE_ROLE_KEY\b/;
+const serviceRoleVarPattern = /\b(serviceRoleKey|service_role_key)\b/;
+const serviceRoleCreateClientPattern = /createClient\s*\([\s\S]{0,400}?\bservice[_-]?role\b/i;
+const useClientDirectivePattern = /^\s*["']use client["']\s*;?/m;
+const codeFilePattern = /\.[cm]?[jt]sx?$/;
+const envFilePattern = /(^|\/)\.env(\.|$)/i;
+
 interface TableInfo {
   name: string;
   file: string;
@@ -226,6 +237,12 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
 
   findings.push(...buildDoctorFindings(files, tables, rlsEnabledTables, policies));
 
+  const codeFiles = context.getFiles((file) => {
+    const path = file.path.toLowerCase();
+    return codeFilePattern.test(path) || envFilePattern.test(path);
+  });
+  findings.push(...scanServiceRoleClientUsage(codeFiles));
+
   return createReport<SupabaseReport>("check-supabase", context.rootDir, uniqueFindings(findings), {
     riskyTables: [...new Set(tables.filter((table) => table.sensitive && !isRlsEnabled(rlsEnabledTables, table.name)).map((table) => table.name))],
     riskyPolicies,
@@ -238,6 +255,64 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
     ],
     doctor
   });
+}
+
+function scanServiceRoleClientUsage(files: readonly TextFile[]): Finding[] {
+  const findings: Finding[] = [];
+  for (const file of files) {
+    const content = file.content;
+    const nextPublicMatch = nextPublicServiceRolePattern.exec(content);
+    if (nextPublicMatch) {
+      // A NEXT_PUBLIC_ variable is inlined into the browser bundle at build
+      // time, wherever it is referenced — the name alone is the exposure, so
+      // this fires for code files and .env files alike.
+      const line = lineNumberForIndex(content, nextPublicMatch.index ?? 0);
+      findings.push(
+        finding({
+          ruleId: "supabase.service-role.client-usage",
+          title: `Service role key exposed to client bundle via ${nextPublicMatch[0]}`,
+          severity: "high",
+          evidence: [
+            {
+              file: file.path,
+              line,
+              // Never echo an env file line: it may carry the key value.
+              snippet: envFilePattern.test(file.path) ? nextPublicMatch[0] : lineAt(content, line)
+            }
+          ],
+          why: "The service role key bypasses all RLS policies. A NEXT_PUBLIC_ variable is inlined into the browser JavaScript bundle at build time, so anyone can extract it and read or write any row.",
+          suggestedVerification:
+            "Search the built client bundle (.next/static) for the key material. If it is there, rotate the service role key immediately — it is compromised.",
+          suggestedFix:
+            "Use the service role key only in server-only code (Route Handlers, Server Actions, server components). Rename the variable to drop the NEXT_PUBLIC_ prefix so it can never be inlined into the browser bundle."
+        })
+      );
+      continue;
+    }
+    // A bare SUPABASE_SERVICE_ROLE_KEY in a server file is legitimate; only
+    // client components (explicit "use client") ship their references to browsers.
+    if (!useClientDirectivePattern.test(content)) continue;
+    const refMatch =
+      serviceRoleKeyRefPattern.exec(content) ??
+      serviceRoleVarPattern.exec(content) ??
+      serviceRoleCreateClientPattern.exec(content);
+    if (!refMatch) continue;
+    const line = lineNumberForIndex(content, refMatch.index ?? 0);
+    findings.push(
+      finding({
+        ruleId: "supabase.service-role.client-usage",
+        title: `Service role key referenced from client component: ${file.path}`,
+        severity: "high",
+        evidence: [{ file: file.path, line, snippet: lineAt(content, line) }],
+        why: "Client components ship to the browser. A service role key referenced here — even through process.env — ends up readable by users and bypasses every RLS policy.",
+        suggestedVerification:
+          "Confirm the component truly needs elevated access; most client reads should use the anon key with RLS policies.",
+        suggestedFix:
+          "Move service-role access behind a server boundary: a Route Handler or Server Action that validates the caller, runs the privileged query server-side, and returns only what the user may see."
+      })
+    );
+  }
+  return uniqueFindings(findings);
 }
 
 function hasSupabaseContext(files: readonly TextFile[]): boolean {

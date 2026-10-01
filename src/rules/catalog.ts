@@ -193,6 +193,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "User-data tables should enable row level security.",
     stability: "strict"
   },
+  "supabase.service-role.client-usage": {
+    ruleId: "supabase.service-role.client-usage",
+    severity: "high",
+    title: "Service role key used in client-side code",
+    why: "The service role key bypasses all RLS policies; referenced from a client component or a NEXT_PUBLIC_ variable it ships to browsers.",
+    stability: "experimental"
+  },
   "supabase.storage.public-bucket": {
     ruleId: "supabase.storage.public-bucket",
     severity: "high",

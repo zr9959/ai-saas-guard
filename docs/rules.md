@@ -91,6 +91,7 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 | `supabase.table.missing-owner-column` | medium | Sensitive tables are hard to protect without owner/tenant keys. |
 | `supabase.rls.not-enabled` | critical | User-data tables should enable row level security. |
 | `supabase.storage.public-bucket` | high | Storage buckets or unscoped storage object policies can leak files even when database rows are protected. |
+| `supabase.service-role.client-usage` | high (experimental) | A service role key referenced from a client component or a `NEXT_PUBLIC_` variable bypasses every RLS policy and ships to browsers. |
 
 `check-supabase --doctor` keeps this static and local. It adds a doctor section with two-account/cross-tenant verification steps and SQL cookbook prompts for staging databases. It does not connect to Supabase or inspect production state.
 

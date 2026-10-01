@@ -105,6 +105,7 @@ const expectedRuleIds = [
   "supabase.rls.update-without-with-check",
   "supabase.rls.weak-with-check",
   "supabase.rls.write-policy-missing",
+  "supabase.service-role.client-usage",
   "supabase.storage.public-bucket",
   "supabase.table.missing-owner-column"
 ];
@@ -586,6 +587,38 @@ test("Supabase scanner accepts UPDATE policies with scoped WITH CHECK", async ()
   assert.ok(
     !findingRuleIds(report).includes("supabase.rls.weak-with-check"),
     "scoped WITH CHECK must not trip weak-with-check"
+  );
+});
+
+test("Supabase scanner flags service role key used in client components and NEXT_PUBLIC_ variables", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "service-role-client-risk")
+  });
+  const serviceRoleFindings = report.findings.filter(
+    (finding) => finding.ruleId === "supabase.service-role.client-usage"
+  );
+
+  assert.equal(serviceRoleFindings.length, 3);
+  assert.ok(serviceRoleFindings.some((finding) => finding.evidence[0]?.file.endsWith("app/dashboard/page.tsx")));
+  assert.ok(serviceRoleFindings.some((finding) => finding.evidence[0]?.file.endsWith("components/AdminPanel.tsx")));
+  assert.ok(serviceRoleFindings.some((finding) => finding.evidence[0]?.file.endsWith(".env.local")));
+  assert.ok(serviceRoleFindings.every((finding) => finding.severity === "high"));
+  assert.ok(
+    serviceRoleFindings.every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix)
+  );
+  // The .env evidence must never echo the line: it may carry the key value.
+  const envFinding = serviceRoleFindings.find((finding) => finding.evidence[0]?.file.endsWith(".env.local"));
+  assert.equal(envFinding?.evidence[0]?.snippet, "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY");
+});
+
+test("Supabase scanner accepts service role key in server-only code", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "service-role-client-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "supabase.service-role.client-usage"),
+    []
   );
 });
 
