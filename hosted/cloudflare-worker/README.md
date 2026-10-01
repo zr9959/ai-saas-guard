@@ -5,6 +5,7 @@ This directory contains the first live hosted ingress for `ai-saas-guard`.
 It is intentionally narrow:
 
 - `GET /healthz` returns public-safe service health.
+- `GET /github/app` returns a responsive, script-free installation and privacy page for repository admins.
 - `GET /github/app/install-info` returns public-safe installation guidance, first-slice permissions, subscribed events, privacy boundaries, and uninstall wording.
 - `GET /github/app/manifest-callback` acknowledges the GitHub App manifest redirect without storing the one-time code.
 - `POST /github/webhook` verifies GitHub `sha256` webhook signatures before JSON parsing or storage.
@@ -25,7 +26,7 @@ This Worker is a real hosted ingress with first-slice Check Run publishing code,
 - `HOSTED_EVENTS`: Cloudflare KV namespace for compact delivery and queued scan records.
 - `WEBHOOK_SECRET`: Worker secret matching the GitHub App webhook secret.
 - `GITHUB_APP_PRIVATE_KEY`: Worker secret for the staging GitHub App private key, used only in memory to sign short-lived GitHub App JWTs.
-- `SCANNER_VERSION`: public version string, currently `0.43.0`.
+- `SCANNER_VERSION`: public deployment version string shown in health and installation guidance.
 - `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_INSTALLATION_ID`: public staging identifiers for the private GitHub App installation.
 - `RATE_LIMIT_MAX_EVENTS_PER_REPOSITORY_PER_MINUTE`, `RATE_LIMIT_WINDOW_SECONDS`: public staging rate-limit controls for eligible pull request webhooks.
 - `HOSTED_PROCESSING_PAUSED`: public fail-closed switch for deployed configuration. The runtime KV key `control:hosted_processing_paused` can also pause processing without a redeploy.
@@ -46,6 +47,7 @@ After creating the KV namespace, replace the placeholder namespace ID in `wrangl
 Current public staging endpoint:
 
 - Worker URL: `https://ai-saas-guard-hosted.zr9959.workers.dev`
+- Install page: `https://ai-saas-guard-hosted.zr9959.workers.dev/github/app`
 - Install-info URL: `https://ai-saas-guard-hosted.zr9959.workers.dev/github/app/install-info`
 - KV namespace binding: `HOSTED_EVENTS`
 - KV namespace ID: `fa5344fbd7944de6a776bf8731d58460`
@@ -59,7 +61,9 @@ Current public staging endpoint:
 
 ## Public Install Guidance
 
-`GET /github/app/install-info` is designed for the first screen a repository admin sees before installation. It returns only public-safe fields:
+`GET /github/app` is the mobile-friendly first screen for a repository admin. It uses no client-side script or third-party asset, links to selected-repository installation, and states the current privacy and product boundary before the install action. The response uses a restrictive content security policy, no-store caching, no-referrer behavior, disabled browser capabilities, and frame blocking.
+
+`GET /github/app/install-info` exposes the same install contract as public-safe JSON for automation:
 
 - install URL for `ai-saas-guard-hosted`
 - first-slice permissions: `checks: write`, `contents: read`, `pull_requests: read`, and `metadata: read`

@@ -403,6 +403,8 @@ function safeGitHubApiBaseUrl(apiBaseUrl?: string): string | undefined {
       url.password ||
       url.search ||
       url.hash ||
+      url.port ||
+      url.hostname.toLowerCase() !== "api.github.com" ||
       !isRootPath(url.pathname) ||
       isUnsafeHostedHostname(url.hostname)
     ) {

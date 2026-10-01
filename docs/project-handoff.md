@@ -1,6 +1,6 @@
 # Project Handoff
 
-Last updated: 2026-05-27
+Last updated: 2026-07-15
 
 Use this public-safe document when moving `ai-saas-guard` into a new GitHub-facing ChatGPT/Codex Project or a new conversation.
 
@@ -10,7 +10,13 @@ Name: `ai-saas-guard`
 
 GitHub repo: https://github.com/zr9959/ai-saas-guard
 
-Current branch: `main`
+Public source-of-truth branch: `main`
+
+Current review branch: `codex/ui-quality-audit`, based on current `main` commit `96ea609` after the published `v0.43.3` release and later maintenance merges. It improves report presentation, the mobile hosted install page, scanner applicability, and trust-boundary validation. It does not change the package version or deploy the Worker.
+
+Current quality record: `docs/release-quality-audit-2026-07-15.md` documents 100 dimensions. Local verification passed 221 tests, found 0 npm vulnerabilities at the high threshold, produced a 0-finding complete repository self-scan, and built a 175-file dry-run package without macOS metadata.
+
+Draft PR `#134` contains this quality work. Its test, fuzz, actionlint, zizmor, workflow CodeQL, and Advanced Security CodeQL checks passed after an initial polynomial-regex finding was fixed with a linear terminal escape scanner.
 
 Recent setup commits at the time this handoff was created:
 
@@ -303,7 +309,7 @@ Backend/admin:
 
 Mobile:
 
-- There is no mobile app and no mobile-specific UI.
+- There is no mobile app; the hosted install/privacy information page is responsive but is not a customer product or admin UI.
 - README/docs should remain readable on mobile, but no responsive web app or mobile browser testing has been performed because the product is currently CLI/GitHub/npm/Check Run focused.
 
 ## Repository Boundaries
@@ -346,6 +352,8 @@ For every feature, keep the scanner evidence-first:
 
 ## Commercial Direction
 
+Commercial implementation is deferred. Do not add billing, pricing, paid packaging, marketplace conversion, a sales funnel, or customer accounts until real usage/design-partner feedback justifies it.
+
 The open-source core should remain useful on its own:
 
 - local CLI
@@ -354,7 +362,7 @@ The open-source core should remain useful on its own:
 - GitHub Action
 - rule docs and fixtures
 
-Potential paid layer:
+Possible later layers, for product research only and not current implementation:
 
 - hosted GitHub App
 - PR comments and review-first annotations

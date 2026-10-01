@@ -82,13 +82,20 @@ function addEvidence(inventory: MutableInventory, category: StackCategory, tool:
 function detectFromPath(file: TextFile, inventory: MutableInventory): void {
   const path = file.path.toLowerCase();
 
-  if (path === "vercel.json") addEvidence(inventory, "deploy", "vercel", file.path, "vercel.json");
-  if (path === "netlify.toml") addEvidence(inventory, "deploy", "netlify", file.path, "netlify.toml");
-  if (path === "wrangler.toml" || path === "wrangler.jsonc") addEvidence(inventory, "deploy", "cloudflare", file.path, "wrangler config");
+  if (path === "vercel.json" || path.endsWith("/vercel.json")) addEvidence(inventory, "deploy", "vercel", file.path, "vercel.json");
+  if (path === "netlify.toml" || path.endsWith("/netlify.toml")) addEvidence(inventory, "deploy", "netlify", file.path, "netlify.toml");
+  if (
+    path === "wrangler.toml" ||
+    path === "wrangler.jsonc" ||
+    path.endsWith("/wrangler.toml") ||
+    path.endsWith("/wrangler.jsonc")
+  ) {
+    addEvidence(inventory, "deploy", "cloudflare", file.path, "wrangler config");
+  }
   if (path === "dockerfile" || path.endsWith("/dockerfile") || path.includes("docker-compose")) addEvidence(inventory, "deploy", "docker", file.path, "docker config");
   if (path.startsWith(".github/workflows/")) addEvidence(inventory, "deploy", "github-actions", file.path, "GitHub Actions workflow");
   if (path.includes("kubernetes") || path.includes("/k8s/")) addEvidence(inventory, "deploy", "kubernetes", file.path, "Kubernetes path");
-  if (path.includes("supabase/")) {
+  if (/(^|\/)supabase\/(?:config\.toml|functions\/|migrations\/|seed\.sql$)/.test(path)) {
     addEvidence(inventory, "databases", "supabase", file.path, "supabase path");
     addEvidence(inventory, "auth", "supabase-auth", file.path, "supabase path");
     addEvidence(inventory, "storage", "supabase-storage", file.path, "supabase path");
@@ -109,7 +116,7 @@ function detectFromPath(file: TextFile, inventory: MutableInventory): void {
 
 function detectFromContent(file: TextFile, inventory: MutableInventory): void {
   const path = file.path.toLowerCase();
-  if (path === "package.json") {
+  if (path === "package.json" || path.endsWith("/package.json")) {
     detectPackageJson(file, inventory);
     return;
   }
@@ -123,7 +130,7 @@ function detectFromContent(file: TextFile, inventory: MutableInventory): void {
     if (/\bprovider\s*=\s*"cockroachdb"/i.test(file.content)) addEvidence(inventory, "databases", "cockroachdb", file.path, "Prisma datasource");
   }
 
-  if (/\bcreate\s+policy\b|enable\s+row\s+level\s+security|auth\.uid\s*\(|storage\.objects/i.test(file.content)) {
+  if (path.endsWith(".sql") && /\bauth\.(?:uid|jwt|role)\s*\(|\bstorage\.objects\b/i.test(file.content)) {
     addEvidence(inventory, "databases", "supabase", file.path, "Supabase SQL policy syntax");
   }
 }
@@ -144,11 +151,13 @@ function detectPackageJson(file: TextFile, inventory: MutableInventory): void {
   if (hasAny(["@nestjs/core", "@nestjs/common"])) addEvidence(inventory, "frameworks", "nestjs", file.path, "package dependency");
   if (has("astro")) addEvidence(inventory, "frameworks", "astro", file.path, "package dependency");
   if (has("nuxt")) addEvidence(inventory, "frameworks", "nuxt", file.path, "package dependency");
-  if (hasAny(["@sveltejs/kit", "svelte"])) addEvidence(inventory, "frameworks", "sveltekit", file.path, "package dependency");
-  if (hasAny(["@remix-run/node", "@remix-run/react", "react-router"])) addEvidence(inventory, "frameworks", "remix", file.path, "package dependency");
+  if (has("@sveltejs/kit")) addEvidence(inventory, "frameworks", "sveltekit", file.path, "package dependency");
+  if (has("svelte")) addEvidence(inventory, "frameworks", "svelte", file.path, "package dependency");
+  if (hasAny(["@remix-run/node", "@remix-run/react"])) addEvidence(inventory, "frameworks", "remix", file.path, "package dependency");
+  if (has("react-router")) addEvidence(inventory, "frameworks", "react-router", file.path, "package dependency");
 
   if (hasAny(["pg", "postgres", "postgresql", "@neondatabase/serverless"])) addEvidence(inventory, "databases", "postgresql", file.path, "package dependency");
-  if (hasAny(["mysql", "mysql2", "mariadb"])) addEvidence(inventory, "databases", "mysql", file.path, "package dependency");
+  if (hasAny(["mysql", "mysql2"])) addEvidence(inventory, "databases", "mysql", file.path, "package dependency");
   if (has("mariadb")) addEvidence(inventory, "databases", "mariadb", file.path, "package dependency");
   if (hasAny(["sqlite3", "better-sqlite3", "@libsql/client"])) addEvidence(inventory, "databases", "sqlite", file.path, "package dependency");
   if (hasAny(["mongodb", "mongoose"])) addEvidence(inventory, "databases", "mongodb", file.path, "package dependency");
@@ -244,7 +253,11 @@ function finalizeInventory(inventory: MutableInventory): StackInventory {
     payments: [...inventory.payments].sort(),
     storage: [...inventory.storage].sort(),
     deploy: [...inventory.deploy].sort(),
-    evidence: [...inventory.evidence].sort((a, b) => `${a.category}:${a.tool}:${a.file}`.localeCompare(`${b.category}:${b.tool}:${b.file}`)),
-    warnings: [...inventory.warnings].sort((a, b) => `${a.reason}:${a.file}`.localeCompare(`${b.reason}:${b.file}`))
+    evidence: [...inventory.evidence].sort((a, b) => compareText(`${a.category}:${a.tool}:${a.file}`, `${b.category}:${b.tool}:${b.file}`)),
+    warnings: [...inventory.warnings].sort((a, b) => compareText(`${a.reason}:${a.file}`, `${b.reason}:${b.file}`))
   };
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }

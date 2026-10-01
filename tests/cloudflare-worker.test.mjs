@@ -6,6 +6,7 @@ import worker, {
   HOSTED_WORKER_PRIVACY,
   MAX_WEBHOOK_PAYLOAD_BYTES,
   createGitHubAppManifestCallback,
+  createHostedInstallPage,
   createHostedInstallInfo,
   createHostedWorkerHealth,
   parsePullRequestWebhookIdentity,
@@ -146,6 +147,54 @@ test("Cloudflare hosted worker exposes public-safe install guidance", async () =
   assert.doesNotMatch(JSON.stringify(body), /secret-private-key|webhook secret|local-test-webhook-secret|installation token|raw source|raw diff/i);
 });
 
+test("Cloudflare hosted worker serves a mobile-safe install page without changing JSON health", async () => {
+  const env = {
+    GITHUB_APP_SLUG: "ai-saas-guard-hosted",
+    GITHUB_APP_PRIVATE_KEY: "secret-private-key",
+    WEBHOOK_SECRET: "local-test-webhook-secret",
+    SCANNER_VERSION: "<script>alert(1)</script>"
+  };
+  const page = createHostedInstallPage(env);
+  const response = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/github/app"),
+    env
+  );
+  const head = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/github/app", { method: "HEAD" }),
+    env
+  );
+  const root = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/"),
+    env
+  );
+  const html = await response.text();
+  const rootBody = await root.json();
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.match(response.headers.get("content-security-policy") ?? "", /frame-ancestors 'none'/);
+  assert.equal(response.headers.get("cross-origin-opener-policy"), "same-origin");
+  assert.equal(response.headers.get("cross-origin-resource-policy"), "same-origin");
+  assert.equal(response.headers.get("x-frame-options"), "DENY");
+  assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow");
+  assert.match(html, /<meta name="viewport"/);
+  assert.match(html, /<meta name="robots" content="noindex,nofollow">/);
+  assert.match(html, /@media \(max-width: 760px\)/);
+  assert.match(html, /a:focus-visible/);
+  assert.match(html, /Open GitHub installation/);
+  assert.match(html, /selected-repository/i);
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.doesNotMatch(html, /<script>|secret-private-key|local-test-webhook-secret/i);
+  assert.equal(page, html);
+  assert.equal(head.status, 200);
+  assert.equal(await head.text(), "");
+  assert.match(root.headers.get("content-type") ?? "", /^application\/json/);
+  assert.equal(rootBody.service, "ai-saas-guard-hosted");
+  assert.ok(rootBody.routes.includes("/github/app"));
+});
+
 test("Cloudflare hosted worker manifest callback never stores the GitHub one-time code", () => {
   const callback = createGitHubAppManifestCallback(
     new URL("https://ai-saas-guard.example.workers.dev/github/app/manifest-callback?code=temporary-code")
@@ -204,6 +253,31 @@ test("Cloudflare hosted worker extracts only trusted pull request identity field
     headSha: "a".repeat(40),
     draft: false
   });
+});
+
+test("Cloudflare hosted worker rejects malformed delivery IDs before KV keys are created", async () => {
+  const secret = "local-test-webhook-secret";
+  const payload = JSON.stringify(createPullRequestPayload());
+  const kv = createKv();
+  const response = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "pull_request",
+        "x-github-delivery": "../../control:hosted_processing_paused",
+        "x-hub-signature-256": signPayload(payload, secret)
+      },
+      body: payload
+    }),
+    { WEBHOOK_SECRET: secret, HOSTED_EVENTS: kv }
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(body.reason, "invalid_delivery_id");
+  assert.equal(kv.records.size, 0);
+  assert.doesNotMatch(JSON.stringify(body), /hosted_processing_paused/);
 });
 
 test("Cloudflare hosted worker queues a signed pull request webhook idempotently", async () => {
@@ -407,11 +481,12 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
   const payload = JSON.stringify(createPullRequestPayload());
   const deliveryId = randomUUID();
   const githubRequests = [];
+  let publishedCheckRun;
   const env = {
     WEBHOOK_SECRET: secret,
     HOSTED_EVENTS: createKv(),
     SCANNER_VERSION: "0.28.0",
-    GITHUB_API_BASE_URL: "https://user:pass@127.0.0.1:8443/api?token=should-not-appear#fragment",
+    GITHUB_API_BASE_URL: "https://api.not-github.example",
     GITHUB_APP_ID: "3834787",
     GITHUB_APP_PRIVATE_KEY: createGitHubAppPrivateKey(),
     GITHUB_APP_INSTALLATION_ID: "12345",
@@ -445,7 +520,7 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
             patch: "+ create policy read_all on projects for select using (true);"
           },
           {
-            filename: "app/api/auth/[next](https://evil.example)\n### injected.md",
+            filename: "app/api/auth/[next](https://evil.example)\n### injected.md\r### carriage.md",
             additions: 4,
             deletions: 0,
             patch: "+ export async function POST() { return Response.json({ ok: true }); }"
@@ -455,24 +530,7 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
 
       if (request.url.endsWith("/repos/zr9959/ai-saas-guard/check-runs")) {
         assert.equal(init.headers.authorization, "Bearer ghs_test_installation_token");
-        const body = JSON.parse(init.body);
-        assert.equal(body.name, "ai-saas-guard PR risk");
-        assert.equal(body.head_sha, "a".repeat(40));
-        assert.equal(body.status, "completed");
-        assert.equal(body.conclusion, "neutral");
-        assert.match(body.output.summary, /Review task: inspect risk areas and files before merge/i);
-        assert.match(body.output.summary, /Risk areas/i);
-        assert.match(body.output.summary, /Billing and entitlement/i);
-        assert.match(body.output.summary, /Tenant data access/i);
-        assert.match(body.output.summary, /Reviewer checklist/i);
-        assert.match(body.output.summary, /Review queue/i);
-        assert.match(body.output.summary, /Manual proof: prove changed auth, billing, data, deploy, or tests fail closed/i);
-        assert.match(body.output.summary, /Boundary: selected repository only/i);
-        assert.match(body.output.summary, /Privacy: compact file\/category signals only/i);
-        assert.match(body.output.summary, /app\/api\/stripe\/webhook\/route\.ts/);
-        assert.doesNotMatch(body.output.summary, /^### injected\.md/m);
-        assert.doesNotMatch(body.output.summary, /\]\(https:\/\/evil\.example\)/);
-        assert.doesNotMatch(JSON.stringify(body), /ghs_test_installation_token|STRIPE_SECRET_KEY|grantSubscription|raw diff/i);
+        publishedCheckRun = JSON.parse(init.body);
         return Response.json({ id: 777, html_url: "https://github.example/checks/777" });
       }
 
@@ -504,6 +562,27 @@ test("Cloudflare hosted worker exchanges installation token and publishes compac
   assert.equal(githubRequests.every((request) => request.url.startsWith("https://api.github.com/")), true);
   assert.equal(githubRequests.every((request) => request.init.headers["x-github-api-version"] === "2022-11-28"), true);
   assert.equal(githubRequests.every((request) => !("github-api-version" in request.init.headers)), true);
+  assert.ok(publishedCheckRun);
+  assert.equal(publishedCheckRun.name, "ai-saas-guard PR risk");
+  assert.equal(publishedCheckRun.head_sha, "a".repeat(40));
+  assert.equal(publishedCheckRun.status, "completed");
+  assert.equal(publishedCheckRun.conclusion, "neutral");
+  assert.match(publishedCheckRun.output.summary, /\*\*Launch gate:\*\* review required/i);
+  assert.match(publishedCheckRun.output.summary, /Review task: inspect the risk areas and files below before merge/i);
+  assert.match(publishedCheckRun.output.summary, /### Review First/i);
+  assert.match(publishedCheckRun.output.summary, /Billing and entitlement/i);
+  assert.match(publishedCheckRun.output.summary, /Tenant data access/i);
+  assert.match(publishedCheckRun.output.summary, /### Reviewer Checklist/i);
+  assert.match(publishedCheckRun.output.summary, /### Files/i);
+  assert.match(publishedCheckRun.output.summary, /Manual proof: prove changed auth, billing, data, deploy, or tests fail closed/i);
+  assert.match(publishedCheckRun.output.summary, /Reproduce locally/i);
+  assert.match(publishedCheckRun.output.summary, /Selected repository only/i);
+  assert.match(publishedCheckRun.output.summary, /Compact file and category signals only/i);
+  assert.match(publishedCheckRun.output.summary, /app\/api\/stripe\/webhook\/route\.ts/);
+  assert.match(publishedCheckRun.output.summary, /`app\/api\/auth\/\[next\]\(https:\/\/evil\.example\) ### injected\.md ### carriage\.md`/);
+  assert.doesNotMatch(publishedCheckRun.output.summary, /^### injected\.md/m);
+  assert.doesNotMatch(publishedCheckRun.output.summary, /^### carriage\.md/m);
+  assert.doesNotMatch(JSON.stringify(publishedCheckRun), /ghs_test_installation_token|STRIPE_SECRET_KEY|grantSubscription|raw diff/i);
 
   const storedValues = [...env.HOSTED_EVENTS.records.values()].join("\n");
   assert.match(storedValues, /\"status\":\"completed\"/);
