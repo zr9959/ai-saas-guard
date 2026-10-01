@@ -60,6 +60,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "Credentials committed to source, config, or examples can be exposed before launch.",
     stability: "strict"
   },
+  "next.middleware.missing-auth": {
+    ruleId: "next.middleware.missing-auth",
+    severity: "medium",
+    title: "Middleware has no auth or session check",
+    why: "Middleware without auth logic cannot gate protected routes; AI-generated middleware often handles redirects or i18n and forgets the auth gate.",
+    stability: "experimental"
+  },
   "next.env.public-secret": {
     ruleId: "next.env.public-secret",
     severity: "high",
@@ -192,6 +199,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     title: "Sensitive table does not enable row level security",
     why: "User-data tables should enable row level security.",
     stability: "strict"
+  },
+  "supabase.service-role.client-usage": {
+    ruleId: "supabase.service-role.client-usage",
+    severity: "high",
+    title: "Service role key used in client-side code",
+    why: "The service role key bypasses all RLS policies; referenced from a client component or a NEXT_PUBLIC_ variable it ships to browsers.",
+    stability: "experimental"
   },
   "supabase.storage.public-bucket": {
     ruleId: "supabase.storage.public-bucket",

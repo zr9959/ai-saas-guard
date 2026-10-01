@@ -275,3 +275,87 @@ test("corpus: wildcard CORS fires; allowlisted origin stays silent", async () =>
     await rm(negative, { recursive: true, force: true });
   }
 });
+
+test("corpus: service role key in client component fires; server-only usage stays silent", async () => {
+  const pkg = `{"dependencies":{"@supabase/supabase-js":"^2.0.0"},"name":"corpus-case","private":true}`;
+  const positive = await makeRepo({
+    "package.json": pkg,
+    "app/admin/page.tsx": `"use client";
+import { createClient } from "@supabase/supabase-js";
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+export default function Admin() { return null; }
+`
+  });
+  const negative = await makeRepo({
+    "package.json": pkg,
+    "app/admin/page.tsx": `import { createClient } from "@supabase/supabase-js";
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+export default async function Admin() { return null; }
+`
+  });
+  try {
+    assert.ok(fired(await scanRepository({ rootDir: positive }), "supabase.service-role.client-usage"));
+    assert.ok(!fired(await scanRepository({ rootDir: negative }), "supabase.service-role.client-usage"));
+  } finally {
+    await rm(positive, { recursive: true, force: true });
+    await rm(negative, { recursive: true, force: true });
+  }
+});
+
+test("corpus: NEXT_PUBLIC_ service role variable fires even without client directive", async () => {
+  const pkg = `{"dependencies":{"@supabase/supabase-js":"^2.0.0"},"name":"corpus-case","private":true}`;
+  const positive = await makeRepo({
+    "package.json": pkg,
+    "lib/supabase.ts": `import { createClient } from "@supabase/supabase-js";
+export const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!);
+`
+  });
+  const negative = await makeRepo({
+    "package.json": pkg,
+    "lib/supabase.ts": `import { createClient } from "@supabase/supabase-js";
+export const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+`
+  });
+  try {
+    assert.ok(fired(await scanRepository({ rootDir: positive }), "supabase.service-role.client-usage"));
+    assert.ok(!fired(await scanRepository({ rootDir: negative }), "supabase.service-role.client-usage"));
+  } finally {
+    await rm(positive, { recursive: true, force: true });
+    await rm(negative, { recursive: true, force: true });
+  }
+});
+
+test("corpus: middleware without auth signals fires; middleware with session check stays silent", async () => {
+  const positive = await makeRepo({
+    "middleware.ts": `import { NextRequest, NextResponse } from "next/server";
+export function middleware(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/en" + request.nextUrl.pathname;
+  return NextResponse.redirect(url);
+}
+export const config = { matcher: ["/((?!api|_next).*)"] };
+`
+  });
+  const negative = await makeRepo({
+    "middleware.ts": `import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+export async function middleware(request: NextRequest) {
+  const token = await getToken({ req: request });
+  if (!token && request.nextUrl.pathname.startsWith("/dashboard")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+  return NextResponse.next();
+}
+export const config = { matcher: ["/((?!api|_next).*)"] };
+`
+  });
+  try {
+    assert.ok(fired(await scanRepository({ rootDir: positive }), "next.middleware.missing-auth"));
+    assert.ok(!fired(await scanRepository({ rootDir: negative }), "next.middleware.missing-auth"));
+  } finally {
+    await rm(positive, { recursive: true, force: true });
+    await rm(negative, { recursive: true, force: true });
+  }
+});

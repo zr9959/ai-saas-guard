@@ -78,6 +78,7 @@ const expectedRuleIds = [
   "mcp.tool.raw-sql",
   "mcp.tool.shell",
   "next.env.public-secret",
+  "next.middleware.missing-auth",
   "pr-risk.diff-unavailable",
   "pr-risk.no-diff",
   "pr-risk.sensitive-surface",
@@ -105,6 +106,7 @@ const expectedRuleIds = [
   "supabase.rls.update-without-with-check",
   "supabase.rls.weak-with-check",
   "supabase.rls.write-policy-missing",
+  "supabase.service-role.client-usage",
   "supabase.storage.public-bucket",
   "supabase.table.missing-owner-column"
 ];
@@ -589,6 +591,38 @@ test("Supabase scanner accepts UPDATE policies with scoped WITH CHECK", async ()
   );
 });
 
+test("Supabase scanner flags service role key used in client components and NEXT_PUBLIC_ variables", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "service-role-client-risk")
+  });
+  const serviceRoleFindings = report.findings.filter(
+    (finding) => finding.ruleId === "supabase.service-role.client-usage"
+  );
+
+  assert.equal(serviceRoleFindings.length, 3);
+  assert.ok(serviceRoleFindings.some((finding) => finding.evidence[0]?.file.endsWith("app/dashboard/page.tsx")));
+  assert.ok(serviceRoleFindings.some((finding) => finding.evidence[0]?.file.endsWith("components/AdminPanel.tsx")));
+  assert.ok(serviceRoleFindings.some((finding) => finding.evidence[0]?.file.endsWith(".env.local")));
+  assert.ok(serviceRoleFindings.every((finding) => finding.severity === "high"));
+  assert.ok(
+    serviceRoleFindings.every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix)
+  );
+  // The .env evidence must never echo the line: it may carry the key value.
+  const envFinding = serviceRoleFindings.find((finding) => finding.evidence[0]?.file.endsWith(".env.local"));
+  assert.equal(envFinding?.evidence[0]?.snippet, "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY");
+});
+
+test("Supabase scanner accepts service role key in server-only code", async () => {
+  const report = await checkSupabase({
+    rootDir: resolve(fixtureRoot, "service-role-client-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "supabase.service-role.client-usage"),
+    []
+  );
+});
+
 test("Supabase scanner flags public storage object write policies", async () => {
   const report = await checkSupabase({
     rootDir: resolve(fixtureRoot, "public-storage-supabase")
@@ -707,6 +741,33 @@ test("API scanner accepts allowlisted CORS origins", async () => {
 
   assert.deepEqual(
     findingRuleIds(report).filter((ruleId) => ruleId === "api.route.cors-wildcard"),
+    []
+  );
+});
+
+test("API scanner flags middleware without any auth or session check", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "middleware-no-auth-risk")
+  });
+  const middlewareFindings = report.findings.filter(
+    (finding) => finding.ruleId === "next.middleware.missing-auth"
+  );
+
+  assert.equal(middlewareFindings.length, 1);
+  assert.ok(middlewareFindings[0].evidence[0]?.file.endsWith("middleware.ts"));
+  assert.equal(middlewareFindings[0].severity, "medium");
+  assert.ok(
+    middlewareFindings.every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix)
+  );
+});
+
+test("API scanner accepts middleware with an auth gate", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "middleware-no-auth-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "next.middleware.missing-auth"),
     []
   );
 });
@@ -1626,8 +1687,8 @@ test("GitHub Action validates enumerated inputs before invoking the CLI", async 
 
   assert.ok(runStep, "expected action.yml to contain the Run ai-saas-guard step");
   assert.match(runStep[1], /case "\$\{INPUT_COMMAND\}" in[\s\S]*scan\|check-supabase\|check-stripe\|check-mcp\|check-actions\|pr-risk/);
-  assert.match(action, /Output format: terminal, json, sarif, markdown, or summary/);
-  assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif\|markdown\|summary/);
+  assert.match(action, /Output format: terminal, json, sarif, markdown, summary, or comment/);
+  assert.match(runStep[1], /case "\$\{INPUT_FORMAT\}" in[\s\S]*terminal\|json\|sarif\|markdown\|summary\|comment/);
   assert.match(runStep[1], /case "\$\{INPUT_FAIL_ON\}" in[\s\S]*none\|critical\|high\|medium\|low\|info/);
   assert.match(runStep[1], /--markdown/);
   assert.match(runStep[1], /--summary/);

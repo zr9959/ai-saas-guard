@@ -12,6 +12,16 @@ const providerDebugPathPattern = /(paypal|stripe|github|oauth|openai|anthropic|r
 const providerCredentialProbePattern =
   /(client_credentials|oauth2\/token|access_token|PAYPAL_SECRET|PAYPAL_CLIENT_SECRET|STRIPE_SECRET|GITHUB_APP_PRIVATE_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|SENDGRID_API_KEY|RESEND_API_KEY)/i;
 
+// Middleware without any auth/session logic cannot gate protected routes.
+// AI-generated middleware often handles redirects or i18n and forgets the
+// auth gate entirely, silently leaving the app open.
+const middlewarePathPattern = /(^|\/)middleware\.[cm]?[jt]sx?$/i;
+const middlewareExportPattern =
+  /export\s+(default\s+)?(async\s+)?function\s+middleware\b|export\s+default\s+middleware\b|\bNextRequest\b/;
+const middlewareAuthPattern =
+  /\b(auth|getSession|withAuth|clerkMiddleware|updateSession|getToken|verifyToken|jwtVerify|requireAuth|withApiAuthRequired|getUser|currentUser|validateSession|checkSession)\b/i;
+const middlewareExportLinePattern = /export\s+(default\s+)?(async\s+)?function\s+middleware\b/;
+
 export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
   const files = (await resolveScanContext(input)).getFiles(
     (file) => isApiRoute(file.path) || /(^|\/)middleware\.[cm]?[jt]sx?$/i.test(file.path)
@@ -26,6 +36,7 @@ export async function scanApiRoutes(input: ScanInput): Promise<Finding[]> {
     findings.push(...scanPrismaTenantScope(file.path, file.content));
     findings.push(...scanProviderDebugEndpoint(file.path, file.content));
     findings.push(...scanCorsWildcard(file.path, file.content));
+    findings.push(...scanMiddlewareMissingAuth(file.path, file.content));
 
     if (isSensitive && hasPostOrMutation && !rateLimitPattern.test(file.content)) {
       findings.push(
@@ -90,6 +101,28 @@ function scanCorsWildcard(filePath: string, content: string): Finding[] {
         "Call the route from an untrusted origin in staging and confirm whether cookies or authorization headers are honored; if they are, the wildcard must go before launch.",
       suggestedFix:
         "Replace `*` with the exact production frontend origin(s), keep the allowlist in an environment variable, and avoid `Access-Control-Allow-Credentials: true` with a wildcard origin."
+    })
+  ];
+}
+
+function scanMiddlewareMissingAuth(filePath: string, content: string): Finding[] {
+  // The API-routes file set already includes middleware files; only they reach here.
+  if (!middlewarePathPattern.test(filePath)) return [];
+  // Skip stubs that export no middleware logic.
+  if (!middlewareExportPattern.test(content)) return [];
+  if (middlewareAuthPattern.test(content)) return [];
+  const line = firstLine(content, middlewareExportLinePattern) ?? 1;
+  return [
+    finding({
+      ruleId: "next.middleware.missing-auth",
+      title: `Middleware has no auth or session check: ${filePath}`,
+      severity: "medium",
+      evidence: [{ file: filePath, line, snippet: lineAt(content, line) }],
+      why: "Middleware runs before every matched route. Without any auth or session logic it cannot gate protected pages or APIs, so a forgotten gate here silently leaves the app open.",
+      suggestedVerification:
+        "Request a protected page without a session in staging and confirm it is redirected or rejected; if it renders, the auth gate is missing.",
+      suggestedFix:
+        "Add an auth/session check at the top of the middleware (Supabase updateSession/getUser, Clerk clerkMiddleware/auth, or NextAuth getToken) and redirect unauthenticated requests before they reach protected routes. If this middleware intentionally handles only i18n or redirects, gate protected routes elsewhere and suppress this finding."
     })
   ];
 }

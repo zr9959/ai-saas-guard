@@ -91,6 +91,7 @@ Prefer fixing risky code over suppressing findings. When a finding is a reviewed
 | `supabase.table.missing-owner-column` | medium | Sensitive tables are hard to protect without owner/tenant keys. |
 | `supabase.rls.not-enabled` | critical | User-data tables should enable row level security. |
 | `supabase.storage.public-bucket` | high | Storage buckets or unscoped storage object policies can leak files even when database rows are protected. |
+| `supabase.service-role.client-usage` | high (experimental) | A service role key referenced from a client component or a `NEXT_PUBLIC_` variable bypasses every RLS policy and ships to browsers. |
 
 `check-supabase --doctor` keeps this static and local. It adds a doctor section with two-account/cross-tenant verification steps and SQL cookbook prompts for staging databases. It does not connect to Supabase or inspect production state.
 
@@ -129,6 +130,7 @@ Specialized rules should declare or enforce required stack evidence before repor
 | `api.route.auth-without-ownership` | high | Login checks do not prove resource ownership checks. |
 | `api.route.provider-debug-exposed` | high | Public provider token/configuration probe endpoints can spend quota, reveal integration state, or exercise server credentials without returning the token. |
 | `api.route.cors-wildcard` | medium | A wildcard `Access-Control-Allow-Origin` lets any website read API responses; dangerous on cookie-authenticated or mutating routes. |
+| `next.middleware.missing-auth` | medium (experimental) | Middleware without any auth/session logic cannot gate protected routes. |
 | `auth.clerk.unsafe-metadata` | high | Clerk unsafe metadata is user-writable and should not hold roles, plans, tenant membership, or entitlements. |
 | `data.prisma.tenant-scope-missing` | high | Authenticated Prisma reads or mutations on tenant-like resources need tenant, owner, organization, or workspace predicates. |
 | `deploy.next.static-export-api-risk` | medium | Static export can conflict with runtime API assumptions. |

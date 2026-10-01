@@ -116,7 +116,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
 ```
 
-The comment is a review aid, not a merge gate: it keeps the middle-layer contract explicit and never auto-approves. Pair it with `fail-on` when a hard gate is what you want instead.
+The comment is a review aid, not a merge gate: it keeps the middle-layer contract explicit and never auto-approves. Pair it with `fail-on` when a hard gate is what you want instead. Note: on `pull_request` events from forks, `GITHUB_TOKEN` is read-only, so the comment step fails there — use `pull_request_target` with an explicit checkout of the PR head if you need comments on fork PRs.
 
 ## Project Config
 
