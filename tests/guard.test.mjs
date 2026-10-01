@@ -1343,6 +1343,36 @@ test(".ai-saas-guardignore excludes matching files from scans", async () => {
   assert.ok(!files.includes("ignored/.env.example"));
 });
 
+test("prisma tenant-scope rule covers findMany, create, and count", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-prisma-ops-"));
+  const apiDir = resolve(rootDir, "app", "api", "invoices");
+  await mkdir(apiDir, { recursive: true });
+  await writeFile(
+    resolve(apiDir, "route.ts"),
+    `import { getUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+export async function GET(req: Request) {
+  const user = await getUser();
+  if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const invoice = await prisma.invoice.findMany({ where: { id: "x" } });
+  const total = await prisma.invoice.count({ where: { id: "x" } });
+  return Response.json({ invoice, total });
+}
+`
+  );
+
+  try {
+    const report = await scanRepository({ rootDir });
+    const titles = report.findings
+      .filter((finding) => finding.ruleId === "data.prisma.tenant-scope-missing")
+      .map((finding) => finding.title);
+    assert.equal(titles.length, 2);
+    assert.ok(titles.every((title) => title.includes("invoice")));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("secret findings never leak key material into reports", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-redact-"));
   const secretValue = "sk_test_a1b2c3d4e5f60718";

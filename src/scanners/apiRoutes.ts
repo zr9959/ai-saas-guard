@@ -202,7 +202,7 @@ function scanClerkUnsafeMetadata(filePath: string, content: string): Finding[] {
 function scanPrismaTenantScope(filePath: string, content: string): Finding[] {
   if (!/\bprisma\.[A-Za-z0-9_]+\./.test(content) || !authPattern.test(content)) return [];
   const findings: Finding[] = [];
-  const operationPattern = /\bprisma\.([A-Za-z0-9_]+)\.(findUnique|findFirst|update|delete|upsert|updateMany|deleteMany)\s*\(/gi;
+  const operationPattern = /\bprisma\.([A-Za-z0-9_]+)\.(findUnique|findFirst|findMany|update|delete|upsert|updateMany|deleteMany|create|createMany|count)\s*\(/gi;
 
   for (const match of content.matchAll(operationPattern)) {
     const model = match[1];
