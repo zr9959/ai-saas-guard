@@ -1404,6 +1404,27 @@ CREATE POLICY "never matches" ON public.archive FOR SELECT USING (1=2);
   }
 });
 
+test("supabase flags double-quoted self-comparison tautologies as broad policies", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-supabase-dqtaut-"));
+  const migrationsDir = resolve(rootDir, "db", "migrations");
+  await mkdir(migrationsDir, { recursive: true });
+  await writeFile(
+    resolve(migrationsDir, "001.sql"),
+    `CREATE POLICY "dq tautology" ON public.widgets FOR SELECT USING ("a" = "a");\nCREATE POLICY "dq scoped" ON public.gadgets FOR SELECT USING (auth.uid() = owner_id);\n`
+  );
+
+  try {
+    const report = await checkSupabase({ rootDir });
+    const broadTables = report.findings
+      .filter((finding) => finding.ruleId === "supabase.rls.broad-policy")
+      .map((finding) => finding.title);
+    assert.ok(broadTables.some((title) => title.includes("public.widgets")), 'USING ("a" = "a") must be flagged');
+    assert.ok(!broadTables.some((title) => title.includes("public.gadgets")), "scoped predicate must not be flagged");
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("stripe raw-body detection recognizes request.json and request.arrayBuffer", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stripe-rawbody-"));
   const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");
