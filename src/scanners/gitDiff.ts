@@ -365,12 +365,25 @@ function isPermissionSurface(filePath: string): boolean {
 }
 
 function isRemovedOrWeakenedTest(filePath: string, lines: string[]): boolean {
-  const hasRemovedLine = lines.some((line) => line.startsWith("-") && !line.startsWith("---"));
-  if (!hasRemovedLine) return false;
+  const removedLines = lines.filter((line) => line.startsWith("-") && !line.startsWith("---"));
+  if (removedLines.length === 0) return false;
+  // Removing only blank lines or comments does not weaken any test.
+  if (removedLines.every(isBlankOrCommentDiffLine)) return false;
   return (
     lines.some((line) => /^deleted file mode\b/.test(line)) ||
     isTestFile(filePath) ||
-    lines.some((line) => /^-\s*(test|describe)\s*\(/i.test(line) || /^-\s*(expect|assert)\b/i.test(line))
+    removedLines.some((line) => /^-\s*(test|describe)\s*\(/i.test(line) || /^-\s*(expect|assert)\b/i.test(line))
+  );
+}
+
+function isBlankOrCommentDiffLine(line: string): boolean {
+  const content = line.slice(1).trim();
+  return (
+    content === "" ||
+    content.startsWith("//") ||
+    content.startsWith("#") ||
+    content.startsWith("*") ||
+    content.startsWith("/*")
   );
 }
 

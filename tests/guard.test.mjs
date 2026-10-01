@@ -1133,6 +1133,50 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
 });
 
+test("pr-risk does not flag comment-only removals as weakened tests", async () => {
+  const commentOnlyDiff = `diff --git a/tests/auth.test.ts b/tests/auth.test.ts
+index 1111111..2222222 100644
+--- a/tests/auth.test.ts
++++ b/tests/auth.test.ts
+@@ -1,8 +1,6 @@
+-// TODO: add more edge cases here
+-
+ import { login } from "../src/auth";
+ 
+-// Legacy assertion style, superseded below
+ describe("login", () => {
+   test("rejects bad password", async () => {
+     await expect(login("u", "wrong")).rejects.toThrow();
+`;
+  const realRemovalDiff = `diff --git a/tests/auth.test.ts b/tests/auth.test.ts
+index 1111111..2222222 100644
+--- a/tests/auth.test.ts
++++ b/tests/auth.test.ts
+@@ -1,6 +1,3 @@
+ import { login } from "../src/auth";
+ 
+ describe("login", () => {
+-  test("rejects bad password", async () => {
+-    await expect(login("u", "wrong")).rejects.toThrow();
+-  });
+ });
+`;
+
+  const commentOnly = await classifyPrRisk({ diffText: commentOnlyDiff, rootDir: fixtureRoot });
+  const commentOnlyCategories = commentOnly.topRiskyFiles.flatMap((file) => file.categories);
+  assert.ok(
+    !commentOnlyCategories.includes("tests removed or weakened"),
+    "removing only comments/blank lines must not count as a weakened test"
+  );
+
+  const realRemoval = await classifyPrRisk({ diffText: realRemovalDiff, rootDir: fixtureRoot });
+  const realRemovalCategories = realRemoval.topRiskyFiles.flatMap((file) => file.categories);
+  assert.ok(
+    realRemovalCategories.includes("tests removed or weakened"),
+    "removing a real test case must still be flagged"
+  );
+});
+
 test("mcp plaintext-secret evidence names fields without leaking values", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-mcp-secret-"));
   await writeFile(
