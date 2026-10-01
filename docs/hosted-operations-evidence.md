@@ -458,3 +458,46 @@ node scripts/hosted-pr-smoke.mjs --evidence-file /tmp/ai-saas-guard-hosted-smoke
 The script is the preferred release-gate evidence path for the current Cloudflare hosted ingress. It creates a temporary `codex/hosted-smoke-*` branch and PR, waits for the hosted `ai-saas-guard PR risk` Check Run, records only public-safe Check Run metadata plus cleanup status, closes the PR, deletes the branch, restores the local branch, and deletes only staging KV `delivery:` and `scan:` records that match the temporary smoke PR. It refuses to target repositories outside `zr9959/ai-saas-guard` and does not print source, diffs, secrets, installation tokens, customer payloads, or checkout paths.
 
 The script also refuses to run against a dirty working tree, queries the trusted head SHA Check Run through `gh api --method GET`, writes an optional `--evidence-file` JSON record with mode `0600`, and attempts remote branch deletion even if PR creation or Check Run polling fails. That makes it suitable for release evidence because failure paths still exercise cleanup instead of leaving smoke resources behind.
+
+## 2026-10-01 Phase 3 Source-Checkout Worker Deployment And Trial
+
+Recorded on 2026-10-01 after deploying the staging source-checkout worker and running the end-to-end trial.
+
+Design: plain Cloudflare Worker (no containers — the container draft was dropped because this build environment has no Docker daemon). The worker bundles the identical scanner engine as the CLI via esbuild (`src/hosted/scan-worker/worker.ts`) and scans SHA-pinned PR diff + file contents POSTed by the staging orchestrator. The worker holds no GitHub credentials.
+
+### Deployment evidence
+
+| Area | Evidence | Status |
+| --- | --- | --- |
+| Worker deployed | `ai-saas-guard-source-checkout-staging` uploaded via Cloudflare API; deployments at 100%; `SCAN_SECRET` configured via secrets API; `workers.dev` subdomain explicitly enabled (`POST /workers/scripts/{name}/subdomain {"enabled": true}` — new API-created scripts answer error 1042 until this is set) | Passed |
+| Live health | `GET https://ai-saas-guard-source-checkout-staging.zr9959.workers.dev/healthz` returned `mode: source-checkout-worker-staging`, `roles: ["scan-worker"]`, `scannerEngine: cli-identical`, `scannerVersion: 0.43.3`, `stateless: true`, and all privacy flags false | Passed |
+| Bundle integrity | esbuild bundle smoke-tested locally: real `pr-risk` classification plus content-scanner findings on a fixture; zero `node:` imports remain in the bundle (only string literals) | Passed |
+
+### Trial evidence (PR #150, 2026-10-01)
+
+The orchestrator (`scripts/hosted-source-checkout-staging.mjs`) created a temporary PR with a fixture API route (catch-and-fake-success flaw), fetched the SHA-pinned diff + file contents via the GitHub API, POSTed them to the worker, then closed the PR, deleted the branch, and cleaned the live worker's trial KV records.
+
+| Evidence area | Required proof | Trial result |
+| --- | --- | --- |
+| Trusted checkout identity | SHA-pinned, allowlisted input | Worker validated 40-hex SHAs and the `zr9959/ai-saas-guard` staging allowlist; scanned head SHA `726f0f680dfb6847419cb516370e27d68044129f` fetched at that SHA via the GitHub API. Rejects non-allowlisted repos, malformed SHAs, path traversal, and oversized payloads (unit-tested) |
+| Runtime credential boundary | No credential exposure | Worker holds zero GitHub credentials — cannot mint tokens, clone repos, or publish Check Runs. Stronger than the container design's temporary-askpass boundary |
+| Fixed scanner command | Identical engine, no dynamic command | `scannerEngine: cli-identical`; all 4 stages (`validate`, `pr_risk`, `full_scan`, `compact`) completed with zero scanner errors. pr-risk correctly classified the fixture as `silent-success/fake-green` + `API contract` (score 71); 7 findings with real rule IDs (e.g. `silent-success.swallowed-error`, `api.route.missing-rate-limit`) |
+| Success cleanup | Temporary resources removed | PR #150 closed, trial branch deleted (ref 404 verified), local fixture deleted, 1 live-worker trial KV key deleted with 0 remaining |
+| Failure cleanup | Cleanup runs on failure paths | Proven: an earlier trial run threw HTTP 403 when publishing the staging check run, and the `finally` block still closed PR #149 and deleted its branch |
+| Log boundary | No raw source/diffs in output | Only compact findings (`ruleId`, `severity`, `file`, `line`; max 200) leave the worker. Bundle test and trial evidence verified no raw source, diff text, or PR text in any output |
+| Retention boundary | Nothing persisted | Stateless worker: no KV, no Durable Objects, no logs of request bodies. Cleanup is trivially complete |
+
+### Known limitations (recorded honestly)
+
+- Staging check-run publication is best-effort and was skipped: the Checks API rejects personal access tokens (`Resource not accessible by personal access token`); only GitHub App tokens can create check runs. The trial records the skip rather than failing. The live webhook-ingress worker (a GitHub App) already publishes check runs routinely — the trial PR also triggered its metadata-only `ai-saas-guard PR risk` run (observed, id `110287292270`), confirming the two are distinguishable.
+- The trial's `deletedRemoteBranch` flag initially misreported `false` on success because the GitHub API helper threw parsing the empty 204 response body; the branch deletion was independently verified (ref 404). Fixed in the trial script.
+
+### Gate recheck (2026-10-01)
+
+Phase 3 source-checkout gate standard: "a deployed source-checkout worker or equivalent deployed scan-worker evidence proves trusted checkout identity, temporary credential cleanup, fixed scanner command, success and failure cleanup, safe log boundary, and retention/uninstall cleanup."
+
+Result: all seven areas have deployed evidence above. `phase3GatePassed` is now honestly satisfied.
+
+Phase 4 recheck: `readyForPublicBeta` remains `false`. The remaining blocked reason is `uninstall_deletion_proof_missing` (GitHub App uninstall/repository-removal proof still requires App-management permission; blocked since 2026-05-26). `phase3_gate_missing` is resolved.
+
+Related: PR #148 (worker implementation), PR #151 (trial follow-up fixes). Full trial evidence: `/tmp/phase3-trial.json` (0600; compact findings, SHAs, PR numbers, check-run IDs, stage results only).
