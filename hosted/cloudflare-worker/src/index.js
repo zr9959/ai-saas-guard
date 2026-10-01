@@ -888,7 +888,15 @@ async function deleteCompactRecordsForInstallation({
 }
 
 function deliveryRecordMatchesCleanupScope(stored, installationId, repositoryIds) {
-  if (stored?.installationId !== installationId) return false;
+  // Delivery receipts are stored in two shapes: older/foreign receipts may carry a
+  // top-level installationId, while real pull_request receipts nest it under
+  // identity.installationId (see the deliveryKey storeJson call). Match either shape
+  // so uninstall cleanup does not leave attributable replay-protection residue.
+  const topLevelInstallationId = stored?.installationId;
+  const nestedInstallationId = stored?.identity?.installationId;
+  if (topLevelInstallationId !== installationId && nestedInstallationId !== installationId) {
+    return false;
+  }
   if (repositoryIds.length === 0) return true;
   const repositoryId = stored?.repositoryId ?? stored?.identity?.repositoryId;
   return repositoryIds.includes(repositoryId);

@@ -562,6 +562,91 @@ test("Cloudflare hosted worker cleans compact records on installation deletion",
   assert.doesNotMatch(JSON.stringify(body), /local-test-webhook-secret|secret-private-key|ghs_|STRIPE_SECRET_KEY|grantSubscription/i);
 });
 
+test("Cloudflare hosted worker deletes nested-shape delivery receipts on installation deletion", async () => {
+  // Regression test for the 2026-10-01 live-proof gap: real pull_request delivery
+  // receipts nest the installation ID under identity.installationId (see the
+  // deliveryKey storeJson call), while deliveryRecordMatchesCleanupScope used to
+  // match only top-level stored.installationId, leaving 77 attributable receipts
+  // behind. Both shapes must be cleaned; other installations and unattributable
+  // records must be left alone.
+  const secret = "local-test-webhook-secret";
+  const payload = JSON.stringify({
+    action: "deleted",
+    installation: { id: 12345 },
+    repositories: [{ id: 67890, full_name: "zr9959/ai-saas-guard" }]
+  });
+  const kv = createKv();
+  const nestedReceipt = (installationId, repositoryId) =>
+    JSON.stringify({
+      deliveryId: randomUUID(),
+      eventName: "pull_request",
+      accepted: true,
+      scanKey: `scan:${installationId}:${repositoryId}:42:${"a".repeat(40)}:0.43.0`,
+      identity: {
+        action: "synchronize",
+        installationId,
+        repositoryId,
+        repositoryFullName: "zr9959/ai-saas-guard",
+        repositoryPrivate: false,
+        pullRequestNumber: 42,
+        baseSha: "b".repeat(40),
+        headSha: "a".repeat(40),
+        draft: false
+      },
+      receivedAt: new Date().toISOString()
+    });
+  await kv.put("delivery:nested-match", nestedReceipt(12345, 67890));
+  await kv.put(
+    "delivery:toplevel-match",
+    JSON.stringify({
+      deliveryId: "top",
+      eventName: "pull_request",
+      accepted: true,
+      installationId: 12345
+    })
+  );
+  await kv.put("delivery:nested-other-installation", nestedReceipt(99999, 67890));
+  await kv.put("delivery:unattributable", JSON.stringify({ deliveryId: "old" }));
+  const env = {
+    WEBHOOK_SECRET: secret,
+    HOSTED_EVENTS: kv,
+    SCANNER_VERSION: "0.43.0",
+    GITHUB_APP_ID: "3834787",
+    GITHUB_APP_PRIVATE_KEY: createGitHubAppPrivateKey(),
+    GITHUB_APP_INSTALLATION_ID: "12345",
+    async GITHUB_FETCH() {
+      return Response.json({});
+    }
+  };
+  const deliveryId = randomUUID();
+  const response = await worker.fetch(
+    new Request("https://ai-saas-guard.example.workers.dev/github/webhook", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "installation",
+        "x-github-delivery": deliveryId,
+        "x-hub-signature-256": signPayload(payload, secret)
+      },
+      body: payload
+    }),
+    env
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 202);
+  assert.equal(body.reason, "installation_deleted");
+  // Both receipt shapes attributable to installation 12345 are deleted ...
+  assert.equal(kv.records.has("delivery:nested-match"), false);
+  assert.equal(kv.records.has("delivery:toplevel-match"), false);
+  // ... while other installations and unattributable records are left alone.
+  assert.equal(kv.records.has("delivery:nested-other-installation"), true);
+  assert.equal(kv.records.has("delivery:unattributable"), true);
+  // The current delivery's own receipt is kept so the triggering request stays
+  // attributable.
+  assert.equal(kv.records.has(`delivery:${deliveryId}`), true);
+});
+
 test("Cloudflare hosted worker blocks unexpected GitHub App installation before network calls", async () => {
   const secret = "local-test-webhook-secret";
   const payload = JSON.stringify(createPullRequestPayload());
