@@ -1132,6 +1132,33 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
 });
 
+test("comment format neutralizes markdown and HTML injection", async () => {
+  const evilFinding = {
+    ruleId: "data.prisma.tenant-scope-missing",
+    title: "Evil <img src=x onerror=alert(1)> [poc](https://evil.example)",
+    severity: "high",
+    evidence: [{ file: "app/api/<script>/route.ts", snippet: "x" }],
+    why: "injection probe",
+    suggestedVerification: "none",
+    suggestedFix: "none"
+  };
+  const report = {
+    command: "scan",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    findings: [evilFinding],
+    summary: { total: 1, critical: 0, high: 1, medium: 0, low: 0, info: 0 }
+  };
+  const comment = formatCommentReport(report);
+
+  assert.ok(!comment.includes("<img src=x onerror=alert(1)>"), "raw HTML tag must not survive");
+  assert.ok(!comment.includes("[poc](https://evil.example)"), "raw markdown link must not survive");
+  assert.ok(!comment.includes("app/api/<script>/route.ts"), "raw angle brackets in path must not survive");
+  assert.ok(comment.includes("&lt;img src=x onerror=alert(1)&gt;"));
+  assert.ok(comment.includes("\\[poc\\](https://evil.example)"));
+  assert.ok(comment.includes("app/api/&lt;script&gt;/route.ts"));
+});
+
 test("pr-risk comment format renders a paste-ready PR review queue", async () => {
   const diffText = await readFile(resolve(fixtureRoot, "risky-pr.diff"), "utf8");
   const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
