@@ -206,6 +206,7 @@ export async function checkMcp(input: ScanInput, options: { policyTemplate?: boo
   }
 
   return createReport<McpReport>("check-mcp", context.rootDir, uniqueFindings(findings), {
+    fileCollection: context.fileCollection,
     servers,
     tools: [...new Set(servers.flatMap((server) => server.tools))].sort(),
     ...(options.policyTemplate ? { policyTemplate: buildPolicyTemplate(servers) } : {})

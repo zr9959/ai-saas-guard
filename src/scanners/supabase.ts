@@ -46,6 +46,7 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
   const doctor = buildDoctorReport(options.doctor ?? true);
   if (!hasSupabaseContext(context.files)) {
     return createReport<SupabaseReport>("check-supabase", context.rootDir, [], {
+    fileCollection: context.fileCollection,
       riskyTables: [],
       riskyPolicies: [],
       manualAuthorizationTest: [],
@@ -244,6 +245,7 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
   findings.push(...scanServiceRoleClientUsage(codeFiles));
 
   return createReport<SupabaseReport>("check-supabase", context.rootDir, uniqueFindings(findings), {
+    fileCollection: context.fileCollection,
     riskyTables: [...new Set(tables.filter((table) => table.sensitive && !isRlsEnabled(rlsEnabledTables, table.name)).map((table) => table.name))],
     riskyPolicies,
     manualAuthorizationTest: [

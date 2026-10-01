@@ -1343,6 +1343,21 @@ test(".ai-saas-guardignore excludes matching files from scans", async () => {
   assert.ok(!files.includes("ignored/.env.example"));
 });
 
+test("standalone check commands include file collection diagnostics", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-check-coverage-"));
+  await writeFile(resolve(rootDir, "index.ts"), "export const ok = 1;\n");
+
+  try {
+    for (const check of [checkActions, checkMcp, checkStripe, checkSupabase]) {
+      const report = await check({ rootDir });
+      assert.ok(report.fileCollection, `${check.name} report must carry fileCollection`);
+      assert.equal(typeof report.fileCollection.filesScanned, "number");
+    }
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("stripe webhook recognizes unique-constraint duplicate-delivery guards", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stripe-idem-"));
   const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");

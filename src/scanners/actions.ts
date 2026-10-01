@@ -115,6 +115,7 @@ export async function checkActions(input: ScanInput): Promise<ActionsReport> {
   }
 
   return createReport<ActionsReport>("check-actions", context.rootDir, uniqueFindings(findings), {
+    fileCollection: context.fileCollection,
     workflows: workflows.map((file) => file.path).sort(),
     hygieneChecklist: [
       "Use least-privilege workflow permissions.",

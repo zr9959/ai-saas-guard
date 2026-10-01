@@ -42,6 +42,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
 
   if (webhookFiles.length === 0 && !usesStripe) {
     return createReport<StripeReport>("check-stripe", context.rootDir, [], {
+    fileCollection: context.fileCollection,
       webhookFiles: [],
       handledEvents: [],
       missingCriticalEvents: [],
@@ -189,6 +190,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
   }
 
   return createReport<StripeReport>("check-stripe", context.rootDir, uniqueFindings(findings), {
+    fileCollection: context.fileCollection,
     webhookFiles: webhookFiles.map((file) => file.path),
     handledEvents: [...handledEvents].sort(),
     missingCriticalEvents,
