@@ -559,3 +559,38 @@ Proportionality, verified rather than assumed:
 
 Related: PR #147 (cleanup implementation), this live-proof PR. No app reinstall was performed by
 the agent; reinstall is a user action.
+
+### Fix applied (2026-10-01): delivery-record cleanup scope
+
+The residual gap above is now fixed and deployed to staging.
+
+**Code change** (`hosted/cloudflare-worker/src/index.js`, `deliveryRecordMatchesCleanupScope`):
+a delivery record now matches the cleanup scope when **either** top-level
+`stored.installationId` **or** nested `stored.identity.installationId` equals the cleanup
+installation ID (previously only the top-level shape matched). The repository-scoped branch is
+unchanged — it already handled both shapes via
+`stored?.repositoryId ?? stored?.identity?.repositoryId`.
+
+**Regression test** (`tests/cloudflare-worker.test.mjs`,
+"Cloudflare hosted worker deletes nested-shape delivery receipts on installation deletion"):
+fixtures use the real receipt shape from the `deliveryKey` storeJson call
+(`{ deliveryId, eventName, accepted, scanKey, identity: { installationId, repositoryId, ... } }`).
+Covers: nested-shape match deleted, top-level-shape match deleted, other-installation nested
+receipt kept, unattributable receipt kept, current delivery's own receipt kept. The new test
+was verified to fail against the pre-fix predicate and pass with the fix. Full suite: 246/246.
+
+**Staging deploy**: `ai-saas-guard-hosted` re-uploaded via Cloudflare API from branch
+`agent/fix-delivery-record-cleanup-scope` (wrangler has no login in this environment; API
+channel used, same as prior deploys). New version `550082be-844e-4f5b-8f18-519cef04b8f7`
+(2026-10-01T08:56:41Z); rollback reference `b7c37dc2-70ff-469c-bbe4-d6718966debe`. Secrets
+untouched (metadata + script upload only; secrets persist separately). `workers.dev` subdomain
+confirmed enabled. Post-deploy `/healthz`: HTTP 200, `scannerVersion 0.43.0`,
+`checkRunPublisher: configured`, not paused, all privacy flags false; forged webhook still
+returns 400.
+
+**Note**: the 77 residual records from the 08:48 live proof remain in staging KV until their
+30-day TTL expires or a re-proof uninstall runs against this fixed build — the fixed predicate
+only applies to cleanups executed by the new build. The earlier "not applied in this task"
+statement is superseded by this section.
+
+Related: PR #147 (cleanup implementation), PR #153 (live proof + gap), this fix PR.
