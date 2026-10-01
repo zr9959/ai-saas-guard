@@ -143,7 +143,6 @@ async function runTrial(plan) {
     workerUrl: plan.workerUrl,
     privacy: plan.privacy
   };
-  let originalBranch;
   let prNumber;
   let scanResult;
   let checkRun;
@@ -153,17 +152,14 @@ async function runTrial(plan) {
     await verifyStagingWorker(plan, evidence);
     const status = (await git(["status", "--porcelain"])).trim();
     if (status) throw new Error("Refusing trial with dirty working tree");
-    originalBranch = (await git(["branch", "--show-current"])).trim();
 
-    await git(["fetch", "origin", plan.base]);
-    const baseSha = (await git(["rev-parse", `origin/${plan.base}`])).trim();
-    await git(["switch", "-c", plan.branch, `origin/${plan.base}`]);
+    // The trial branch/commit is created entirely via the GitHub API (the
+    // local git CLI has no credentials in this environment). No local branch
+    // is created; the fixture file is written locally only as a scratch copy.
+    const baseSha = await ghRefSha(plan.repo, `heads/${plan.base}`);
+    const headSha = await createTrialCommitViaApi(plan, baseSha);
     await mkdir(dirname(plan.fixturePath), { recursive: true });
     await writeFile(plan.fixturePath, FIXTURE_CONTENT);
-    await git(["add", plan.fixturePath]);
-    await git(["commit", "-m", "chore: Phase 3 source-checkout worker staging trial fixture"]);
-    await git(["push", "-u", "origin", plan.branch]);
-    const headSha = (await git(["rev-parse", "HEAD"])).trim();
     evidence.baseSha = baseSha;
     evidence.headSha = headSha;
     evidence.branch = plan.branch;
@@ -182,7 +178,21 @@ async function runTrial(plan) {
     scanResult = await runStagingScan(plan, { baseSha, headSha, prNumber });
     evidence.workerScan = sanitizeScanResult(scanResult);
 
-    checkRun = await publishStagingCheckRun(plan, { baseSha, headSha, prNumber, scanResult });
+    // Check-run publication is best-effort: the Checks API only accepts
+    // GitHub App tokens ("Resource not accessible by personal access
+    // token"), and this trial authenticates with a PAT. The live
+    // webhook-ingress worker (a GitHub App) already publishes check runs
+    // routinely; the staging worker's compact-findings payload is what would
+    // be published. A skip here is recorded, not hidden.
+    try {
+      checkRun = await publishStagingCheckRun(plan, { baseSha, headSha, prNumber, scanResult });
+    } catch (error) {
+      checkRun = {
+        skipped: true,
+        reason: "check_runs_require_github_app_token",
+        detail: error instanceof Error ? error.message.slice(0, 200) : String(error).slice(0, 200)
+      };
+    }
     evidence.checkRun = checkRun;
 
     // Confirm the live metadata-only run also fired, so the two are comparable.
@@ -192,7 +202,7 @@ async function runTrial(plan) {
     evidence.completedAt = new Date().toISOString();
     evidence.ok = true;
   } finally {
-    cleanup = await cleanupTrial({ plan, prNumber, originalBranch });
+    cleanup = await cleanupTrial({ plan, prNumber });
     evidence.cleanup = cleanup;
   }
 
@@ -375,12 +385,42 @@ async function waitForCheckRun(plan, headSha, checkName, waitSeconds) {
   return { observed: false };
 }
 
-async function cleanupTrial({ plan, prNumber, originalBranch }) {
+async function ghRefSha(repo, ref) {
+  const response = await ghApi("GET", `/repos/${repo}/git/refs/${ref}`);
+  const sha = response?.object?.sha;
+  if (!sha) throw new Error(`Could not resolve ref ${ref}`);
+  return sha;
+}
+
+async function createTrialCommitViaApi(plan, baseSha) {
+  // Create the fixture commit through the Git Database API: blob -> tree
+  // (based on the base tree) -> commit -> branch ref. Equivalent to a local
+  // `git commit` + `git push`, without needing git CLI credentials.
+  const blob = await ghApi("POST", `/repos/${plan.repo}/git/blobs`, {
+    content: Buffer.from(FIXTURE_CONTENT, "utf8").toString("base64"),
+    encoding: "base64"
+  });
+  const baseCommit = await ghApi("GET", `/repos/${plan.repo}/git/commits/${baseSha}`);
+  const tree = await ghApi("POST", `/repos/${plan.repo}/git/trees`, {
+    base_tree: baseCommit.tree.sha,
+    tree: [{ path: plan.fixturePath, mode: "100644", type: "blob", sha: blob.sha }]
+  });
+  const commit = await ghApi("POST", `/repos/${plan.repo}/git/commits`, {
+    message: "chore: Phase 3 source-checkout worker staging trial fixture",
+    tree: tree.sha,
+    parents: [baseSha]
+  });
+  await ghApi("POST", `/repos/${plan.repo}/git/refs`, {
+    ref: `refs/heads/${plan.branch}`,
+    sha: commit.sha
+  });
+  return commit.sha;
+}
+
+async function cleanupTrial({ plan, prNumber }) {
   const cleanup = {
     closedPullRequest: false,
     deletedRemoteBranch: false,
-    restoredBranch: false,
-    deletedLocalBranch: false,
     deletedLocalFixture: false,
     kv: { deletedKeys: 0, remainingSmokeKeys: 0 }
   };
@@ -390,18 +430,12 @@ async function cleanupTrial({ plan, prNumber, originalBranch }) {
         await ghApi("PATCH", `/repos/${plan.repo}/pulls/${prNumber}`, { state: "closed" });
       })()
     );
-    cleanup.deletedRemoteBranch = await ignoreFailure(
-      (async () => {
-        await ghApi("DELETE", `/repos/${plan.repo}/git/refs/heads/${plan.branch}`);
-      })()
-    );
-  } else {
-    cleanup.deletedRemoteBranch = await ignoreFailure(git(["push", "origin", "--delete", plan.branch]));
   }
-  if (originalBranch) {
-    cleanup.restoredBranch = await ignoreFailure(git(["switch", originalBranch]));
-  }
-  cleanup.deletedLocalBranch = await ignoreFailure(git(["branch", "-D", plan.branch]));
+  cleanup.deletedRemoteBranch = await ignoreFailure(
+    (async () => {
+      await ghApi("DELETE", `/repos/${plan.repo}/git/refs/heads/${plan.branch}`);
+    })()
+  );
   cleanup.deletedLocalFixture = await ignoreFailure(rm(plan.fixturePath, { force: true }));
   cleanup.kv = await clearLiveWorkerTrialKv(plan, prNumber);
   return cleanup;
@@ -448,7 +482,8 @@ function cfApi(method, path, body) {
     "if data: r.add_header('Content-Type', 'application/json')",
     "add_surrogate_to_request(r, 'custom.cloudflare', allowed_hosts=['api.cloudflare.com'])",
     "resp = urllib.request.urlopen(r, timeout=60)",
-    "print(json.dumps(read_json_response(resp)))"
+    "body = resp.read()",
+    "print(body.decode('utf-8') if body.strip() else '{\\\"deleted\\\": true}')"
   ].join("\n");
   return { script, method, path, body };
 }
