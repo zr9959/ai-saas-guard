@@ -96,6 +96,20 @@ def set_secret(account_id, script_name, name, text):
     return result
 
 
+def enable_subdomain(account_id, script_name):
+    # Brand-new scripts uploaded via the API do NOT get a workers.dev route
+    # until it is explicitly enabled; without this the hostname answers
+    # Cloudflare error 1042 ("nothing published on this hostname").
+    result = api(
+        "POST",
+        f"/accounts/{account_id}/workers/scripts/{script_name}/subdomain",
+        {"enabled": True},
+    )
+    if not result.get("success"):
+        raise RuntimeError(f"subdomain enable failed: {result.get('errors')}")
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--account-id", required=True)
@@ -112,6 +126,7 @@ def main():
 
     upload = upload_worker(args.account_id, args.script_name, args.bundle, args.compat_date, args.scanner_version)
     set_secret(args.account_id, args.script_name, "SCAN_SECRET", secret)
+    subdomain = enable_subdomain(args.account_id, args.script_name)
 
     workers_dev = f"https://{args.script_name}.<subdomain>.workers.dev"
     print(
@@ -123,6 +138,7 @@ def main():
                 "secret_file": args.secret_file,
                 "secret_bytes": len(secret),
                 "upload_id": (upload.get("result") or {}).get("id"),
+                "subdomain_enabled": (subdomain.get("result") or {}).get("enabled"),
                 "note": "SCAN_SECRET written to --secret-file (0600); value not printed.",
                 "workers_dev_hint": workers_dev,
             }
