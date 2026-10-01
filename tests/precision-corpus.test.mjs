@@ -324,3 +324,38 @@ export const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, proc
     await rm(negative, { recursive: true, force: true });
   }
 });
+
+test("corpus: middleware without auth signals fires; middleware with session check stays silent", async () => {
+  const positive = await makeRepo({
+    "middleware.ts": `import { NextRequest, NextResponse } from "next/server";
+export function middleware(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/en" + request.nextUrl.pathname;
+  return NextResponse.redirect(url);
+}
+export const config = { matcher: ["/((?!api|_next).*)"] };
+`
+  });
+  const negative = await makeRepo({
+    "middleware.ts": `import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+export async function middleware(request: NextRequest) {
+  const token = await getToken({ req: request });
+  if (!token && request.nextUrl.pathname.startsWith("/dashboard")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+  return NextResponse.next();
+}
+export const config = { matcher: ["/((?!api|_next).*)"] };
+`
+  });
+  try {
+    assert.ok(fired(await scanRepository({ rootDir: positive }), "next.middleware.missing-auth"));
+    assert.ok(!fired(await scanRepository({ rootDir: negative }), "next.middleware.missing-auth"));
+  } finally {
+    await rm(positive, { recursive: true, force: true });
+    await rm(negative, { recursive: true, force: true });
+  }
+});

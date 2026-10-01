@@ -60,6 +60,13 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
     why: "Credentials committed to source, config, or examples can be exposed before launch.",
     stability: "strict"
   },
+  "next.middleware.missing-auth": {
+    ruleId: "next.middleware.missing-auth",
+    severity: "medium",
+    title: "Middleware has no auth or session check",
+    why: "Middleware without auth logic cannot gate protected routes; AI-generated middleware often handles redirects or i18n and forgets the auth gate.",
+    stability: "experimental"
+  },
   "next.env.public-secret": {
     ruleId: "next.env.public-secret",
     severity: "high",

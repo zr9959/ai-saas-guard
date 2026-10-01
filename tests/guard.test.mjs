@@ -78,6 +78,7 @@ const expectedRuleIds = [
   "mcp.tool.raw-sql",
   "mcp.tool.shell",
   "next.env.public-secret",
+  "next.middleware.missing-auth",
   "pr-risk.diff-unavailable",
   "pr-risk.no-diff",
   "pr-risk.sensitive-surface",
@@ -740,6 +741,33 @@ test("API scanner accepts allowlisted CORS origins", async () => {
 
   assert.deepEqual(
     findingRuleIds(report).filter((ruleId) => ruleId === "api.route.cors-wildcard"),
+    []
+  );
+});
+
+test("API scanner flags middleware without any auth or session check", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "middleware-no-auth-risk")
+  });
+  const middlewareFindings = report.findings.filter(
+    (finding) => finding.ruleId === "next.middleware.missing-auth"
+  );
+
+  assert.equal(middlewareFindings.length, 1);
+  assert.ok(middlewareFindings[0].evidence[0]?.file.endsWith("middleware.ts"));
+  assert.equal(middlewareFindings[0].severity, "medium");
+  assert.ok(
+    middlewareFindings.every((finding) => finding.why && finding.suggestedVerification && finding.suggestedFix)
+  );
+});
+
+test("API scanner accepts middleware with an auth gate", async () => {
+  const report = await scanRepository({
+    rootDir: resolve(fixtureRoot, "middleware-no-auth-safe")
+  });
+
+  assert.deepEqual(
+    findingRuleIds(report).filter((ruleId) => ruleId === "next.middleware.missing-auth"),
     []
   );
 });
