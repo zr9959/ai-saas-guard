@@ -247,6 +247,34 @@ test("scan reports malformed package inventory instead of silently skipping stac
   }
 });
 
+test("scan runs supabase rules for SQL migrations outside standard supabase paths", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-supabase-gate-"));
+  await mkdir(resolve(rootDir, "db", "migrations"), { recursive: true });
+  await mkdir(resolve(rootDir, "lib"), { recursive: true });
+  await writeFile(
+    resolve(rootDir, "db", "migrations", "001.sql"),
+    "CREATE TABLE users (\n  id uuid PRIMARY KEY,\n  email text NOT NULL\n);\n"
+  );
+  await writeFile(
+    resolve(rootDir, "lib", "db.ts"),
+    'import { createClient } from "@supabase/supabase-js";\nexport const db = createClient("url", "key");\n'
+  );
+
+  try {
+    // The stack inventory does not recognize this layout as Supabase (no
+    // supabase/ path, no package dependency, no policy syntax), but the
+    // scanner itself sees Supabase context via the client import.
+    const inventory = await detectStackInventory({ rootDir });
+    assert.ok(!inventory.databases.includes("supabase"));
+    const report = await scanRepository({ rootDir });
+    const ruleIds = findingRuleIds(report);
+    assert.ok(ruleIds.includes("supabase.rls.not-enabled"));
+    assert.ok(ruleIds.includes("supabase.table.missing-owner-column"));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("local scan resource budget documents conservative large-repo limits", () => {
   const budget = createLocalScanResourceBudget({
     repositoryKind: "large-ai-saas",

@@ -10,7 +10,6 @@ import { scanSilentSuccess } from "../scanners/silentSuccess.js";
 import { checkStripe } from "../scanners/stripe.js";
 import { checkSupabase } from "../scanners/supabase.js";
 import { detectStackInventory } from "../stackInventory.js";
-import type { SupabaseReport } from "../types.js";
 
 export async function scanRepository(options: ScanOptions): Promise<BaseReport> {
   const context = await createScanContext(options.rootDir);
@@ -30,7 +29,12 @@ export async function scanRepository(options: ScanOptions): Promise<BaseReport> 
       scanSecrets(context),
       scanNextPublicEnv(context),
       checkStripe(context),
-      stackInventory.databases.includes("supabase") ? checkSupabase(context) : createSkippedSupabaseReport(context.rootDir),
+      // Never gate on the stack inventory: it only recognizes standard
+      // layouts (supabase/ paths, package deps, policy syntax), so SQL
+      // migrations in non-standard paths would silently skip every Supabase
+      // rule while the scan still reported clear. checkSupabase already
+      // returns an empty report when it finds no Supabase context.
+      checkSupabase(context),
       checkMcp(context),
       scanApiRoutes(context),
       scanDeployConfig(context),
@@ -54,17 +58,4 @@ export async function scanRepository(options: ScanOptions): Promise<BaseReport> 
     ]),
     { stackInventory, fileCollection: context.fileCollection }
   );
-}
-
-function createSkippedSupabaseReport(rootDir: string): SupabaseReport {
-  return createReport<SupabaseReport>("check-supabase", rootDir, [], {
-    riskyTables: [],
-    riskyPolicies: [],
-    manualAuthorizationTest: [],
-    doctor: {
-      staticChecks: [],
-      twoAccountVerificationSteps: [],
-      sqlCookbook: []
-    }
-  });
 }
