@@ -199,9 +199,11 @@ export function toPosix(path: string): string {
   return path.split("\\").join("/");
 }
 
-export function redactSecret(value: string): string {
-  if (value.length <= 10) return "[redacted]";
-  return `${value.slice(0, 4)}...[redacted]...${value.slice(-4)}`;
+export function redactSecret(value: string, label = "secret"): string {
+  // Zero-leak redaction: reports are routinely pasted into issues and PRs,
+  // so no key material may survive — not even first/last characters. Keep
+  // only the secret-type label and the value length for triage.
+  return `[redacted:${label}:${value.length}-chars]`;
 }
 
 export function isLikelyTextPath(path: string): boolean {

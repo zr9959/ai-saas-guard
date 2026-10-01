@@ -58,7 +58,7 @@ export async function checkMcp(input: ScanInput, options: { policyTemplate?: boo
             ruleId: "mcp.config.plaintext-secret",
             title: `MCP server ${name} contains plaintext secret-like config`,
             severity: "high",
-            evidence: [{ file: file.path, snippet: redactSecret(serverText.slice(0, 160)) }],
+            evidence: [{ file: file.path, snippet: redactSecret(serverText, "mcp-server-config") }],
             why: "MCP configs are often read by local agents; plaintext credentials can leak through prompts, logs, or tool arguments.",
             suggestedVerification:
               "Inspect the config and shell environment for real API keys, database URLs, and tokens, then rotate any exposed credentials.",

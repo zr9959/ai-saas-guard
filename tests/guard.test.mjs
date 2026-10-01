@@ -1343,8 +1343,30 @@ test(".ai-saas-guardignore excludes matching files from scans", async () => {
   assert.ok(!files.includes("ignored/.env.example"));
 });
 
-test(".ai-saas-guardignore wildcard patterns do not crash collection", async () => {
-  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-ignore-glob-"));
+test("secret findings never leak key material into reports", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-redact-"));
+  const secretValue = "sk_test_a1b2c3d4e5f60718";
+  await writeFile(resolve(rootDir, ".env"), `STRIPE_SECRET_KEY=${secretValue}\n`);
+
+  try {
+    const report = await scanRepository({ rootDir });
+    const secretFindings = report.findings.filter((finding) => finding.ruleId === "secrets.detected");
+    assert.ok(secretFindings.length > 0);
+    const serialized = JSON.stringify(secretFindings);
+    // No prefix, suffix, or full value may survive redaction: reports are
+    // routinely pasted into issues and PRs.
+    assert.ok(!serialized.includes(secretValue));
+    assert.ok(!serialized.includes(secretValue.slice(0, 8)));
+    assert.ok(!serialized.includes(secretValue.slice(-8)));
+    const evidence = secretFindings[0].evidence[0];
+    assert.match(evidence.match, /^\[redacted:stripe-secret-key:\d+-chars\]$/);
+    assert.match(evidence.snippet, /^\[redacted:stripe-secret-key:\d+-chars\]$/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test(".ai-saas-guardignore wildcard patterns do not crash collection", async () => {  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-ignore-glob-"));
   // `*.log` used to throw "Nothing to repeat" from `new RegExp` and abort the
   // whole scan because `*` was escaped after (instead of before) wildcard
   // translation.
