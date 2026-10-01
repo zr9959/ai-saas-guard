@@ -1,0 +1,1 @@
+{"$schema":"https://developers.cloudflare.com/workers/wrangler/config-schema.json","compatibility_date":"2026-05-24","main":"../../src/hosted/scan-worker/worker.ts","name":"ai-saas-guard-source-checkout-staging","observability":{"enabled":true},"vars":{"SCANNER_VERSION":"0.43.3"}}
