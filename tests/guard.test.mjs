@@ -1133,6 +1133,39 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
 });
 
+test("mcp plaintext-secret evidence names fields without leaking values", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-mcp-secret-"));
+  await writeFile(
+    resolve(rootDir, "mcp.json"),
+    JSON.stringify({
+      mcpServers: {
+        payments: {
+          command: "node",
+          args: ["server.js"],
+          env: { STRIPE_SECRET_KEY: "sk_test_a1b2c3d4e5f60718" }
+        }
+      }
+    })
+  );
+
+  try {
+    const report = await checkMcp({ rootDir });
+    const secretFinding = report.findings.find(
+      (finding) => finding.ruleId === "mcp.config.plaintext-secret"
+    );
+    assert.ok(secretFinding, "expected an mcp.config.plaintext-secret finding");
+    const snippet = secretFinding.evidence[0].snippet ?? "";
+    assert.ok(
+      snippet.includes("env.STRIPE_SECRET_KEY"),
+      "evidence must name the secret-like config field"
+    );
+    assert.ok(!snippet.includes("sk_test_a1b2c3d4e5f60718"), "evidence must not leak the secret value");
+    assert.match(snippet, /\[redacted:mcp-server-config:\d+-chars\]/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("sarif output omits the region when evidence has no line", () => {
   const report = {
     command: "scan",
