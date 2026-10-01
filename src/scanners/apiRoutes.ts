@@ -16,8 +16,11 @@ const providerCredentialProbePattern =
 // AI-generated middleware often handles redirects or i18n and forgets the
 // auth gate entirely, silently leaving the app open.
 const middlewarePathPattern = /(^|\/)middleware\.[cm]?[jt]sx?$/i;
+// Only treat the file as middleware when it actually exports middleware
+// logic. A bare `import type { NextRequest }` plus `export const config`
+// (a pure matcher-config file) must not count as a middleware export.
 const middlewareExportPattern =
-  /export\s+(default\s+)?(async\s+)?function\s+middleware\b|export\s+default\s+middleware\b|\bNextRequest\b/;
+  /export\s+(default\s+)?(async\s+)?function\s+middleware\b|export\s+default\s+middleware\b|export\s+default\s+(async\s+)?function\b/;
 const middlewareAuthPattern =
   /\b(auth|getSession|withAuth|clerkMiddleware|updateSession|getToken|verifyToken|jwtVerify|requireAuth|withApiAuthRequired|getUser|currentUser|validateSession|checkSession)\b/i;
 const middlewareExportLinePattern = /export\s+(default\s+)?(async\s+)?function\s+middleware\b/;
@@ -202,7 +205,7 @@ function scanClerkUnsafeMetadata(filePath: string, content: string): Finding[] {
 function scanPrismaTenantScope(filePath: string, content: string): Finding[] {
   if (!/\bprisma\.[A-Za-z0-9_]+\./.test(content) || !authPattern.test(content)) return [];
   const findings: Finding[] = [];
-  const operationPattern = /\bprisma\.([A-Za-z0-9_]+)\.(findUnique|findFirst|update|delete|upsert|updateMany|deleteMany)\s*\(/gi;
+  const operationPattern = /\bprisma\.([A-Za-z0-9_]+)\.(findUnique|findFirst|findMany|update|delete|upsert|updateMany|deleteMany|create|createMany|count)\s*\(/gi;
 
   for (const match of content.matchAll(operationPattern)) {
     const model = match[1];

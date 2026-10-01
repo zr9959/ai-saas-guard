@@ -90,8 +90,8 @@ export async function scanSecrets(input: ScanInput): Promise<Finding[]> {
               {
                 file: file.path,
                 line,
-                match: redactSecret(matchedText),
-                snippet: redactSecret(lineAt(file.content, line))
+                match: redactSecret(matchedText, secretPattern.id),
+                snippet: redactSecret(lineAt(file.content, line), secretPattern.id)
               }
             ],
             why: "Launch-readiness scans should catch credentials committed to source or examples before the app is shared with users or CI.",
@@ -150,8 +150,8 @@ export async function scanNextPublicEnv(input: ScanInput): Promise<Finding[]> {
             {
               file: file.path,
               line,
-              match: redactSecret(match[0]),
-              snippet: redactSecret(lineAt(file.content, line))
+              match: redactSecret(match[0], "next-public-env"),
+              snippet: redactSecret(lineAt(file.content, line), "next-public-env")
             }
           ],
           why: "Next.js exposes NEXT_PUBLIC variables to browser code, so secret-like names or values can leak credentials to users.",

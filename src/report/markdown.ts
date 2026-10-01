@@ -224,8 +224,20 @@ function escapeMarkdownTableCell(value: string): string {
   return value.replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 
-function escapeMarkdownInline(value: string): string {
-  return value.replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
+export function escapeMarkdownInline(value: string): string {
+  // Inline values land in PR comments and markdown reports where attacker-
+  // controlled text (file paths, finding titles) could inject HTML tags or
+  // markdown links. Neutralize `&`/`<`/`>` as entities and `[`/`]`/`|` with
+  // backslashes so the text renders literally.
+  return value
+    .replace(/\r?\n/g, " ")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("[", "\\[")
+    .replaceAll("]", "\\]")
+    .replaceAll("|", "\\|")
+    .trim();
 }
 
 function summaryText(report: BaseReport): string {

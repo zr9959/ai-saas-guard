@@ -23,7 +23,7 @@ export function createReport<T extends BaseReport>(
   command: CommandName,
   rootDir: string,
   findings: Finding[],
-  extra: Omit<T, keyof BaseReport | "command">
+  extra: Omit<T, keyof BaseReport | "command"> & Partial<Pick<BaseReport, "stackInventory" | "fileCollection">>
 ): T {
   return {
     command,

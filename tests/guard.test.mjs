@@ -24,6 +24,7 @@ import { collectTextFiles, collectTextFilesWithDiagnostics } from "../dist/utils
 import { formatMarkdownReport } from "../dist/report/markdown.js";
 import { formatCommentReport } from "../dist/report/comment.js";
 import { formatSummaryReport } from "../dist/report/summary.js";
+import { formatSarifReport } from "../dist/report/sarif.js";
 import { formatTerminalReport } from "../dist/report/terminal.js";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
@@ -242,6 +243,34 @@ test("scan reports malformed package inventory instead of silently skipping stac
       { file: "package.json", reason: "invalid_package_json" }
     ]);
     assert.match(formatSummaryReport(report), /1 malformed package manifest/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("scan runs supabase rules for SQL migrations outside standard supabase paths", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-supabase-gate-"));
+  await mkdir(resolve(rootDir, "db", "migrations"), { recursive: true });
+  await mkdir(resolve(rootDir, "lib"), { recursive: true });
+  await writeFile(
+    resolve(rootDir, "db", "migrations", "001.sql"),
+    "CREATE TABLE users (\n  id uuid PRIMARY KEY,\n  email text NOT NULL\n);\n"
+  );
+  await writeFile(
+    resolve(rootDir, "lib", "db.ts"),
+    'import { createClient } from "@supabase/supabase-js";\nexport const db = createClient("url", "key");\n'
+  );
+
+  try {
+    // The stack inventory does not recognize this layout as Supabase (no
+    // supabase/ path, no package dependency, no policy syntax), but the
+    // scanner itself sees Supabase context via the client import.
+    const inventory = await detectStackInventory({ rootDir });
+    assert.ok(!inventory.databases.includes("supabase"));
+    const report = await scanRepository({ rootDir });
+    const ruleIds = findingRuleIds(report);
+    assert.ok(ruleIds.includes("supabase.rls.not-enabled"));
+    assert.ok(ruleIds.includes("supabase.table.missing-owner-column"));
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
@@ -1104,6 +1133,242 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
 });
 
+test("pr-risk --base rejects unsafe ref values", async () => {
+  // Unit-level: the ref allowlist blocks revision syntax and option-like values.
+  const { isSafeGitBaseRef } = await import("../dist/scanners/gitDiff.js");
+  for (const safe of ["origin/main", "refs/heads/main", "v1.2.3", "abc123"]) {
+    assert.equal(isSafeGitBaseRef(safe), true, `${safe} should be accepted`);
+  }
+  for (const unsafe of ["HEAD~3", "--output=/tmp/x", "../main", "", "main..other", ".hidden"]) {
+    assert.equal(isSafeGitBaseRef(unsafe), false, `${unsafe} should be rejected`);
+  }
+
+  // API-level: an unsafe base surfaces a diff-unavailable diagnostic instead
+  // of reaching git argument parsing.
+  const report = await classifyPrRisk({ rootDir: fixtureRoot, base: "--output=/tmp/x" });
+  assert.ok(
+    findingRuleIds(report).includes("pr-risk.diff-unavailable"),
+    "unsafe base must produce a pr-risk.diff-unavailable diagnostic"
+  );
+
+  // CLI-level: rejected before any scan runs.
+  const cliResult = await runCli(["pr-risk", "--base", "HEAD~3", "--root", fixtureRoot]);
+  assert.notEqual(cliResult.code, 0);
+  assert.match(cliResult.stderr, /--base must be a safe branch or ref/);
+});
+
+test("pr-risk does not flag comment-only removals as weakened tests", async () => {
+  const commentOnlyDiff = `diff --git a/tests/auth.test.ts b/tests/auth.test.ts
+index 1111111..2222222 100644
+--- a/tests/auth.test.ts
++++ b/tests/auth.test.ts
+@@ -1,8 +1,6 @@
+-// TODO: add more edge cases here
+-
+ import { login } from "../src/auth";
+ 
+-// Legacy assertion style, superseded below
+ describe("login", () => {
+   test("rejects bad password", async () => {
+     await expect(login("u", "wrong")).rejects.toThrow();
+`;
+  const realRemovalDiff = `diff --git a/tests/auth.test.ts b/tests/auth.test.ts
+index 1111111..2222222 100644
+--- a/tests/auth.test.ts
++++ b/tests/auth.test.ts
+@@ -1,6 +1,3 @@
+ import { login } from "../src/auth";
+ 
+ describe("login", () => {
+-  test("rejects bad password", async () => {
+-    await expect(login("u", "wrong")).rejects.toThrow();
+-  });
+ });
+`;
+
+  const commentOnly = await classifyPrRisk({ diffText: commentOnlyDiff, rootDir: fixtureRoot });
+  const commentOnlyCategories = commentOnly.topRiskyFiles.flatMap((file) => file.categories);
+  assert.ok(
+    !commentOnlyCategories.includes("tests removed or weakened"),
+    "removing only comments/blank lines must not count as a weakened test"
+  );
+
+  const realRemoval = await classifyPrRisk({ diffText: realRemovalDiff, rootDir: fixtureRoot });
+  const realRemovalCategories = realRemoval.topRiskyFiles.flatMap((file) => file.categories);
+  assert.ok(
+    realRemovalCategories.includes("tests removed or weakened"),
+    "removing a real test case must still be flagged"
+  );
+});
+
+test("mcp plaintext-secret evidence names fields without leaking values", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-mcp-secret-"));
+  await writeFile(
+    resolve(rootDir, "mcp.json"),
+    JSON.stringify({
+      mcpServers: {
+        payments: {
+          command: "node",
+          args: ["server.js"],
+          env: { STRIPE_SECRET_KEY: "sk_test_a1b2c3d4e5f60718" }
+        }
+      }
+    })
+  );
+
+  try {
+    const report = await checkMcp({ rootDir });
+    const secretFinding = report.findings.find(
+      (finding) => finding.ruleId === "mcp.config.plaintext-secret"
+    );
+    assert.ok(secretFinding, "expected an mcp.config.plaintext-secret finding");
+    const snippet = secretFinding.evidence[0].snippet ?? "";
+    assert.ok(
+      snippet.includes("env.STRIPE_SECRET_KEY"),
+      "evidence must name the secret-like config field"
+    );
+    assert.ok(!snippet.includes("sk_test_a1b2c3d4e5f60718"), "evidence must not leak the secret value");
+    assert.match(snippet, /\[redacted:mcp-server-config:\d+-chars\]/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("sarif output omits the region when evidence has no line", () => {
+  const report = {
+    command: "scan",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    summary: { total: 2, critical: 0, high: 1, medium: 0, low: 0, info: 1 },
+    findings: [
+      {
+        ruleId: "example.no-line",
+        title: "finding without a line",
+        severity: "high",
+        evidence: [{ file: "app/example.ts" }],
+        why: "probe",
+        suggestedVerification: "none",
+        suggestedFix: "none"
+      },
+      {
+        ruleId: "example.with-line",
+        title: "finding with a line",
+        severity: "info",
+        evidence: [{ file: "app/example.ts", line: 42 }],
+        why: "probe",
+        suggestedVerification: "none",
+        suggestedFix: "none"
+      }
+    ]
+  };
+  const sarif = JSON.parse(formatSarifReport(report));
+  const [withoutLine, withLine] = sarif.runs[0].results;
+
+  assert.equal(withoutLine.locations[0].physicalLocation.artifactLocation.uri, "app/example.ts");
+  assert.ok(
+    !("region" in withoutLine.locations[0].physicalLocation),
+    "evidence without a line must not default to line 1"
+  );
+  assert.deepEqual(withLine.locations[0].physicalLocation.region, { startLine: 42 });
+});
+
+test("supabase flags parenthesized constant tautologies as broad policies", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-supabase-tautology-"));
+  const migrationsDir = resolve(rootDir, "db", "migrations");
+  await mkdir(migrationsDir, { recursive: true });
+  await writeFile(
+    resolve(migrationsDir, "001.sql"),
+    `CREATE POLICY "open select" ON public.documents FOR SELECT USING (1=1);
+CREATE POLICY "quoted" ON public.reports FOR SELECT USING ('a'='a');
+CREATE POLICY "scoped" ON public.notes FOR SELECT USING (auth.uid() = owner_id);
+CREATE POLICY "never matches" ON public.archive FOR SELECT USING (1=2);
+`
+  );
+
+  try {
+    const report = await checkSupabase({ rootDir });
+    const broadTables = report.findings
+      .filter((finding) => finding.ruleId === "supabase.rls.broad-policy")
+      .map((finding) => finding.title);
+    assert.ok(broadTables.some((title) => title.includes("public.documents")), "USING (1=1) must be flagged");
+    assert.ok(broadTables.some((title) => title.includes("public.reports")), "USING ('a'='a') must be flagged");
+    assert.ok(!broadTables.some((title) => title.includes("public.notes")), "scoped predicate must not be flagged");
+    assert.ok(!broadTables.some((title) => title.includes("public.archive")), "USING (1=2) must not be flagged");
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("stripe raw-body detection recognizes request.json and request.arrayBuffer", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stripe-rawbody-"));
+  const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");
+  await mkdir(apiDir, { recursive: true });
+  const route = (bodyLine) =>
+    `import Stripe from "stripe";
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export async function POST(request: Request) {
+  ${bodyLine}
+  const signature = request.headers.get("stripe-signature")!;
+  const event = stripe.webhooks.constructEvent(payload, signature, process.env.STRIPE_WEBHOOK_SECRET!);
+  return Response.json({ received: true });
+}
+`;
+
+  try {
+    // request.json() (full parameter name) must count as parsed-body usage.
+    await writeFile(
+      resolve(apiDir, "route.ts"),
+      route("const payload = JSON.stringify(await request.json());")
+    );
+    const parsed = await checkStripe({ rootDir });
+    const parsedHits = parsed.findings.filter(
+      (finding) => finding.ruleId === "stripe.webhook.raw-body-risk"
+    );
+    assert.equal(parsedHits.length, 1);
+    assert.match(parsedHits[0].evidence[0].snippet, /request\.json\(\)/);
+
+    // request.arrayBuffer() must count as raw-body usage: no raw-body-risk.
+    await writeFile(
+      resolve(apiDir, "route.ts"),
+      route("const payload = Buffer.from(await request.arrayBuffer());")
+    );
+    const raw = await checkStripe({ rootDir });
+    assert.ok(
+      !findingRuleIds(raw).includes("stripe.webhook.raw-body-risk"),
+      "request.arrayBuffer() must be recognized as raw body"
+    );
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("comment format neutralizes markdown and HTML injection", async () => {
+  const evilFinding = {
+    ruleId: "data.prisma.tenant-scope-missing",
+    title: "Evil <img src=x onerror=alert(1)> [poc](https://evil.example)",
+    severity: "high",
+    evidence: [{ file: "app/api/<script>/route.ts", snippet: "x" }],
+    why: "injection probe",
+    suggestedVerification: "none",
+    suggestedFix: "none"
+  };
+  const report = {
+    command: "scan",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    findings: [evilFinding],
+    summary: { total: 1, critical: 0, high: 1, medium: 0, low: 0, info: 0 }
+  };
+  const comment = formatCommentReport(report);
+
+  assert.ok(!comment.includes("<img src=x onerror=alert(1)>"), "raw HTML tag must not survive");
+  assert.ok(!comment.includes("[poc](https://evil.example)"), "raw markdown link must not survive");
+  assert.ok(!comment.includes("app/api/<script>/route.ts"), "raw angle brackets in path must not survive");
+  assert.ok(comment.includes("&lt;img src=x onerror=alert(1)&gt;"));
+  assert.ok(comment.includes("\\[poc\\](https://evil.example)"));
+  assert.ok(comment.includes("app/api/&lt;script&gt;/route.ts"));
+});
+
 test("pr-risk comment format renders a paste-ready PR review queue", async () => {
   const diffText = await readFile(resolve(fixtureRoot, "risky-pr.diff"), "utf8");
   const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
@@ -1313,6 +1578,167 @@ test(".ai-saas-guardignore excludes matching files from scans", async () => {
 
   assert.ok(files.includes(".env.example"));
   assert.ok(!files.includes("ignored/.env.example"));
+});
+
+test("standalone check commands include file collection diagnostics", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-check-coverage-"));
+  await writeFile(resolve(rootDir, "index.ts"), "export const ok = 1;\n");
+
+  try {
+    for (const check of [checkActions, checkMcp, checkStripe, checkSupabase]) {
+      const report = await check({ rootDir });
+      assert.ok(report.fileCollection, `${check.name} report must carry fileCollection`);
+      assert.equal(typeof report.fileCollection.filesScanned, "number");
+    }
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("stripe webhook recognizes unique-constraint duplicate-delivery guards", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stripe-idem-"));
+  const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");
+  await mkdir(apiDir, { recursive: true });
+  await writeFile(
+    resolve(apiDir, "route.ts"),
+    `import Stripe from "stripe";
+import { sql } from "@/lib/db";
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export async function POST(req: Request) {
+  const body = await req.text();
+  const event = stripe.webhooks.constructEvent(body, req.headers.get("stripe-signature")!, process.env.STRIPE_WEBHOOK_SECRET!);
+  await sql\`INSERT INTO stripe_events (event_id, type) VALUES (\${event.id}, \${event.type}) ON CONFLICT (event_id) DO NOTHING\`;
+  return Response.json({ received: true });
+}
+`
+  );
+
+  try {
+    const report = await checkStripe({ rootDir });
+    assert.ok(
+      !findingRuleIds(report).includes("stripe.webhook.missing-idempotency"),
+      "ON CONFLICT DO NOTHING on event_id must count as idempotency"
+    );
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("actions fetch-depth check matches complete depth numbers", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-fetch-depth-"));
+  const workflowsDir = resolve(rootDir, ".github", "workflows");
+  await mkdir(workflowsDir, { recursive: true });
+  const workflow = (depth) =>
+    `name: ci\non: [push]\njobs:\n  scan:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          fetch-depth: ${depth}\n      - run: npx ai-saas-guard pr-risk --base origin/main\n`;
+
+  try {
+    // fetch-depth: 10 is still shallow for pr-risk merge-base comparison and
+    // must be judged as the complete number 10, not as the prefix "1".
+    await writeFile(resolve(workflowsDir, "ci.yml"), workflow(10));
+    const shallow = await checkActions({ rootDir });
+    const shallowHits = shallow.findings.filter(
+      (finding) => finding.ruleId === "actions.checkout.fetch-depth"
+    );
+    assert.equal(shallowHits.length, 1);
+    assert.match(shallowHits[0].evidence[0].snippet, /fetch-depth:\s*10/);
+
+    await writeFile(resolve(workflowsDir, "ci.yml"), workflow(0));
+    const full = await checkActions({ rootDir });
+    assert.ok(
+      !findingRuleIds(full).includes("actions.checkout.fetch-depth"),
+      "fetch-depth: 0 (full history) must not be flagged"
+    );
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("middleware missing-auth ignores pure config files without middleware logic", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-middleware-config-"));
+  await writeFile(
+    resolve(rootDir, "middleware.ts"),
+    'import type { NextRequest } from "next/server";\n\nexport const config = {\n  matcher: ["/((?!_next/static|favicon.ico).*)"]\n};\n'
+  );
+
+  try {
+    const report = await scanRepository({ rootDir });
+    assert.ok(!findingRuleIds(report).includes("next.middleware.missing-auth"));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("prisma tenant-scope rule covers findMany, create, and count", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-prisma-ops-"));
+  const apiDir = resolve(rootDir, "app", "api", "invoices");
+  await mkdir(apiDir, { recursive: true });
+  await writeFile(
+    resolve(apiDir, "route.ts"),
+    `import { getUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+export async function GET(req: Request) {
+  const user = await getUser();
+  if (!user) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const invoice = await prisma.invoice.findMany({ where: { id: "x" } });
+  const total = await prisma.invoice.count({ where: { id: "x" } });
+  return Response.json({ invoice, total });
+}
+`
+  );
+
+  try {
+    const report = await scanRepository({ rootDir });
+    const titles = report.findings
+      .filter((finding) => finding.ruleId === "data.prisma.tenant-scope-missing")
+      .map((finding) => finding.title);
+    assert.equal(titles.length, 2);
+    assert.ok(titles.every((title) => title.includes("invoice")));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("secret findings never leak key material into reports", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-redact-"));
+  const secretValue = "sk_test_a1b2c3d4e5f60718";
+  await writeFile(resolve(rootDir, ".env"), `STRIPE_SECRET_KEY=${secretValue}\n`);
+
+  try {
+    const report = await scanRepository({ rootDir });
+    const secretFindings = report.findings.filter((finding) => finding.ruleId === "secrets.detected");
+    assert.ok(secretFindings.length > 0);
+    const serialized = JSON.stringify(secretFindings);
+    // No prefix, suffix, or full value may survive redaction: reports are
+    // routinely pasted into issues and PRs.
+    assert.ok(!serialized.includes(secretValue));
+    assert.ok(!serialized.includes(secretValue.slice(0, 8)));
+    assert.ok(!serialized.includes(secretValue.slice(-8)));
+    const evidence = secretFindings[0].evidence[0];
+    assert.match(evidence.match, /^\[redacted:stripe-secret-key:\d+-chars\]$/);
+    assert.match(evidence.snippet, /^\[redacted:stripe-secret-key:\d+-chars\]$/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test(".ai-saas-guardignore wildcard patterns do not crash collection", async () => {  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-ignore-glob-"));
+  // `*.log` used to throw "Nothing to repeat" from `new RegExp` and abort the
+  // whole scan because `*` was escaped after (instead of before) wildcard
+  // translation.
+  await writeFile(resolve(rootDir, ".ai-saas-guardignore"), "*.log\n**/secret-*.json\n");
+  await writeFile(resolve(rootDir, "debug.log"), "noise\n");
+  await writeFile(resolve(rootDir, "secret-top.json"), "{}\n");
+  await mkdir(resolve(rootDir, "nested"), { recursive: true });
+  await writeFile(resolve(rootDir, "nested", "secret-deep.json"), "{}\n");
+  await writeFile(resolve(rootDir, "keep.ts"), "export const ok = 1;\n");
+
+  try {
+    const files = await collectTextFiles(rootDir);
+    const paths = files.map((file) => file.path).sort();
+    assert.deepEqual(paths, ["keep.ts"]);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
 });
 
 test("CLI can emit SARIF for GitHub code scanning", async () => {

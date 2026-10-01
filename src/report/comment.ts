@@ -1,5 +1,6 @@
 import type { BaseReport, PrRiskReport } from "../types.js";
 import { launchDecisionQuestions, launchGateVerdict, nextSteps, reviewFirst, trustStatement } from "./launchGate.js";
+import { escapeMarkdownInline } from "./markdown.js";
 
 /**
  * `--format comment` renders a compact PR-comment-ready markdown body.
@@ -15,12 +16,12 @@ function formatPrRiskComment(report: PrRiskReport): string {
   const lines: string[] = [];
   lines.push("## \u{1F6E1}\uFE0F ai-saas-guard PR risk");
   lines.push("");
-  lines.push(`**Verdict:** ${escapeInline(launchGateVerdict(report))}`);
+  lines.push(`**Verdict:** ${escapeMarkdownInline(launchGateVerdict(report))}`);
 
   if (report.categories.length > 0) {
     lines.push("");
     lines.push(
-      `**This PR touches:** ${report.categories.map((category) => `\`${escapeInline(category)}\``).join(", ")}`
+      `**This PR touches:** ${report.categories.map((category) => `\`${escapeMarkdownInline(category)}\``).join(", ")}`
     );
   }
 
@@ -34,7 +35,7 @@ function formatPrRiskComment(report: PrRiskReport): string {
     lines.push("");
     for (const [index, file] of topFiles.entries()) {
       lines.push(
-        `${index + 1}. \`${escapeInline(file.path)}\` — ${file.categories.map((category) => `\`${escapeInline(category)}\``).join(", ")} (+${file.added}/-${file.removed})`
+        `${index + 1}. \`${escapeMarkdownInline(file.path)}\` — ${file.categories.map((category) => `\`${escapeMarkdownInline(category)}\``).join(", ")} (+${file.added}/-${file.removed})`
       );
     }
   }
@@ -45,7 +46,7 @@ function formatPrRiskComment(report: PrRiskReport): string {
     lines.push("### \u2705 Verify before merge");
     lines.push("");
     for (const item of verification.slice(0, 4)) {
-      lines.push(`- ${escapeInline(item)}`);
+      lines.push(`- ${escapeMarkdownInline(item)}`);
     }
   }
 
@@ -57,41 +58,38 @@ function formatPrRiskComment(report: PrRiskReport): string {
     lines.push("### \u2702\uFE0F Suggested split");
     lines.push("");
     for (const item of split.slice(0, 3)) {
-      lines.push(`- ${escapeInline(item)}`);
+      lines.push(`- ${escapeMarkdownInline(item)}`);
     }
   }
 
   lines.push("");
   lines.push("---");
   lines.push(
-    `<sub>Posted by \`ai-saas-guard pr-risk --format comment\`. ${trustStatement().map(escapeInline).join(" ")}</sub>`
+    `<sub>Posted by \`ai-saas-guard pr-risk --format comment\`. ${trustStatement().map(escapeMarkdownInline).join(" ")}</sub>`
   );
   return lines.join("\n");
 }
 
 function formatGenericComment(report: BaseReport): string {
   const lines: string[] = [];
-  lines.push(`## \u{1F6E1}\uFE0F ai-saas-guard ${escapeInline(report.command)}`);
+  lines.push(`## \u{1F6E1}\uFE0F ai-saas-guard ${escapeMarkdownInline(report.command)}`);
   lines.push("");
-  lines.push(`**Verdict:** ${escapeInline(launchGateVerdict(report))}`);
+  lines.push(`**Verdict:** ${escapeMarkdownInline(launchGateVerdict(report))}`);
   lines.push("");
   lines.push("### Review first");
   lines.push("");
   for (const item of reviewFirst(report.findings, 3)) {
-    lines.push(`- ${escapeInline(item)}`);
+    lines.push(`- ${escapeMarkdownInline(item)}`);
   }
   lines.push("");
   lines.push("### Next");
   lines.push("");
   for (const item of nextSteps(report.findings).slice(0, 3)) {
-    lines.push(`- ${escapeInline(item)}`);
+    lines.push(`- ${escapeMarkdownInline(item)}`);
   }
   lines.push("");
   lines.push("---");
-  lines.push(`<sub>${trustStatement().map(escapeInline).join(" ")}</sub>`);
+  lines.push(`<sub>${trustStatement().map(escapeMarkdownInline).join(" ")}</sub>`);
   return lines.join("\n");
 }
 
-function escapeInline(value: string): string {
-  return value.replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
-}

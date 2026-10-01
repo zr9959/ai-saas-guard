@@ -846,10 +846,12 @@ function safeWorkerEnv(
 function parseRepositoryFullName(value: string): { owner: string; repo: string } | undefined {
   const match = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(value);
   if (!match) return undefined;
-  return {
-    owner: match[1],
-    repo: match[2]
-  };
+  const owner = match[1];
+  const repo = match[2];
+  // Reject path-traversal segments: `.`/`..` in the clone URL path could
+  // resolve outside the intended repository location.
+  if (owner === "." || owner === ".." || repo === "." || repo === "..") return undefined;
+  return { owner, repo };
 }
 
 function normalizeSafeCloneBaseUrl(value: string): string {

@@ -42,6 +42,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
 
   if (webhookFiles.length === 0 && !usesStripe) {
     return createReport<StripeReport>("check-stripe", context.rootDir, [], {
+    fileCollection: context.fileCollection,
       webhookFiles: [],
       handledEvents: [],
       missingCriticalEvents: [],
@@ -82,8 +83,8 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
 
     const hasConstructEvent = /webhooks\.constructEvent|constructEvent\s*\(/.test(file.content);
     const readsStripeSignature = /stripe-signature/i.test(file.content);
-    const usesRawBody = /req\.text\s*\(|rawBody|buffer\s*\(/.test(file.content);
-    const usesJsonBody = /req\.json\s*\(/.test(file.content);
+    const usesRawBody = /(?:req|request)\.(?:text|arrayBuffer)\s*\(|rawBody|buffer\s*\(/.test(file.content);
+    const usesJsonBody = /(?:req|request)\.json\s*\(/.test(file.content);
 
     if (!hasConstructEvent || !readsStripeSignature) {
       findings.push(
@@ -113,7 +114,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
           ruleId: "stripe.webhook.raw-body-risk",
           title: "Stripe signature verification may be using a parsed JSON body",
           severity: "high",
-          evidence: [{ file: file.path, line: firstLineMatching(file.content, /req\.json\s*\(/), snippet: firstSnippetMatching(file.content, /req\.json\s*\(/) }],
+          evidence: [{ file: file.path, line: firstLineMatching(file.content, /(?:req|request)\.json\s*\(/), snippet: firstSnippetMatching(file.content, /(?:req|request)\.json\s*\(/) }],
           why: "Stripe signature checks require the exact raw payload bytes; parsed JSON can make verification fail or be bypassed in rewrites.",
           suggestedVerification:
             "Replay a signed test webhook through the deployed route and confirm signature verification succeeds only with the raw body.",
@@ -139,9 +140,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
       );
     }
 
-    const hasIdempotency =
-      /event\.id/.test(file.content) &&
-      /(processed|idempot|webhook_events|recordProcessed|hasProcessed|dedupe)/i.test(file.content);
+    const hasIdempotency = hasEventIdIdempotency(file.content);
     if (!hasIdempotency) {
       findings.push(
         finding({
@@ -191,6 +190,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
   }
 
   return createReport<StripeReport>("check-stripe", context.rootDir, uniqueFindings(findings), {
+    fileCollection: context.fileCollection,
     webhookFiles: webhookFiles.map((file) => file.path),
     handledEvents: [...handledEvents].sort(),
     missingCriticalEvents,
@@ -209,6 +209,18 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
       "Can app access stay active after failed payment, cancellation, refund, or chargeback?"
     ]
   });
+}
+
+function hasEventIdIdempotency(content: string): boolean {
+  if (!/event\.id/.test(content)) return false;
+  if (/(processed|idempot|webhook_events|recordProcessed|hasProcessed|dedupe)/i.test(content)) return true;
+  // Unique-constraint style duplicate-delivery guards: the event id is written
+  // through INSERT ... ON CONFLICT DO NOTHING / DO UPDATE (or an ORM upsert
+  // keyed by event id), or a UNIQUE index/constraint exists on the event id
+  // column. Any of these makes redelivered events harmless.
+  if (/\bon\s+conflict\b/i.test(content)) return true;
+  if (/\bupsert\s*\(/i.test(content)) return true;
+  return /\bunique\b[\s\S]{0,200}event[_. ]?id|event[_. ]?id[\s\S]{0,200}\bunique\b/i.test(content);
 }
 
 function firstLineMatching(content: string, pattern: RegExp): number | undefined {

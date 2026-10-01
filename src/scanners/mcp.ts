@@ -53,12 +53,17 @@ export async function checkMcp(input: ScanInput, options: { policyTemplate?: boo
       servers.push(server);
 
       if (sideEffects.includes("secret-bearing")) {
+        // Name the secret-like config fields so reviewers know what to rotate,
+        // but never echo values: the redacted placeholder carries zero key
+        // material.
+        const secretFields = findSecretLikeFields(config);
+        const fieldHint = secretFields.length > 0 ? `secret-like fields: ${secretFields.join(", ")}\n` : "";
         findings.push(
           finding({
             ruleId: "mcp.config.plaintext-secret",
             title: `MCP server ${name} contains plaintext secret-like config`,
             severity: "high",
-            evidence: [{ file: file.path, snippet: redactSecret(serverText.slice(0, 160)) }],
+            evidence: [{ file: file.path, snippet: `${fieldHint}${redactSecret(serverText, "mcp-server-config")}` }],
             why: "MCP configs are often read by local agents; plaintext credentials can leak through prompts, logs, or tool arguments.",
             suggestedVerification:
               "Inspect the config and shell environment for real API keys, database URLs, and tokens, then rotate any exposed credentials.",
@@ -206,6 +211,7 @@ export async function checkMcp(input: ScanInput, options: { policyTemplate?: boo
   }
 
   return createReport<McpReport>("check-mcp", context.rootDir, uniqueFindings(findings), {
+    fileCollection: context.fileCollection,
     servers,
     tools: [...new Set(servers.flatMap((server) => server.tools))].sort(),
     ...(options.policyTemplate ? { policyTemplate: buildPolicyTemplate(servers) } : {})
@@ -235,6 +241,30 @@ function extractToolEntries(config: unknown): ToolEntry[] {
     }));
   }
   return [];
+}
+
+/**
+ * Collect dot-paths of config fields that look secret-bearing (secret-ish key
+ * name holding a secret-like string value). Key names are safe to surface;
+ * values never leave this function.
+ */
+function findSecretLikeFields(value: unknown, prefix = "", depth = 0): string[] {
+  if (depth > 4 || value === null || typeof value !== "object") return [];
+  const fields: string[] = [];
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (
+      typeof child === "string" &&
+      /(secret|token|api[_-]?key|password|database_url)/i.test(key) &&
+      hasSecretLikeValue(child)
+    ) {
+      fields.push(path);
+    } else {
+      fields.push(...findSecretLikeFields(child, path, depth + 1));
+    }
+    if (fields.length >= 5) break;
+  }
+  return fields;
 }
 
 function classifySideEffects(config: unknown, tools: ToolEntry[]): McpSideEffect[] {

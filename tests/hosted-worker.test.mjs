@@ -464,6 +464,97 @@ test("hosted checkout worker rejects accepted plans with mutated command checkou
   }
 });
 
+test("hosted checkout worker rejects path-traversal repository names", async () => {
+  const checkoutRoot = await mkdtemp(join(tmpdir(), "ai-saas-guard-worker-"));
+  try {
+    const { HostedReadOnlyCheckoutScanError, createHostedReadOnlyCheckoutScanRunner } =
+      await loadHostedWorker();
+    const runner = createHostedReadOnlyCheckoutScanRunner({
+      checkoutRoot,
+      installationTokenProvider: async () => "ghs_do_not_echo",
+      commandRunner: async () => {
+        throw new Error("no git command must run for a traversal repository name");
+      }
+    });
+
+    for (const traversalName of ["../repo", "owner/..", "./repo", "owner/."]) {
+      const traversalIdentity = { ...identity, repositoryFullName: traversalName };
+      await assert.rejects(
+        () =>
+          runner({
+            plan: {
+              accepted: true,
+              jobKey: "job-worker",
+              requestedAt: "2026-05-24T18:05:00.000Z",
+              readOnly: true,
+              shouldFetchSource: true,
+              shouldRunCli: true,
+              shouldPersistRawSource: false,
+              shouldPersistRawDiffs: false,
+              shouldCreatePrComment: false,
+              installationTokenScope: {
+                installationId: 123,
+                repositoryId: 456,
+                permissions: { contents: "read" },
+                selectedRepositoryOnly: true
+              },
+              checkout: {
+                repositoryId: 456,
+                repositoryFullName: traversalName,
+                pullRequestNumber: 7,
+                baseSha: identity.baseSha,
+                targetCommitSha: identity.headSha,
+                directoryScope: "temporary_worker_directory",
+                cleanupRequired: true,
+                returnsCheckoutPath: false
+              },
+              cli: {
+                command: "ai-saas-guard",
+                args: ["pr-risk", "--root", "<worker-checkout>", "--base", identity.baseSha, "--json"],
+                workingDirectory: "<worker-checkout>",
+                networkAccess: "disabled",
+                writeMode: "read_only"
+              },
+              output: {
+                compactJsonOnly: true,
+                persistRawSource: false,
+                persistRawDiffs: false,
+                persistSecrets: false,
+                persistCustomerPayloads: false
+              },
+              privacy: {
+                returnsCheckoutPath: false,
+                returnsRawSource: false,
+                returnsRawDiffs: false,
+                returnsSecrets: false,
+                returnsCustomerPayloads: false,
+                acceptsCommandFromPrText: false
+              }
+            },
+            queueRecord: {
+              key: "job-worker",
+              identity: traversalIdentity,
+              status: "running",
+              attempt: 1,
+              deliveryIds: ["delivery-1"],
+              createdAt: "2026-05-24T18:05:00.000Z",
+              updatedAt: "2026-05-24T18:05:00.000Z"
+            }
+          }),
+        (error) => {
+          assert.ok(error instanceof HostedReadOnlyCheckoutScanError);
+          assert.equal(error.safeReason, "invalid_repository_full_name");
+          assert.equal(error.message.includes(".."), false);
+          return true;
+        }
+      );
+    }
+    assert.deepEqual(await readdir(checkoutRoot), []);
+  } finally {
+    await rm(checkoutRoot, { recursive: true, force: true });
+  }
+});
+
 test("hosted checkout worker rejects unsafe input and command failures without leaking checkout paths", async () => {
   const checkoutRoot = await mkdtemp(join(tmpdir(), "ai-saas-guard-worker-"));
   try {

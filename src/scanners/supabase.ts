@@ -46,6 +46,7 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
   const doctor = buildDoctorReport(options.doctor ?? true);
   if (!hasSupabaseContext(context.files)) {
     return createReport<SupabaseReport>("check-supabase", context.rootDir, [], {
+    fileCollection: context.fileCollection,
       riskyTables: [],
       riskyPolicies: [],
       manualAuthorizationTest: [],
@@ -244,6 +245,7 @@ export async function checkSupabase(input: ScanInput, options: { doctor?: boolea
   findings.push(...scanServiceRoleClientUsage(codeFiles));
 
   return createReport<SupabaseReport>("check-supabase", context.rootDir, uniqueFindings(findings), {
+    fileCollection: context.fileCollection,
     riskyTables: [...new Set(tables.filter((table) => table.sensitive && !isRlsEnabled(rlsEnabledTables, table.name)).map((table) => table.name))],
     riskyPolicies,
     manualAuthorizationTest: [
@@ -622,8 +624,25 @@ function extractBalancedParentheses(value: string, openParen: number): string | 
   return undefined;
 }
 
+function stripWrappingParens(value: string): string {
+  let normalized = value.trim();
+  while (normalized.length >= 2 && normalized.startsWith("(") && normalized.endsWith(")")) {
+    const inner = extractBalancedParentheses(normalized, 0);
+    // Only peel when the outer parens wrap the whole predicate: the matching
+    // close paren must be the last character.
+    if (inner === undefined || normalized.length !== inner.length + 2) break;
+    normalized = inner;
+  }
+  return normalized;
+}
+
 function isBroadPredicate(predicate: string): boolean {
-  return predicate.trim().toLowerCase() === "true";
+  const normalized = stripWrappingParens(predicate).toLowerCase();
+  if (normalized === "true") return true;
+  // Constant tautologies such as `USING (1=1)`: only identical values on both
+  // sides count — `1=2` matches nothing and is not broad.
+  if (/^(\d+)\s*=\s*\1$/.test(normalized)) return true;
+  return /^'([^']*)'\s*=\s*'\1'$/.test(normalized);
 }
 
 function hasWeakWithCheck(policy: PolicyInfo): boolean {

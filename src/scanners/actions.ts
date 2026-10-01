@@ -79,7 +79,7 @@ export async function checkActions(input: ScanInput): Promise<ActionsReport> {
     }
 
     if (mentionsPrRisk(file.content) && hasShallowCheckout(file.content)) {
-      const match = firstMatch(file.content, /fetch-depth:\s*(?:1|2|[3-9]\d*)/gi);
+      const match = firstMatch(file.content, /fetch-depth:\s*[1-9]\d*\b/gi);
       findings.push(
         finding({
           ruleId: "actions.checkout.fetch-depth",
@@ -115,6 +115,7 @@ export async function checkActions(input: ScanInput): Promise<ActionsReport> {
   }
 
   return createReport<ActionsReport>("check-actions", context.rootDir, uniqueFindings(findings), {
+    fileCollection: context.fileCollection,
     workflows: workflows.map((file) => file.path).sort(),
     hygieneChecklist: [
       "Use least-privilege workflow permissions.",
@@ -164,7 +165,11 @@ function mentionsPrRisk(content: string): boolean {
 function hasShallowCheckout(content: string): boolean {
   if (!/actions\/checkout@/i.test(content)) return false;
   if (/fetch-depth:\s*0\b/i.test(content)) return false;
-  return /fetch-depth:\s*(?:1|2|[3-9]\d*)/i.test(content) || true;
+  // Match the complete depth number: the old `(?:1|2|...)` alternation matched
+  // only the `1` prefix of `fetch-depth: 10`. Any explicit non-zero depth is
+  // still shallow for pr-risk merge-base comparison; only `0` (full history)
+  // or the default checkout depth exemption clears this.
+  return /fetch-depth:\s*[1-9]\d*\b/i.test(content) || true;
 }
 
 function firstLine(content: string, pattern: RegExp): number | undefined {
