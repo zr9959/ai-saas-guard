@@ -124,23 +124,30 @@ The demo command uses packaged public fixtures: `examples/demo-risky-saas` curre
 The report is designed to be read before launch or before merging an AI-heavy PR. A longer copy-paste example is in [docs/sample-launch-report.md](docs/sample-launch-report.md).
 
 ```text
-ai-saas-guard scan summary
-Findings: 20 findings: 2 critical, 6 high, 8 medium, 3 low, 1 info
-Launch gate: blocked: critical launch-readiness findings need review before inviting users
+ai-saas-guard | SCAN SUMMARY
+----------------------------------------
+Target       /path/to/your-saas
+Launch gate  blocked: critical launch-readiness findings need review before inviting users
+Findings     20 findings | 2 critical | 6 high | 8 medium | 3 low | 1 info
+Decision     Can a real user get access they should not have? Review auth, tenant ownership, Supabase RLS, webhook entitlement, and data mutation findings first.
 
-Top risks:
-- CRITICAL stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:1 - Stripe webhook does not verify the Stripe signature
-- CRITICAL supabase.rls.broad-policy at supabase/migrations/001_accounts.sql:10 - Broad Supabase RLS policy on public.accounts
-- HIGH silent-success.swallowed-error at app/api/billing/checkout/route.ts:4 - Catch block may turn upstream failure into success
+TOP RISKS
+1. CRITICAL stripe.webhook.missing-signature at app/api/stripe/webhook/route.ts:1 - Stripe webhook does not verify the Stripe signature
+2. CRITICAL supabase.rls.broad-policy at supabase/migrations/001_accounts.sql:10 - Broad Supabase RLS policy on public.accounts
+3. HIGH silent-success.swallowed-error at app/api/billing/checkout/route.ts:4 - Catch block may turn upstream failure into success: app/api/billing/checkout/route.ts
 
-Manual proof to run next:
-- Send a request without a valid Stripe signature and confirm the handler rejects it before changing entitlement state.
-- Run the generated two-account IDOR test and confirm User B cannot read, update, or delete User A resources.
-- Force the upstream billing call to fail and confirm the route returns an error, not fake success.
+MANUAL PROOF
+1. Send a request without a valid Stripe signature and confirm the handler rejects it before changing entitlement state.
+2. Run the generated two-account IDOR test and confirm User B cannot read, update, or delete User A resources.
+3. Force the upstream API, auth provider, billing provider, or database call to fail and confirm the route returns an error or disclosed degraded mode, not a fake success.
 
-Next steps
-- Fix critical and high trust-boundary findings first.
-- Run the manual proof steps in staging and confirm each risky path fails closed.
+NEXT STEPS
+1. Fix critical and high trust-boundary findings first: auth/session, billing/webhook, tenant data, and silent-success paths.
+2. Run the manual proof steps above in staging and confirm each risky path fails closed.
+3. Treat low and info deploy/CI hygiene hints as cleanup after critical, high, and medium launch paths are understood.
+
+FULL REPORT
+  Rerun without --summary, or use --json, --sarif, or --markdown where supported.
 ```
 
 ## What You Get

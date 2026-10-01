@@ -2672,11 +2672,11 @@ test("README first screen leads with buyer pain, demo output, and product bounda
   assert.match(zhReadme, /docs\/demo-terminal-output\.txt/);
   assert.match(zhReadme, /docs\/demo-terminal-screenshot\.svg/);
   assert.match(zhReadme, /和替代方案的区别/);
-  assert.match(demoOutput, /ai-saas-guard demo --summary/i);
-  assert.match(demoOutput, /Risky demo: 20 findings/i);
-  assert.match(demoOutput, /Safe demo: 0 findings/i);
-  assert.match(demoScreenshot, /Risky demo: 20 findings/i);
-  assert.match(demoScreenshot, /Safe demo: 0 findings/i);
+  assert.match(demoOutput, /npx ai-saas-guard@latest demo --summary/i);
+  assert.match(demoOutput, /Risky demo\s+20 findings/i);
+  assert.match(demoOutput, /Safe demo\s+0 findings/i);
+  assert.match(demoScreenshot, /Risky demo\s+20 findings/i);
+  assert.match(demoScreenshot, /Safe demo\s+0 findings/i);
   assert.match(coldStartReview, /30-second GitHub cold-start/i);
   assert.match(coldStartReview, /Does the first screen explain the painful problem/i);
   assert.doesNotMatch(readme, /certified secure|full audit|pentest replacement/i);
