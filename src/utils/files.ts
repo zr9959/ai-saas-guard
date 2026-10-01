@@ -238,19 +238,43 @@ function isIgnored(path: string, rules: IgnoreRule[]): boolean {
 function ignorePatternToRegex(pattern: string): RegExp {
   const anchored = pattern.startsWith("/");
   const normalized = pattern.replace(/^\/+/, "");
-  let regexSource = escapeRegex(normalized)
-    .replace(/\\\*\\\*/g, ".*")
-    .replace(/\\\*/g, "[^/]*");
+  let regexSource: string;
 
   if (normalized.endsWith("/")) {
-    regexSource = `${escapeRegex(normalized.slice(0, -1))}(?:/.*)?`;
-  }
-
-  if (normalized.endsWith("/**")) {
-    regexSource = `${escapeRegex(normalized.slice(0, -3))}(?:/.*)?`;
+    regexSource = `${globToRegexSource(normalized.slice(0, -1))}(?:/.*)?`;
+  } else if (normalized.endsWith("/**")) {
+    regexSource = `${globToRegexSource(normalized.slice(0, -3))}(?:/.*)?`;
+  } else {
+    regexSource = globToRegexSource(normalized);
   }
 
   return new RegExp(anchored ? `^${regexSource}$` : `(^|/)${regexSource}$|^${regexSource}(?:/|$)`);
+}
+
+// Translate `**`/`*` wildcards first, then escape every other regex
+// metacharacter. Escaping first breaks wildcard handling because the
+// follow-up replacements look for escaped `\*` sequences that a plain
+// escape (which must not touch `*`) never produces.
+function globToRegexSource(value: string): string {
+  let result = "";
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if (char === "*") {
+      if (value[index + 1] === "*" && value[index + 2] === "/") {
+        // A `**/` segment matches zero or more directories, including none.
+        result += "(?:.*/)?";
+        index += 2;
+      } else if (value[index + 1] === "*") {
+        result += ".*";
+        index += 1;
+      } else {
+        result += "[^/]*";
+      }
+      continue;
+    }
+    result += escapeRegex(char);
+  }
+  return result;
 }
 
 function escapeRegex(value: string): string {

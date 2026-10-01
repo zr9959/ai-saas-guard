@@ -1343,6 +1343,27 @@ test(".ai-saas-guardignore excludes matching files from scans", async () => {
   assert.ok(!files.includes("ignored/.env.example"));
 });
 
+test(".ai-saas-guardignore wildcard patterns do not crash collection", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-ignore-glob-"));
+  // `*.log` used to throw "Nothing to repeat" from `new RegExp` and abort the
+  // whole scan because `*` was escaped after (instead of before) wildcard
+  // translation.
+  await writeFile(resolve(rootDir, ".ai-saas-guardignore"), "*.log\n**/secret-*.json\n");
+  await writeFile(resolve(rootDir, "debug.log"), "noise\n");
+  await writeFile(resolve(rootDir, "secret-top.json"), "{}\n");
+  await mkdir(resolve(rootDir, "nested"), { recursive: true });
+  await writeFile(resolve(rootDir, "nested", "secret-deep.json"), "{}\n");
+  await writeFile(resolve(rootDir, "keep.ts"), "export const ok = 1;\n");
+
+  try {
+    const files = await collectTextFiles(rootDir);
+    const paths = files.map((file) => file.path).sort();
+    assert.deepEqual(paths, ["keep.ts"]);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("CLI can emit SARIF for GitHub code scanning", async () => {
   const { stdout } = await execFileAsync("node", [
     resolve(packageRoot, "dist/cli.js"),
