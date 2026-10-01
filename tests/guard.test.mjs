@@ -1474,6 +1474,82 @@ test("comment format neutralizes markdown and HTML injection", async () => {
   assert.ok(comment.includes("app/api/&lt;script&gt;/route.ts"));
 });
 
+test("comment format neutralizes backtick injection in code spans", () => {
+  const report = {
+    command: "pr-risk",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    findings: [],
+    summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+    categories: ["auth/session"],
+    topRiskyFiles: [
+      { path: "app/a`b`c.ts", categories: ["auth/session"], added: 10, removed: 2, score: 50 }
+    ],
+    reviewChecklist: [],
+    requiredTests: [],
+    suggestedSplit: []
+  };
+  const comment = formatCommentReport(report);
+
+  assert.ok(
+    !comment.includes("`app/a`b`c.ts`"),
+    "raw backticks must not break out of the code span"
+  );
+  assert.ok(comment.includes("`app/a'b'c.ts`"));
+});
+
+test("comment format surfaces scan coverage warnings", () => {
+  const report = {
+    command: "scan",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    findings: [],
+    summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+    fileCollection: {
+      filesScanned: 7,
+      bytesScanned: 1234,
+      unreadableFiles: ["private.env"],
+      unreadableDirectories: [],
+      skippedLargeFiles: ["large.sql"],
+      skippedBudgetFiles: [],
+      maxFilesReached: false,
+      maxTotalBytesReached: false
+    }
+  };
+  const comment = formatCommentReport(report);
+
+  assert.match(comment, /\*\*Coverage:\*\* 7 files scanned/);
+  assert.match(comment, /1 unreadable file/);
+  assert.match(comment, /1 large file skipped/);
+});
+
+test("pr-risk comment format warns when the git diff could not be read", () => {
+  const report = {
+    command: "pr-risk",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    findings: [
+      {
+        ruleId: "pr-risk.diff-unavailable",
+        title: "Could not read git diff for base origin/main",
+        severity: "info",
+        evidence: [{ file: "." }],
+        why: "probe",
+        suggestedVerification: "probe",
+        suggestedFix: "Fetch the branch or pass an existing local base ref."
+      }
+    ],
+    summary: { total: 1, critical: 0, high: 0, medium: 0, low: 0, info: 1 },
+    categories: [],
+    topRiskyFiles: [],
+    reviewChecklist: [],
+    requiredTests: [],
+    suggestedSplit: []
+  };
+  const comment = formatCommentReport(report);
+  assert.ok(comment.includes("Could not read git diff for base origin/main"));
+});
+
 test("pr-risk comment format renders a paste-ready PR review queue", async () => {
   const diffText = await readFile(resolve(fixtureRoot, "risky-pr.diff"), "utf8");
   const report = await classifyPrRisk({ diffText, rootDir: fixtureRoot });
