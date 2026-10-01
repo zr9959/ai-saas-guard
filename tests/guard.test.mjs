@@ -1442,6 +1442,18 @@ export async function POST(request: Request) {
       !findingRuleIds(raw).includes("stripe.webhook.raw-body-risk"),
       "request.arrayBuffer() must be recognized as raw body"
     );
+
+    // getRawBody() (capital R, raw-body package) must count as raw-body
+    // usage even when request.json() also appears in the handler.
+    await writeFile(
+      resolve(apiDir, "route.ts"),
+      `import Stripe from "stripe";\nimport getRawBody from "raw-body";\nconst stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);\nexport async function POST(req: Request) {\n  const payload = await getRawBody(req);\n  const signature = req.headers.get("stripe-signature")!;\n  const event = stripe.webhooks.constructEvent(payload, signature, process.env.STRIPE_WEBHOOK_SECRET!);\n  const debug = await req.json().catch(() => null);\n  return Response.json({ received: true });\n}\n`
+    );
+    const helperRaw = await checkStripe({ rootDir });
+    assert.ok(
+      !findingRuleIds(helperRaw).includes("stripe.webhook.raw-body-risk"),
+      "getRawBody() must be recognized as raw body"
+    );
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
