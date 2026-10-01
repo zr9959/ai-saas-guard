@@ -85,9 +85,22 @@ The Check Run must not include patch text, source snippets, PR title/body text, 
 
 The Worker handles signed GitHub cleanup events, including installation deletion:
 
-- `installation` with action `deleted` deletes compact scan records for the installation.
-- `installation_repositories` with action `removed` deletes compact scan records for removed repository IDs.
-- repeated cleanup is safe because deleting an already-removed compact record is a no-op.
+- `installation` with action `deleted` deletes compact `scan:` records for the installation,
+  cancels queued/pending scan jobs first, and deletes installation-scoped `delivery:` replay-protection
+  IDs where they are attributable to the installation.
+- `installation_repositories` with action `removed` deletes compact `scan:` records for the removed
+  repository IDs and deletes only delivery records attributable to those repositories.
+- Cleanup is idempotent: repeated cleanup (same event resent with a new delivery id, or an explicit
+  repeat) returns the stored result via `installation_deleted:<id>:all`,
+  `repository_removed:<id>:<repoId>`, and `repeated_cleanup:<id>:<repoId>` idempotency records and does
+  not recreate deleted records or requeue work.
+- A limited audit record (`cleanup:audit:<trigger>:<installationId>:<deliveryId>`, 90-day TTL) proves
+  cleanup happened with only: cleanup request id, installation id, repository ids, trigger, status,
+  timestamp, deleted/canceled counts, and an error class on failure.
+- Events that match nothing (unsupported action, empty `repositories_removed`, missing installation id)
+  are safe no-ops: no records are deleted and no audit or idempotency records are created.
+- The response carries the precise user-facing deletion wording; GitHub-owned check runs are never
+  claimed deleted.
 
 Delivery audit records may remain for the normal KV TTL. They must not contain source, diffs, secrets, customer payloads, PR-authored text, checkout paths, or installation tokens.
 

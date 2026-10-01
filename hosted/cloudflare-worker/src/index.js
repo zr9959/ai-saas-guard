@@ -171,10 +171,15 @@ export default {
       });
       return jsonResponse(202, {
         accepted: true,
-        stage: cleanup.cleaned ? "cleanup" : "ignored",
+        stage: cleanup.stage ?? (cleanup.cleaned ? "cleanup" : "ignored"),
         reason: cleanup.reason,
         deliveryId,
         deletedRecords: cleanup.deletedRecords,
+        canceledJobs: cleanup.canceledJobs,
+        repeated: cleanup.repeated,
+        auditRecordId: cleanup.auditRecordId,
+        message: cleanup.message,
+        ...(cleanup.errorClass ? { errorClass: cleanup.errorClass } : {}),
         shouldCreateCheckRun: false,
         privacy: HOSTED_WORKER_PRIVACY
       });
@@ -602,6 +607,22 @@ function booleanFlag(value) {
   return ["1", "true", "yes", "on", "paused"].includes(value.trim().toLowerCase());
 }
 
+const HOSTED_CLEANUP_IDEMPOTENCY_TTL_SECONDS = 60 * 60 * 24 * 90;
+const HOSTED_CLEANUP_AUDIT_TTL_SECONDS = 60 * 60 * 24 * 90;
+const HOSTED_CLEANUP_SCAN_PREFIX = "scan:";
+const HOSTED_CLEANUP_DELIVERY_PREFIX = "delivery:";
+const HOSTED_CLEANUP_AUDIT_PREFIX = "cleanup:audit:";
+const HOSTED_CLEANUP_INSTALLATION_DELETED = "installation_deleted";
+const HOSTED_CLEANUP_REPOSITORIES_REMOVED = "repositories_removed";
+// Per docs/hosted-uninstall-data-deletion.md: user-facing deletion wording must stay precise.
+// It may mention what was removed and that GitHub-owned check runs remain in GitHub;
+// it must never claim all traces were erased or that GitHub-owned records were deleted.
+const HOSTED_CLEANUP_USER_MESSAGE =
+  "We removed hosted app-side compact reports and queued work for this scope. " +
+  "GitHub-owned check runs may remain in GitHub according to your repository settings. " +
+  "The local CLI remains available and does not require the hosted app. " +
+  "The hosted app does not store raw source, raw diffs, secrets, or customer payloads by default.";
+
 async function handleInstallationCleanupEvent({ kv, deliveryKey, deliveryId, eventName, payload }) {
   const cleanup = resolveInstallationCleanup(payload, eventName);
   await storeJson(kv, deliveryKey, {
@@ -615,15 +636,143 @@ async function handleInstallationCleanupEvent({ kv, deliveryKey, deliveryId, eve
   });
 
   if (!cleanup.cleaned || cleanup.installationId === undefined) {
-    return { ...cleanup, deletedRecords: 0 };
+    return { ...cleanup, deletedRecords: 0, canceledJobs: 0, repeated: false, message: undefined };
   }
 
-  const deletedRecords = await deleteCompactRecordsForInstallation({
+  const idempotencyKeys = installationCleanupIdempotencyKeys(cleanup);
+  const repeatedResult = await readRepeatedCleanupResult({ kv, idempotencyKeys });
+  if (repeatedResult) {
+    return { ...repeatedResult, repeated: true };
+  }
+
+  let outcome;
+  try {
+    outcome = await deleteCompactRecordsForInstallation({
+      kv,
+      currentDeliveryKey: deliveryKey,
+      installationId: cleanup.installationId,
+      repositoryIds: cleanup.repositoryIds
+    });
+  } catch (error) {
+    const auditRecordId = await storeCleanupAuditRecord({
+      kv,
+      cleanup,
+      deliveryId,
+      trigger: cleanup.trigger,
+      status: "failed",
+      deletedRecords: 0,
+      canceledJobs: 0,
+      errorClass: "hosted_cleanup_failed"
+    });
+    return {
+      ...cleanup,
+      deletedRecords: 0,
+      canceledJobs: 0,
+      repeated: false,
+      auditRecordId,
+      message: undefined,
+      errorClass: "hosted_cleanup_failed",
+      stage: "cleanup_failed"
+    };
+  }
+
+  const trigger = cleanup.trigger;
+  const auditRecordId = await storeCleanupAuditRecord({
     kv,
-    installationId: cleanup.installationId,
-    repositoryIds: cleanup.repositoryIds
+    cleanup,
+    deliveryId,
+    trigger,
+    status: "completed",
+    deletedRecords: outcome.deletedRecords,
+    canceledJobs: outcome.canceledJobs
   });
-  return { ...cleanup, deletedRecords };
+
+  const result = {
+    ...cleanup,
+    trigger,
+    deletedRecords: outcome.deletedRecords,
+    canceledJobs: outcome.canceledJobs,
+    repeated: false,
+    auditRecordId,
+    message: HOSTED_CLEANUP_USER_MESSAGE
+  };
+  await storeRepeatedCleanupResult({ kv, idempotencyKeys, result });
+  return result;
+}
+
+function installationCleanupIdempotencyKeys(cleanup) {
+  // Key formats follow docs/hosted-uninstall-data-deletion.md verbatim so repeats
+  // (same event resent by GitHub or an explicit repeated cleanup) resolve to one record.
+  if (cleanup.trigger === HOSTED_CLEANUP_INSTALLATION_DELETED) {
+    return [
+      `${HOSTED_CLEANUP_INSTALLATION_DELETED}:${cleanup.installationId}:all`,
+      `repeated_cleanup:${cleanup.installationId}:all`
+    ];
+  }
+  const repositoryIds = cleanup.repositoryIds.length > 0 ? cleanup.repositoryIds : ["all"];
+  return repositoryIds.flatMap((repositoryId) => [
+    `repository_removed:${cleanup.installationId}:${repositoryId}`,
+    `repeated_cleanup:${cleanup.installationId}:${repositoryId}`
+  ]);
+}
+
+async function readRepeatedCleanupResult({ kv, idempotencyKeys }) {
+  if (typeof kv?.get !== "function") return null;
+  for (const key of idempotencyKeys) {
+    const existing = await readJson(kv, key);
+    if (existing !== null && existing !== CORRUPT_RATE_LIMIT_COUNTER) {
+      return existing;
+    }
+  }
+  return null;
+}
+
+async function storeRepeatedCleanupResult({ kv, idempotencyKeys, result }) {
+  const summary = {
+    trigger: result.trigger,
+    installationId: result.installationId,
+    repositoryIds: result.repositoryIds,
+    reason: result.reason,
+    stage: "cleanup",
+    deletedRecords: result.deletedRecords,
+    canceledJobs: result.canceledJobs,
+    auditRecordId: result.auditRecordId,
+    message: HOSTED_CLEANUP_USER_MESSAGE
+  };
+  for (const key of idempotencyKeys) {
+    await kv.put(key, JSON.stringify(summary), { expirationTtl: HOSTED_CLEANUP_IDEMPOTENCY_TTL_SECONDS });
+  }
+}
+
+async function storeCleanupAuditRecord({
+  kv,
+  cleanup,
+  deliveryId,
+  trigger,
+  status,
+  deletedRecords,
+  canceledJobs,
+  errorClass
+}) {
+  const auditRecordId = `${HOSTED_CLEANUP_AUDIT_PREFIX}${trigger}:${cleanup.installationId}:${deliveryId}`;
+  // Audit records carry only metadata proving cleanup happened: no raw source,
+  // raw diffs, secrets, customer payloads, private URLs, PR text, or installation tokens.
+  await kv.put(
+    auditRecordId,
+    JSON.stringify({
+      cleanupRequestId: deliveryId,
+      installationId: cleanup.installationId,
+      repositoryIds: cleanup.repositoryIds,
+      trigger,
+      status,
+      timestamp: new Date().toISOString(),
+      deletedRecords,
+      canceledJobs,
+      ...(errorClass ? { errorClass } : {})
+    }),
+    { expirationTtl: HOSTED_CLEANUP_AUDIT_TTL_SECONDS }
+  );
+  return auditRecordId;
 }
 
 function resolveInstallationCleanup(payload, eventName) {
@@ -633,6 +782,7 @@ function resolveInstallationCleanup(payload, eventName) {
       cleaned: false,
       reason: "missing_installation_id",
       installationId,
+      trigger: undefined,
       repositoryIds: []
     };
   }
@@ -642,6 +792,7 @@ function resolveInstallationCleanup(payload, eventName) {
       cleaned: true,
       reason: "installation_deleted",
       installationId,
+      trigger: HOSTED_CLEANUP_INSTALLATION_DELETED,
       repositoryIds: []
     };
   }
@@ -654,6 +805,7 @@ function resolveInstallationCleanup(payload, eventName) {
       cleaned: repositoryIds.length > 0,
       reason: repositoryIds.length > 0 ? "repositories_removed" : "no_removed_repositories",
       installationId,
+      trigger: repositoryIds.length > 0 ? HOSTED_CLEANUP_REPOSITORIES_REMOVED : undefined,
       repositoryIds
     };
   }
@@ -662,35 +814,84 @@ function resolveInstallationCleanup(payload, eventName) {
     cleaned: false,
     reason: "installation_event_ignored",
     installationId,
+    trigger: undefined,
     repositoryIds: []
   };
 }
 
-async function deleteCompactRecordsForInstallation({ kv, installationId, repositoryIds }) {
+const HOSTED_CLEANUP_QUEUED_STATUSES = new Set(["queued", "pending", "running"]);
+
+async function deleteCompactRecordsForInstallation({
+  kv,
+  currentDeliveryKey,
+  installationId,
+  repositoryIds
+}) {
   if (typeof kv?.list !== "function" || typeof kv?.delete !== "function") {
-    return 0;
+    throw createGitHubApiError("cleanup", "kv_not_supported");
   }
 
-  let deleted = 0;
-  const prefixes =
+  let deletedRecords = 0;
+  let canceledJobs = 0;
+  const scanPrefixes =
     repositoryIds.length > 0
-      ? repositoryIds.map((repositoryId) => `scan:${installationId}:${repositoryId}:`)
-      : [`scan:${installationId}:`];
+      ? repositoryIds.map((repositoryId) => `${HOSTED_CLEANUP_SCAN_PREFIX}${installationId}:${repositoryId}:`)
+      : [`${HOSTED_CLEANUP_SCAN_PREFIX}${installationId}:`];
 
-  for (const prefix of prefixes) {
+  // Cancel queued/pending work first: scan records with a queued or running status are
+  // canceled (their queued work is dropped) and then their compact records are deleted.
+  for (const prefix of scanPrefixes) {
     let cursor;
     do {
       const page = await kv.list({ prefix, cursor });
       for (const key of page.keys ?? []) {
         if (typeof key?.name !== "string") continue;
+        const stored = await readJson(kv, key.name);
+        if (
+          stored !== null &&
+          stored !== CORRUPT_RATE_LIMIT_COUNTER &&
+          HOSTED_CLEANUP_QUEUED_STATUSES.has(stored?.status)
+        ) {
+          canceledJobs += 1;
+        }
         await kv.delete(key.name);
-        deleted += 1;
+        deletedRecords += 1;
       }
       cursor = page.list_complete === false ? page.cursor : undefined;
     } while (cursor);
   }
 
-  return deleted;
+  // Installation-scoped replay-protection delivery IDs are deleted where safe: only records
+  // that are attributable to this installation (stored installationId matches). The current
+  // delivery receipt is kept so the request that triggered this cleanup stays attributable.
+  // For repository-scoped cleanup, only delivery IDs attributable to a removed repository
+  // are deleted; unattributable records are left alone.
+  let deliveryCursor;
+  do {
+    const page = await kv.list({ prefix: HOSTED_CLEANUP_DELIVERY_PREFIX, cursor: deliveryCursor });
+    for (const key of page.keys ?? []) {
+      if (typeof key?.name !== "string" || key.name === currentDeliveryKey) continue;
+      const stored = await readJson(kv, key.name);
+      if (
+        stored !== null &&
+        stored !== CORRUPT_RATE_LIMIT_COUNTER &&
+        deliveryRecordMatchesCleanupScope(stored, installationId, repositoryIds)
+      ) {
+        await kv.delete(key.name);
+        deletedRecords += 1;
+      }
+    }
+    deliveryCursor = page.list_complete === false ? page.cursor : undefined;
+  } while (deliveryCursor);
+
+  return { deletedRecords, canceledJobs };
+}
+
+function deliveryRecordMatchesCleanupScope(stored, installationId, repositoryIds) {
+  if (stored?.installationId !== installationId) return false;
+  if (repositoryIds.length === 0) return true;
+  const repositoryId = stored?.repositoryId ?? stored?.identity?.repositoryId;
+  return repositoryIds.includes(repositoryId);
 }
 
 async function runHostedPrRiskCheck({ env, identity, scanKey, scannerVersion }) {
