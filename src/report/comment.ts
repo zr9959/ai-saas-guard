@@ -1,6 +1,6 @@
 import type { BaseReport, PrRiskReport } from "../types.js";
 import { launchDecisionQuestions, launchGateVerdict, nextSteps, reviewFirst, trustStatement } from "./launchGate.js";
-import { escapeMarkdownInline } from "./markdown.js";
+import { escapeMarkdownInline } from "./presentation.js";
 
 /**
  * `--format comment` renders a compact PR-comment-ready markdown body.

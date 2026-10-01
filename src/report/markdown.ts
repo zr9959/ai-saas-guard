@@ -254,4 +254,3 @@ function formatEvidence(evidence: Evidence | undefined): string {
     ? `\`${safeLocation}\` - ${escapeMarkdownInline(detail)}`
     : `\`${safeLocation}\``;
 }
-}
