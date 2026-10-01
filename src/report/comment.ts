@@ -1,6 +1,6 @@
 import type { BaseReport, PrRiskReport } from "../types.js";
 import { launchDecisionQuestions, launchGateVerdict, nextSteps, reviewFirst, trustStatement } from "./launchGate.js";
-import { escapeMarkdownInline } from "./presentation.js";
+import { escapeMarkdownInline, formatScanCoverage, markdownCode } from "./presentation.js";
 
 /**
  * `--format comment` renders a compact PR-comment-ready markdown body.
@@ -12,16 +12,35 @@ export function formatCommentReport(report: BaseReport): string {
   return `${formatGenericComment(report)}\n`;
 }
 
+function appendCoverageWarning(lines: string[], report: BaseReport): void {
+  const coverage = formatScanCoverage(report);
+  if (coverage) {
+    lines.push("");
+    lines.push(`**Coverage:** ${escapeMarkdownInline(coverage)}`);
+  }
+}
+
 function formatPrRiskComment(report: PrRiskReport): string {
   const lines: string[] = [];
   lines.push("## \u{1F6E1}\uFE0F ai-saas-guard PR risk");
   lines.push("");
   lines.push(`**Verdict:** ${escapeMarkdownInline(launchGateVerdict(report))}`);
+  appendCoverageWarning(lines, report);
+
+  const diffUnavailable = report.findings.filter(
+    (finding) => finding.ruleId === "pr-risk.diff-unavailable"
+  );
+  if (diffUnavailable.length > 0) {
+    lines.push("");
+    lines.push(
+      `> \u26A0\uFE0F ${escapeMarkdownInline(diffUnavailable[0].title)}. ${escapeMarkdownInline(diffUnavailable[0].suggestedFix)}`
+    );
+  }
 
   if (report.categories.length > 0) {
     lines.push("");
     lines.push(
-      `**This PR touches:** ${report.categories.map((category) => `\`${escapeMarkdownInline(category)}\``).join(", ")}`
+      `**This PR touches:** ${report.categories.map((category) => markdownCode(category)).join(", ")}`
     );
   }
 
@@ -35,7 +54,7 @@ function formatPrRiskComment(report: PrRiskReport): string {
     lines.push("");
     for (const [index, file] of topFiles.entries()) {
       lines.push(
-        `${index + 1}. \`${escapeMarkdownInline(file.path)}\` — ${file.categories.map((category) => `\`${escapeMarkdownInline(category)}\``).join(", ")} (+${file.added}/-${file.removed})`
+        `${index + 1}. ${markdownCode(file.path)} — ${file.categories.map((category) => markdownCode(category)).join(", ")} (+${file.added}/-${file.removed})`
       );
     }
   }
@@ -75,6 +94,7 @@ function formatGenericComment(report: BaseReport): string {
   lines.push(`## \u{1F6E1}\uFE0F ai-saas-guard ${escapeMarkdownInline(report.command)}`);
   lines.push("");
   lines.push(`**Verdict:** ${escapeMarkdownInline(launchGateVerdict(report))}`);
+  appendCoverageWarning(lines, report);
   lines.push("");
   lines.push("### Review first");
   lines.push("");

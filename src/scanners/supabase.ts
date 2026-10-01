@@ -642,7 +642,11 @@ function isBroadPredicate(predicate: string): boolean {
   // Constant tautologies such as `USING (1=1)`: only identical values on both
   // sides count — `1=2` matches nothing and is not broad.
   if (/^(\d+)\s*=\s*\1$/.test(normalized)) return true;
-  return /^'([^']*)'\s*=\s*'\1'$/.test(normalized);
+  if (/^'([^']*)'\s*=\s*'\1'$/.test(normalized)) return true;
+  // Double-quoted self-comparison (`USING ("a" = "a")`): in Postgres the
+  // identifier compared to itself is true for every non-null row, so it is
+  // just as broad as the single-quoted form.
+  return /^"([^"]*)"\s*=\s*"\1"$/.test(normalized);
 }
 
 function hasWeakWithCheck(policy: PolicyInfo): boolean {

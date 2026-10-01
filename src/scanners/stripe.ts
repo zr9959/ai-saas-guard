@@ -83,7 +83,14 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
 
     const hasConstructEvent = /webhooks\.constructEvent|constructEvent\s*\(/.test(file.content);
     const readsStripeSignature = /stripe-signature/i.test(file.content);
-    const usesRawBody = /(?:req|request)\.(?:text|arrayBuffer)\s*\(|rawBody|buffer\s*\(/.test(file.content);
+    // Raw-body reads: fetch-style req.text()/arrayBuffer()/bytes(), raw-body
+    // helpers (getRawBody, express raw-body middleware), and micro-style
+    // buffer(req). `buffer` stays case-sensitive so `Buffer.from(...)` does
+    // not count; `rawbody` is case-insensitive to catch getRawBody.
+    const usesRawBody =
+      /(?:req|request)\.(?:text|arrayBuffer|bytes)\s*\(/.test(file.content) ||
+      /rawbody/i.test(file.content) ||
+      /\bbuffer\s*\(/.test(file.content);
     const usesJsonBody = /(?:req|request)\.json\s*\(/.test(file.content);
 
     if (!hasConstructEvent || !readsStripeSignature) {

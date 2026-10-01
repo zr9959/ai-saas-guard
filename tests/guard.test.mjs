@@ -1404,6 +1404,27 @@ CREATE POLICY "never matches" ON public.archive FOR SELECT USING (1=2);
   }
 });
 
+test("supabase flags double-quoted self-comparison tautologies as broad policies", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-supabase-dqtaut-"));
+  const migrationsDir = resolve(rootDir, "db", "migrations");
+  await mkdir(migrationsDir, { recursive: true });
+  await writeFile(
+    resolve(migrationsDir, "001.sql"),
+    `CREATE POLICY "dq tautology" ON public.widgets FOR SELECT USING ("a" = "a");\nCREATE POLICY "dq scoped" ON public.gadgets FOR SELECT USING (auth.uid() = owner_id);\n`
+  );
+
+  try {
+    const report = await checkSupabase({ rootDir });
+    const broadTables = report.findings
+      .filter((finding) => finding.ruleId === "supabase.rls.broad-policy")
+      .map((finding) => finding.title);
+    assert.ok(broadTables.some((title) => title.includes("public.widgets")), 'USING ("a" = "a") must be flagged');
+    assert.ok(!broadTables.some((title) => title.includes("public.gadgets")), "scoped predicate must not be flagged");
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("stripe raw-body detection recognizes request.json and request.arrayBuffer", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stripe-rawbody-"));
   const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");
@@ -1442,6 +1463,18 @@ export async function POST(request: Request) {
       !findingRuleIds(raw).includes("stripe.webhook.raw-body-risk"),
       "request.arrayBuffer() must be recognized as raw body"
     );
+
+    // getRawBody() (capital R, raw-body package) must count as raw-body
+    // usage even when request.json() also appears in the handler.
+    await writeFile(
+      resolve(apiDir, "route.ts"),
+      `import Stripe from "stripe";\nimport getRawBody from "raw-body";\nconst stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);\nexport async function POST(req: Request) {\n  const payload = await getRawBody(req);\n  const signature = req.headers.get("stripe-signature")!;\n  const event = stripe.webhooks.constructEvent(payload, signature, process.env.STRIPE_WEBHOOK_SECRET!);\n  const debug = await req.json().catch(() => null);\n  return Response.json({ received: true });\n}\n`
+    );
+    const helperRaw = await checkStripe({ rootDir });
+    assert.ok(
+      !findingRuleIds(helperRaw).includes("stripe.webhook.raw-body-risk"),
+      "getRawBody() must be recognized as raw body"
+    );
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
@@ -1472,6 +1505,82 @@ test("comment format neutralizes markdown and HTML injection", async () => {
   assert.ok(comment.includes("&lt;img src=x onerror=alert(1)&gt;"));
   assert.ok(comment.includes("\\[poc\\](https://evil.example)"));
   assert.ok(comment.includes("app/api/&lt;script&gt;/route.ts"));
+});
+
+test("comment format neutralizes backtick injection in code spans", () => {
+  const report = {
+    command: "pr-risk",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    findings: [],
+    summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+    categories: ["auth/session"],
+    topRiskyFiles: [
+      { path: "app/a`b`c.ts", categories: ["auth/session"], added: 10, removed: 2, score: 50 }
+    ],
+    reviewChecklist: [],
+    requiredTests: [],
+    suggestedSplit: []
+  };
+  const comment = formatCommentReport(report);
+
+  assert.ok(
+    !comment.includes("`app/a`b`c.ts`"),
+    "raw backticks must not break out of the code span"
+  );
+  assert.ok(comment.includes("`app/a'b'c.ts`"));
+});
+
+test("comment format surfaces scan coverage warnings", () => {
+  const report = {
+    command: "scan",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    findings: [],
+    summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+    fileCollection: {
+      filesScanned: 7,
+      bytesScanned: 1234,
+      unreadableFiles: ["private.env"],
+      unreadableDirectories: [],
+      skippedLargeFiles: ["large.sql"],
+      skippedBudgetFiles: [],
+      maxFilesReached: false,
+      maxTotalBytesReached: false
+    }
+  };
+  const comment = formatCommentReport(report);
+
+  assert.match(comment, /\*\*Coverage:\*\* 7 files scanned/);
+  assert.match(comment, /1 unreadable file/);
+  assert.match(comment, /1 large file skipped/);
+});
+
+test("pr-risk comment format warns when the git diff could not be read", () => {
+  const report = {
+    command: "pr-risk",
+    rootDir: fixtureRoot,
+    generatedAt: new Date().toISOString(),
+    findings: [
+      {
+        ruleId: "pr-risk.diff-unavailable",
+        title: "Could not read git diff for base origin/main",
+        severity: "info",
+        evidence: [{ file: "." }],
+        why: "probe",
+        suggestedVerification: "probe",
+        suggestedFix: "Fetch the branch or pass an existing local base ref."
+      }
+    ],
+    summary: { total: 1, critical: 0, high: 0, medium: 0, low: 0, info: 1 },
+    categories: [],
+    topRiskyFiles: [],
+    reviewChecklist: [],
+    requiredTests: [],
+    suggestedSplit: []
+  };
+  const comment = formatCommentReport(report);
+  assert.ok(comment.includes("Could not read git diff for base origin/main"));
 });
 
 test("pr-risk comment format renders a paste-ready PR review queue", async () => {
@@ -1791,6 +1900,25 @@ test("middleware missing-auth ignores pure config files without middleware logic
   try {
     const report = await scanRepository({ rootDir });
     assert.ok(!findingRuleIds(report).includes("next.middleware.missing-auth"));
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("middleware missing-auth flags arrow-function middleware exports", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-middleware-arrow-"));
+  await writeFile(
+    resolve(rootDir, "middleware.ts"),
+    'import { NextResponse } from "next/server";\n\nexport const middleware = async (req) => {\n  return NextResponse.next();\n};\n\nexport const config = {\n  matcher: ["/admin/:path*"]\n};\n'
+  );
+
+  try {
+    const report = await scanRepository({ rootDir });
+    const middlewareFindings = report.findings.filter(
+      (finding) => finding.ruleId === "next.middleware.missing-auth"
+    );
+    assert.equal(middlewareFindings.length, 1);
+    assert.equal(middlewareFindings[0].evidence[0]?.line, 3);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
