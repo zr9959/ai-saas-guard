@@ -83,8 +83,8 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
 
     const hasConstructEvent = /webhooks\.constructEvent|constructEvent\s*\(/.test(file.content);
     const readsStripeSignature = /stripe-signature/i.test(file.content);
-    const usesRawBody = /req\.text\s*\(|rawBody|buffer\s*\(/.test(file.content);
-    const usesJsonBody = /req\.json\s*\(/.test(file.content);
+    const usesRawBody = /(?:req|request)\.(?:text|arrayBuffer)\s*\(|rawBody|buffer\s*\(/.test(file.content);
+    const usesJsonBody = /(?:req|request)\.json\s*\(/.test(file.content);
 
     if (!hasConstructEvent || !readsStripeSignature) {
       findings.push(
@@ -114,7 +114,7 @@ export async function checkStripe(input: ScanInput): Promise<StripeReport> {
           ruleId: "stripe.webhook.raw-body-risk",
           title: "Stripe signature verification may be using a parsed JSON body",
           severity: "high",
-          evidence: [{ file: file.path, line: firstLineMatching(file.content, /req\.json\s*\(/), snippet: firstSnippetMatching(file.content, /req\.json\s*\(/) }],
+          evidence: [{ file: file.path, line: firstLineMatching(file.content, /(?:req|request)\.json\s*\(/), snippet: firstSnippetMatching(file.content, /(?:req|request)\.json\s*\(/) }],
           why: "Stripe signature checks require the exact raw payload bytes; parsed JSON can make verification fail or be bypassed in rewrites.",
           suggestedVerification:
             "Replay a signed test webhook through the deployed route and confirm signature verification succeeds only with the raw body.",

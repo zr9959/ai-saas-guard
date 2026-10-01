@@ -1132,6 +1132,49 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
 });
 
+test("stripe raw-body detection recognizes request.json and request.arrayBuffer", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stripe-rawbody-"));
+  const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");
+  await mkdir(apiDir, { recursive: true });
+  const route = (bodyLine) =>
+    `import Stripe from "stripe";
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export async function POST(request: Request) {
+  ${bodyLine}
+  const signature = request.headers.get("stripe-signature")!;
+  const event = stripe.webhooks.constructEvent(payload, signature, process.env.STRIPE_WEBHOOK_SECRET!);
+  return Response.json({ received: true });
+}
+`;
+
+  try {
+    // request.json() (full parameter name) must count as parsed-body usage.
+    await writeFile(
+      resolve(apiDir, "route.ts"),
+      route("const payload = JSON.stringify(await request.json());")
+    );
+    const parsed = await checkStripe({ rootDir });
+    const parsedHits = parsed.findings.filter(
+      (finding) => finding.ruleId === "stripe.webhook.raw-body-risk"
+    );
+    assert.equal(parsedHits.length, 1);
+    assert.match(parsedHits[0].evidence[0].snippet, /request\.json\(\)/);
+
+    // request.arrayBuffer() must count as raw-body usage: no raw-body-risk.
+    await writeFile(
+      resolve(apiDir, "route.ts"),
+      route("const payload = Buffer.from(await request.arrayBuffer());")
+    );
+    const raw = await checkStripe({ rootDir });
+    assert.ok(
+      !findingRuleIds(raw).includes("stripe.webhook.raw-body-risk"),
+      "request.arrayBuffer() must be recognized as raw body"
+    );
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("comment format neutralizes markdown and HTML injection", async () => {
   const evilFinding = {
     ruleId: "data.prisma.tenant-scope-missing",
