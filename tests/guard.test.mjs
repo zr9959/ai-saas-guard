@@ -1132,6 +1132,33 @@ test("pr-risk accepts trust-boundary diffs with corresponding spec context", asy
   assert.ok(!findingRuleIds(report).includes("pr-risk.trust-boundary-missing-spec"));
 });
 
+test("supabase flags parenthesized constant tautologies as broad policies", async () => {
+  const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-supabase-tautology-"));
+  const migrationsDir = resolve(rootDir, "db", "migrations");
+  await mkdir(migrationsDir, { recursive: true });
+  await writeFile(
+    resolve(migrationsDir, "001.sql"),
+    `CREATE POLICY "open select" ON public.documents FOR SELECT USING (1=1);
+CREATE POLICY "quoted" ON public.reports FOR SELECT USING ('a'='a');
+CREATE POLICY "scoped" ON public.notes FOR SELECT USING (auth.uid() = owner_id);
+CREATE POLICY "never matches" ON public.archive FOR SELECT USING (1=2);
+`
+  );
+
+  try {
+    const report = await checkSupabase({ rootDir });
+    const broadTables = report.findings
+      .filter((finding) => finding.ruleId === "supabase.rls.broad-policy")
+      .map((finding) => finding.title);
+    assert.ok(broadTables.some((title) => title.includes("public.documents")), "USING (1=1) must be flagged");
+    assert.ok(broadTables.some((title) => title.includes("public.reports")), "USING ('a'='a') must be flagged");
+    assert.ok(!broadTables.some((title) => title.includes("public.notes")), "scoped predicate must not be flagged");
+    assert.ok(!broadTables.some((title) => title.includes("public.archive")), "USING (1=2) must not be flagged");
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("stripe raw-body detection recognizes request.json and request.arrayBuffer", async () => {
   const rootDir = await mkdtemp(resolve(tmpdir(), "ai-saas-guard-stripe-rawbody-"));
   const apiDir = resolve(rootDir, "app", "api", "stripe", "webhook");
