@@ -594,3 +594,67 @@ only applies to cleanups executed by the new build. The earlier "not applied in 
 statement is superseded by this section.
 
 Related: PR #147 (cleanup implementation), PR #153 (live proof + gap), this fix PR.
+
+## 2026-10-01 Uninstall Deletion Re-verification (post-fix)
+
+Recorded 2026-10-01 after the repository owner reinstalled the staging GitHub App
+`ai-saas-guard-hosted` (app ID `3834787`) on `zr9959/ai-saas-guard` and uninstalled it again
+via the GitHub web UI. The reinstall created a **new installation ID `166806540`**
+(previous: `135085075`). The uninstall webhook arrived at `2026-10-01T09:04:24Z`, **after**
+the fixed build deployed at `08:56:41Z` (version
+`550082be-844e-4f5b-8f18-519cef04b8f7`, PR #154), so this cycle exercised the fixed
+`deliveryRecordMatchesCleanupScope` predicate. Verification was read-only: GitHub API
+(user credential), Cloudflare KV API (key names plus operational record values; no secrets
+read or printed).
+
+### Verification results
+
+| Check | Method | Result |
+| --- | --- | --- |
+| Real uninstall event on fixed build | Signed `installation.deleted` webhook accepted by worker | **Pass**. Delivery `18b4d36e-bd77-11f1-9a96-df52c9c36961`, `installationId: 166806540`, `receivedAt: 2026-10-01T09:04:24.354Z`, `accepted: true`. A forged/unsigned payload returns 400 and stores nothing (re-verified post-deploy). Direct API re-check of the installation is impossible with a user token (app JWT required; PAT returns 401), so the signed delivery is the authoritative signal. |
+| Webhook executed | `delivery:18b4d36e-...` receipt in staging KV | **Pass**. `accepted: true`, `reason: "installation_deleted"`, `installationId: 166806540`. |
+| Audit record | `cleanup:audit:installation_deleted:166806540:18b4d36e-...` | **Pass**. Limited fields only (8): `cleanupRequestId`, `installationId`, `repositoryIds: []`, `trigger: "installation_deleted"`, `status: "completed"`, `timestamp: 2026-10-01T09:04:36.551Z`, `deletedRecords: 1`, `canceledJobs: 0`. |
+| Compact reports deleted | KV list `scan:166806540:` | **Pass**. 0 keys (the brief reinstall window produced no scan records). |
+| Delivery receipts for this installation | All 121 `delivery:` values swept for top-level `installationId` **or** nested `identity.installationId` equal to `166806540`, excluding the uninstall's own receipt (kept by design) | **Pass**. **0 attributable receipts remain** — both the top-level and nested shapes are now cleaned. This is the direct proof the PR #154 fix works on a live uninstall. |
+| Queued/pending work canceled | Audit `canceledJobs` | **Pass** (vacuous). `canceledJobs: 0` — no queued, pending, or running jobs existed at uninstall time. |
+| No sensitive residue | Swept all `delivery:`, `cleanup:audit:`, `installation_deleted:`, `repeated_cleanup:`, `scan:` values for secret-like patterns (private keys, tokens, `diff --git`, hunk markers) | **Pass**. 0 hits. Remaining records are metadata only. |
+| Idempotency | KV keys | **Pass**. `installation_deleted:166806540:all` and `repeated_cleanup:166806540:all` present. |
+| Trial branches | GitHub API ref check | **Pass**. Both Phase 3 trial branches return 404 (no residue). |
+| Worker health after event | `GET /healthz` | **Pass**. HTTP 200, `scannerVersion: "0.43.0"`, `checkRunPublisher: configured`, `processingPaused: false`, all privacy flags false. |
+
+### Expected old residue (not a failure, recorded explicitly)
+
+- **77 `delivery:` receipts under installation `135085075` remain.** They are the pre-fix
+  build's residue: the fixed predicate only applies to cleanups executed by the new build,
+  and cleanup is scoped per installation, so the new uninstall (ID `166806540`) could not
+  delete records belonging to the old installation. They are replay-protection metadata only
+  (swept, 0 secret hits) and expire via their 30-day TTL (`EVENT_TTL_SECONDS`).
+- **43 `delivery:` receipts with no installation ID at all remain.** All are `check_suite`
+  events with `reason: "unsupported_event"` — the worker stores a compact rejection receipt
+  without installation attribution, so no installation-scoped cleanup can attribute them.
+  Unattributable by design; metadata only; 30-day TTL.
+- Neither class is in scope for `docs/hosted-uninstall-data-deletion.md`'s
+  installation-scoped deletion, and neither contains sensitive content.
+
+### Gate recheck (2026-10-01, after re-verification)
+
+Mapped into `evaluateHostedBetaReadinessGate` with only proven items set to true:
+
+- `phase3_gate_missing`: resolved (unchanged, 2026-10-01).
+- `rate_limit_missing`, `abuse_kill_switch_missing`: resolved (2026-05-26 deployed evidence).
+- `rollback_test_missing`: resolved (2026-05-26 staging rollback drill).
+- `incident_owner_missing`, `support_path_missing`: resolved (2026-05-26 ownership/support docs).
+- `uninstall_deletion_proof_missing`: **resolved**. Two live uninstall proofs on record
+  (08:48 and 09:04 UTC); the post-fix proof shows zero attributable residue for the cleaned
+  installation in both delivery-record shapes.
+- Blocked reasons: none.
+- **`readyForPublicBeta: true`** per the repository's own gate standard
+  (`blockedReasons.length === 0`).
+
+Scope note: this flips the technical beta gate only. Design-partner feedback (issue #93)
+still has no real participants — that is tracked as intake, not a gate blocker, and remains
+the next real-world step before any broader rollout. No app reinstall was performed by the
+agent; reinstall is a user action.
+
+Related: PR #147 (cleanup implementation), PR #153 (first live proof + gap), PR #154
+(predicate fix + regression test + staging deploy), this re-verification PR.
