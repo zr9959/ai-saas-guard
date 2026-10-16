@@ -6,7 +6,7 @@
     "test": "node --test"
   },
   "dependencies": {
-    "next": "15.5.24",
+    "next": "15.5.27",
     "stripe": "17.0.0"
   }
 }
